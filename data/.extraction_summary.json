@@ -1,0 +1,57 @@
+[
+  {
+    "table": "regions",
+    "rows": 3,
+    "bytes": 851,
+    "chunks": [
+      "data/regions.jsonl"
+    ],
+    "over_hard_limit": false
+  },
+  {
+    "table": "owners",
+    "rows": 590240,
+    "bytes": 249155033,
+    "chunks": [
+      "data/owners-001.jsonl",
+      "data/owners-002.jsonl",
+      "data/owners-003.jsonl",
+      "data/owners-004.jsonl",
+      "data/owners-005.jsonl"
+    ],
+    "over_hard_limit": false
+  },
+  {
+    "table": "parcels",
+    "rows": 750983,
+    "bytes": 348437093,
+    "chunks": [
+      "data/parcels-001.jsonl",
+      "data/parcels-002.jsonl",
+      "data/parcels-003.jsonl",
+      "data/parcels-004.jsonl",
+      "data/parcels-005.jsonl",
+      "data/parcels-006.jsonl",
+      "data/parcels-007.jsonl"
+    ],
+    "over_hard_limit": false
+  },
+  {
+    "table": "owner_aliases",
+    "rows": 3291,
+    "bytes": 826834,
+    "chunks": [
+      "data/owner_aliases.jsonl"
+    ],
+    "over_hard_limit": false
+  },
+  {
+    "table": "contact_imports",
+    "rows": 0,
+    "bytes": 0,
+    "chunks": [
+      "data/contact_imports.jsonl"
+    ],
+    "over_hard_limit": false
+  }
+]
