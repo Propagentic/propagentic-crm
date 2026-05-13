@@ -1,0 +1,42 @@
+# --- Secrets ---
+.env
+.env.local
+.env.production
+
+# --- Local databases ---
+enrichment.db
+*.sqlite
+*.sqlite3
+
+# --- Raw source data (large, region-provided, regenerate locally) ---
+*.geojson
+*.csv
+
+# --- Build artifacts (regenerable via `python3 build.py`) ---
+# app_template.html is a SOURCE file (the template build.py reads). Keep it.
+app.html
+app_nashville_tn.html
+app_baltimore_md.html
+app_fayette_ky.html
+dist/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- OS / editor ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Node (if we add JS tooling later) ---
+node_modules/
+package-lock.json
