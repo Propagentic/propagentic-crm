@@ -1,0 +1,2009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Propagentic Parcel Explorer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+:root {
+  --bg: #0b1220;
+  --panel: #111a2e;
+  --panel-2: #182547;
+  --border: #1f2c4d;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-soft: #cbd5e1;
+  --accent: #38bdf8;
+  --accent-2: #818cf8;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.45; }
+button { font: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; }
+
+.app { display: grid; grid-template-rows: 56px 1fr; height: 100vh; }
+header.top {
+  background: linear-gradient(135deg, #1e293b 0%, #312e81 100%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 18px; gap: 24px;
+  box-shadow: var(--shadow);
+}
+header.top h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: white; }
+header.top .stats { display: flex; gap: 18px; font-size: 12px; color: #cbd5e1; }
+header.top .stats b { color: white; font-weight: 600; }
+header.top .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.btn {
+  background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.12);
+  padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: all 0.15s;
+}
+.btn:hover { background: rgba(255,255,255,0.16); }
+.btn.primary { background: var(--accent); color: #0b1220; border-color: transparent; font-weight: 600; }
+.btn.primary:hover { background: #7dd3fc; }
+.btn.danger { background: rgba(239,68,68,0.18); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
+.btn.danger:hover { background: rgba(239,68,68,0.30); }
+
+.body-area { display: grid; grid-template-columns: 280px 1fr; overflow: hidden; min-height: 0; }
+
+aside.sidebar {
+  background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px;
+}
+.sidebar h3 { margin: 4px 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+.sidebar .group { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.sidebar .group:last-child { border-bottom: none; }
+.sidebar label { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--text-soft); font-size: 12px; cursor: pointer; }
+.sidebar label:hover { color: white; }
+.sidebar input[type="radio"], .sidebar input[type="checkbox"] { accent-color: var(--accent); }
+.sidebar input[type="text"], .sidebar select {
+  width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+  padding: 7px 9px; border-radius: 5px; outline: none;
+}
+.sidebar input[type="text"]:focus, .sidebar select:focus { border-color: var(--accent); }
+.range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.range-row input { width: 100%; }
+.bucket-counts { font-size: 10.5px; color: var(--text-dim); margin-left: 22px; }
+
+.tabs { display: flex; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab-btn { background: none; border: none; color: var(--text-dim); padding: 12px 18px; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn .badge { display: inline-block; margin-left: 5px; background: rgba(56,189,248,0.18); color: var(--accent); padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+
+.main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
+.tab-panel { display: none; flex: 1; overflow: hidden; min-height: 0; position: relative; }
+.tab-panel.active { display: flex; flex-direction: column; }
+
+/* Region selector */
+.region-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--panel);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.region-bar .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.region-chip {
+  background: var(--panel-2); color: var(--text-soft);
+  border: 1px solid var(--border);
+  padding: 5px 14px; border-radius: 999px;
+  font-size: 12px; cursor: pointer; transition: all 0.15s;
+}
+.region-chip:hover { color: white; border-color: var(--accent); }
+.region-chip.active { background: var(--accent); color: #0b1220; border-color: transparent; font-weight: 600; }
+.region-chip .pill {
+  display: inline-block; margin-left: 6px;
+  background: rgba(255,255,255,0.25); color: inherit;
+  padding: 1px 7px; border-radius: 10px; font-size: 10.5px; font-weight: 600;
+}
+.region-chip.active .pill { background: rgba(11,18,32,0.18); }
+.region-chip:not(.active) .pill { background: rgba(56,189,248,0.16); color: var(--accent); }
+
+/* Region warning banner */
+.region-warning {
+  margin: 10px 14px 0; padding: 10px 14px;
+  background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 6px; color: #fde68a; font-size: 11.5px;
+}
+.region-warning b { color: var(--amber); }
+
+/* Map */
+#map { flex: 1; min-height: 0; background: #0b1220; }
+.map-legend {
+  position: absolute; bottom: 16px; left: 16px; z-index: 500;
+  background: rgba(17,26,46,0.95); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px;
+  min-width: 200px; font-size: 11px; backdrop-filter: blur(8px); color: var(--text-soft);
+}
+.map-legend .legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.6); }
+.dot.local { background: var(--green); }
+.dot.absentee { background: var(--red); }
+.dot.hoa { background: #a78bfa; }
+.heat-bar { height: 8px; border-radius: 3px; margin-top: 6px;
+  background: linear-gradient(90deg, #1e3a8a, #0ea5e9, #14b8a6, #84cc16, #facc15, #f97316, #ef4444); }
+.heat-bar-val { height: 8px; border-radius: 3px; margin-top: 6px;
+  background: linear-gradient(90deg, #1e1b4b, #6d28d9, #db2777, #f59e0b, #fde047, #ffffff); }
+.legend-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.layer-toggle {
+  position: absolute; top: 14px; right: 14px; z-index: 500;
+  background: rgba(17,26,46,0.95); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 12px;
+  backdrop-filter: blur(8px); min-width: 200px;
+}
+.layer-toggle h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.06em; }
+.layer-toggle label { display: flex; align-items: center; gap: 8px; padding: 3px 0; color: var(--text-soft); cursor: pointer; }
+.layer-toggle label:hover { color: white; }
+
+/* Custom popup styling */
+.leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); border-radius: 8px; padding: 0; }
+.leaflet-popup-content { margin: 0; }
+.leaflet-popup-tip { background: var(--panel); }
+.parcel-popup { padding: 0; min-width: 280px; }
+.parcel-popup .head { background: linear-gradient(135deg, #1e3a8a, #6d28d9); padding: 10px 14px; border-radius: 8px 8px 0 0; }
+.parcel-popup .head .name { font-weight: 700; font-size: 13px; color: white; }
+.parcel-popup .head .addr { font-size: 11.5px; color: rgba(255,255,255,0.85); margin-top: 2px; }
+.parcel-popup .body { padding: 8px 14px 12px; }
+.parcel-popup table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.parcel-popup td { padding: 3px 0; vertical-align: top; }
+.parcel-popup td.k { color: var(--text-dim); width: 95px; padding-right: 10px; }
+.parcel-popup td.v { color: var(--text); }
+.parcel-popup .money { color: #34d399; font-weight: 600; }
+.parcel-popup .actions { padding: 8px 14px 12px; border-top: 1px solid var(--border); }
+.parcel-popup .actions button { width: 100%; }
+.popup-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.popup-badge.absent { background: rgba(239,68,68,0.18); color: #fca5a5; }
+.popup-badge.hoa { background: rgba(167,139,250,0.18); color: #c4b5fd; }
+.popup-badge.icp1 { background: rgba(52,211,153,0.18); color: #6ee7b7; }
+.popup-badge.icp2 { background: rgba(56,189,248,0.18); color: #7dd3fc; }
+.popup-badge.icp3 { background: rgba(168,85,247,0.18); color: #d8b4fe; }
+.popup-badge.icp4 { background: rgba(245,158,11,0.18); color: #fcd34d; }
+
+/* Owners / Outreach tables */
+.table-wrap { flex: 1; overflow: auto; padding: 16px; min-height: 0; }
+.table-header { padding: 14px 18px 0; flex-shrink: 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.table-header input.search { flex: 1; max-width: 320px; min-width: 200px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; outline: none; }
+.table-header input.search:focus { border-color: var(--accent); }
+.table-header .summary { color: var(--text-dim); font-size: 12px; }
+.table-header .summary b { color: white; }
+.table-header .region-select { display: flex; gap: 6px; align-items: center; }
+.table-header .region-select label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); cursor: pointer; padding: 4px 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); }
+.table-header .region-select label:hover { color: white; }
+.table-header .region-select input { margin: 0; }
+.table-header .region-select label.checked { background: rgba(56,189,248,0.18); color: #7dd3fc; border-color: var(--accent); }
+table.data { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; }
+table.data thead { background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
+table.data th { padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.04em; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
+table.data th:hover { color: white; }
+table.data th.sortable::after { content: ' ⇅'; opacity: 0.4; }
+table.data th.sorted-asc::after { content: ' ↑'; opacity: 1; color: var(--accent); }
+table.data th.sorted-desc::after { content: ' ↓'; opacity: 1; color: var(--accent); }
+table.data td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+table.data tbody tr:hover { background: rgba(56,189,248,0.06); cursor: pointer; }
+table.data .right { text-align: right; }
+table.data .center { text-align: center; }
+table.data td.owner-name { font-weight: 500; color: var(--text); }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 600; }
+.tag.icp0 { background: #1f2c4d; color: var(--text-dim); }
+.tag.icp1 { background: rgba(52,211,153,0.16); color: #6ee7b7; }
+.tag.icp2 { background: rgba(56,189,248,0.16); color: #7dd3fc; }
+.tag.icp3 { background: rgba(168,85,247,0.16); color: #d8b4fe; }
+.tag.icp4 { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.tag.icp5 { background: rgba(239,68,68,0.16); color: #fca5a5; }
+.tag.hoa { background: rgba(167,139,250,0.16); color: #c4b5fd; }
+.tag.absent { background: rgba(239,68,68,0.14); color: #fca5a5; }
+.tag.local { background: rgba(16,185,129,0.14); color: #6ee7b7; }
+.tag.region-nash { background: rgba(56,189,248,0.18); color: #7dd3fc; }
+.tag.region-bal { background: rgba(168,85,247,0.18); color: #d8b4fe; }
+.tag.region-fay { background: rgba(245,158,11,0.18); color: #fcd34d; }
+.status-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.status-new { background: #1f2c4d; color: #94a3b8; }
+.status-researching { background: rgba(56,189,248,0.16); color: #7dd3fc; }
+.status-contacted { background: rgba(168,85,247,0.16); color: #d8b4fe; }
+.status-demo { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.status-trial { background: rgba(34,197,94,0.16); color: #86efac; }
+.status-paid { background: rgba(16,185,129,0.32); color: #d1fae5; font-weight: 700; }
+.status-not_interested { background: rgba(239,68,68,0.16); color: #fca5a5; }
+
+/* Owner detail drawer */
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; display: none; }
+.drawer-backdrop.open { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 90vw; background: var(--panel); border-left: 1px solid var(--border); z-index: 1000; transform: translateX(100%); transition: transform 0.2s ease; display: flex; flex-direction: column; }
+.drawer.open { transform: translateX(0); }
+.drawer-head { padding: 18px 22px; border-bottom: 1px solid var(--border); position: relative; }
+.drawer-head .owner { font-size: 16px; font-weight: 700; color: white; }
+.drawer-head .meta { font-size: 12px; color: var(--text-dim); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+.drawer-head .close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; }
+.drawer-head .close:hover { color: white; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+.drawer-section { margin-bottom: 22px; }
+.drawer-section h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; font-size: 12px; }
+.kv .k { color: var(--text-dim); }
+.kv .v { color: var(--text); }
+.kv .v.money { color: #34d399; font-weight: 600; }
+.outreach-controls { background: var(--panel-2); padding: 14px; border-radius: 8px; }
+.outreach-controls label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-weight: 700; }
+.outreach-controls select, .outreach-controls textarea { width: 100%; background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 5px; outline: none; font-family: inherit; }
+.outreach-controls textarea { min-height: 88px; resize: vertical; }
+.outreach-controls .row { margin-bottom: 12px; }
+.outreach-controls .row:last-child { margin-bottom: 0; }
+.outreach-controls .updated { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+.parcel-list { max-height: 200px; overflow-y: auto; }
+.parcel-list .item { padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px; cursor: pointer; font-size: 12px; }
+.parcel-list .item:hover { border-color: var(--accent); }
+.parcel-list .item .addr { color: var(--text); font-weight: 500; }
+.parcel-list .item .meta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+
+/* Dedup tab */
+.dedup-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 14px; max-width: 900px;
+}
+.dedup-card .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dedup-card .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.dedup-card .side { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.dedup-card .side .label { font-size: 10px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; margin-bottom: 4px; }
+.dedup-card .side .nm { font-weight: 600; color: white; font-size: 13px; }
+.dedup-card .side .mt { color: var(--text-dim); font-size: 11.5px; margin-top: 4px; }
+.dedup-card .stats { color: var(--text-dim); font-size: 11.5px; margin-top: 6px; }
+.dedup-card .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+/* Outreach summary cards */
+.outreach-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 14px 18px 0; flex-shrink: 0; }
+.outreach-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.outreach-card .num { font-size: 22px; font-weight: 700; color: white; }
+.outreach-card .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; font-weight: 600; }
+.outreach-card.researching .num { color: #7dd3fc; }
+.outreach-card.contacted .num { color: #d8b4fe; }
+.outreach-card.demo .num { color: #fcd34d; }
+.outreach-card.trial .num { color: #86efac; }
+.outreach-card.paid .num { color: #6ee7b7; }
+.outreach-card.not_interested .num { color: #fca5a5; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+.empty-state .icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+
+/* Import Contacts tab */
+.import-shell { padding: 18px; overflow-y: auto; flex: 1; }
+.import-shell > * { max-width: 980px; }
+.dropzone {
+  border: 2px dashed var(--border); border-radius: 12px;
+  padding: 36px 24px; text-align: center;
+  background: var(--panel); color: var(--text-dim);
+  transition: all 0.2s; cursor: pointer;
+}
+.dropzone:hover, .dropzone.drag {
+  border-color: var(--accent); background: rgba(56,189,248,0.06); color: var(--text-soft);
+}
+.dropzone .icon { font-size: 38px; margin-bottom: 6px; opacity: 0.5; }
+.dropzone .hint { font-size: 11.5px; color: var(--text-dim); margin-top: 8px; }
+
+.import-step { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-top: 14px; }
+.import-step h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; }
+.import-step .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.import-step .row label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; min-width: 110px; }
+.import-step .row select, .import-step .row input { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 5px; outline: none; font-size: 12px; }
+.import-step .row select:focus, .import-step .row input:focus { border-color: var(--accent); }
+.column-map { display: grid; grid-template-columns: 160px 1fr; gap: 8px 12px; margin-top: 8px; }
+.column-map label { color: var(--text-dim); font-size: 11.5px; align-self: center; }
+.column-map select { width: 100%; }
+.import-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.import-preview .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+.import-preview .stat .num { font-size: 22px; font-weight: 700; color: white; }
+.import-preview .stat .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; font-weight: 600; }
+.import-preview .stat.matched .num { color: #6ee7b7; }
+.import-preview .stat.unmatched .num { color: #fca5a5; }
+.import-preview .stat.duplicates .num { color: var(--text-dim); }
+.unmatched-list { max-height: 200px; overflow-y: auto; margin-top: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 11.5px; color: var(--text-dim); }
+.unmatched-list .item { padding: 3px 0; border-bottom: 1px solid var(--border); }
+.unmatched-list .item:last-child { border-bottom: none; }
+.import-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+
+.import-history { margin-top: 18px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; }
+.import-history h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; }
+.import-history .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--text-soft); }
+.import-history .row:last-child { border-bottom: none; }
+.import-history .row .meta { color: var(--text-dim); }
+
+.contact-list { margin-top: 4px; }
+.contact-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 12px; }
+.contact-row:last-child { border-bottom: none; }
+.contact-row .v { color: var(--text); font-weight: 500; font-family: ui-monospace,SFMono-Regular,monospace; }
+.contact-row .meta { color: var(--text-dim); font-size: 11px; }
+.contact-row .badge-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--panel); color: var(--text-dim); }
+.contact-row .badge-tag.dnc { background: rgba(239,68,68,0.15); color: #fca5a5; }
+.contact-row .badge-tag.high { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+.contact-row .badge-tag.medium { background: rgba(56,189,248,0.18); color: #7dd3fc; }
+.contact-row .badge-tag.low { background: rgba(239,68,68,0.14); color: #fca5a5; }
+.contact-row button.mini { background: none; border: none; color: var(--text-dim); font-size: 10.5px; cursor: pointer; padding: 1px 4px; }
+.contact-row button.mini:hover { color: var(--red); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+.toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--accent); color: var(--text); padding: 10px 18px; border-radius: 7px; z-index: 2000; font-size: 13px; box-shadow: var(--shadow); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <h1>Propagentic Parcel Explorer</h1>
+    <div class="stats">
+      <span><b id="stat-parcels">…</b> parcels</span>
+      <span><b id="stat-owners">…</b> unique owners</span>
+      <span><b id="stat-value">…</b> total appraised</span>
+      <span><b id="stat-target">…</b> matching filters</span>
+    </div>
+    <div class="right">
+      <button class="btn" id="btn-export">Export progress</button>
+      <button class="btn" id="btn-import">Import</button>
+      <input id="import-file" type="file" accept="application/json" style="display:none">
+    </div>
+  </header>
+
+  <div class="body-area">
+    <aside class="sidebar">
+      <div class="group">
+        <h3>ICP Bucket</h3>
+        <label><input type="radio" name="icp" value="all" checked>All owners</label>
+        <label><input type="radio" name="icp" value="1">ICP-1 · 5–19 parcels</label>
+        <div class="bucket-counts" id="cnt-icp1"></div>
+        <label><input type="radio" name="icp" value="2">ICP-2 · 20–49 parcels</label>
+        <div class="bucket-counts" id="cnt-icp2"></div>
+        <label><input type="radio" name="icp" value="3">ICP-3 cand. · 50–99</label>
+        <div class="bucket-counts" id="cnt-icp3"></div>
+        <label><input type="radio" name="icp" value="4">ICP-4 cand. · 100–500</label>
+        <div class="bucket-counts" id="cnt-icp4"></div>
+        <label><input type="radio" name="icp" value="any-multi">Any 2+ parcels</label>
+        <label><input type="radio" name="icp" value="custom">Custom range:</label>
+        <div class="range-row">
+          <input type="number" id="min-parcels" placeholder="min" min="1">
+          <input type="number" id="max-parcels" placeholder="max" min="1">
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Property Type</h3>
+        <label><input type="radio" name="ptype" value="home" checked>Residential homes only</label>
+        <label><input type="radio" name="ptype" value="res-all">All residential (incl. vacant)</label>
+        <label><input type="radio" name="ptype" value="commercial">Commercial / other</label>
+        <label><input type="radio" name="ptype" value="all">All property types</label>
+      </div>
+
+      <div class="group">
+        <h3>Ownership</h3>
+        <label><input type="radio" name="own" value="both" checked>All owners</label>
+        <label><input type="radio" name="own" value="local">Local owners only</label>
+        <label><input type="radio" name="own" value="absentee">Absentee owners only</label>
+      </div>
+
+      <div class="group">
+        <h3>Special</h3>
+        <label><input type="checkbox" id="hoa-only">HOA-named entities only</label>
+        <label><input type="checkbox" id="exclude-gov">Exclude gov / utility / metro</label>
+      </div>
+
+      <div class="group">
+        <h3>Search</h3>
+        <input type="text" id="search-owner" placeholder="Owner name contains…">
+      </div>
+
+      <div class="group">
+        <h3>Reset</h3>
+        <button class="btn" id="btn-reset" style="width:100%">Clear all filters</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="region-bar">
+        <span class="label">Region</span>
+        <div id="region-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="map">Map</button>
+        <button class="tab-btn" data-tab="owners">Owners <span class="badge" id="owners-count">0</span></button>
+        <button class="tab-btn" data-tab="outreach">Outreach Tracker <span class="badge" id="outreach-count">0</span></button>
+        <button class="tab-btn" data-tab="dedup" id="tab-dedup-btn" style="display:none;">Dedup Review <span class="badge" id="dedup-count">0</span></button>
+        <button class="tab-btn" data-tab="import">Import Contacts</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-map">
+        <div id="map"></div>
+        <div class="layer-toggle">
+          <h4>Map Layers</h4>
+          <label><input type="checkbox" id="lyr-density" checked>Density heatmap</label>
+          <label><input type="checkbox" id="lyr-value">Value heatmap (residential homes)</label>
+          <label><input type="checkbox" id="lyr-markers">Individual parcels (click)</label>
+          <label><input type="checkbox" id="lyr-dark" >Dark basemap</label>
+        </div>
+        <div class="map-legend">
+          <div style="font-weight:700;color:white;margin-bottom:6px;">Marker color</div>
+          <div class="legend-row"><span class="dot local"></span><span>Local owner (in-state, same city)</span></div>
+          <div class="legend-row"><span class="dot absentee"></span><span>Absentee owner</span></div>
+          <div class="legend-row"><span class="dot hoa"></span><span>HOA-named entity</span></div>
+          <div style="font-weight:700;color:white;margin:10px 0 4px;">Density heatmap</div>
+          <div class="heat-bar"></div>
+          <div class="legend-label"><span>Sparse</span><span>Dense</span></div>
+          <div style="font-weight:700;color:white;margin:10px 0 4px;">Value heatmap</div>
+          <div class="heat-bar-val"></div>
+          <div class="legend-label"><span>Low</span><span>High</span></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-owners">
+        <div class="table-header">
+          <input type="text" class="search" id="owners-search" placeholder="Quick search this table…">
+          <div class="region-select" id="owners-region-filter"></div>
+          <div class="summary">Showing <b id="owners-shown">0</b> of <b id="owners-total">0</b> owners · combined <b id="owners-parcels">0</b> parcels · <b id="owners-value">$0</b></div>
+          <div style="margin-left:auto"><button class="btn" id="btn-export-csv">Export CSV</button></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data" id="owners-table">
+            <thead><tr>
+              <th class="sortable" data-key="status">Status</th>
+              <th class="sortable" data-key="region">Region</th>
+              <th class="sortable sorted-desc" data-key="n">Parcels</th>
+              <th class="sortable" data-key="n_home">Homes</th>
+              <th class="sortable" data-key="total_val">Total appraised</th>
+              <th class="sortable" data-key="owner">Owner</th>
+              <th class="sortable" data-key="state">State</th>
+              <th class="sortable" data-key="icp">ICP</th>
+              <th>Flags</th>
+            </tr></thead>
+            <tbody id="owners-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-outreach">
+        <div class="outreach-cards" id="outreach-cards"></div>
+        <div class="table-header" style="margin-top:6px;">
+          <input type="text" class="search" id="outreach-search" placeholder="Quick search tracked owners…">
+          <div class="summary">Tracking <b id="outreach-shown">0</b> owners</div>
+        </div>
+        <div class="table-wrap">
+          <table class="data" id="outreach-table">
+            <thead><tr>
+              <th class="sortable" data-key="status">Status</th>
+              <th class="sortable" data-key="region">Region</th>
+              <th class="sortable" data-key="owner">Owner</th>
+              <th class="sortable" data-key="n">Parcels</th>
+              <th class="sortable" data-key="total_val">Total value</th>
+              <th class="sortable" data-key="ts">Updated</th>
+              <th>Notes</th>
+            </tr></thead>
+            <tbody id="outreach-tbody"></tbody>
+          </table>
+          <div id="outreach-empty" class="empty-state" style="display:none;">
+            <div class="icon">📋</div>
+            <div>No owners tracked yet.</div>
+            <div style="margin-top:6px;font-size:11px;">Open any owner from the Owners tab or click a map marker to add them.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-import">
+        <div class="import-shell">
+          <h2 style="margin:0 0 6px;font-size:16px;color:white;">Import skip-trace contacts</h2>
+          <p style="margin:0 0 14px;font-size:12px;color:var(--text-dim);max-width:760px;">
+            Upload a CSV from a skip-trace vendor (BatchData, Tracerfy, REISkip, Datazapp, or any custom export).
+            Rows are matched to existing owners by exact name (case-insensitive). Phones and emails are added to the
+            next-available slot per owner — never overwriting existing values. Contact data is saved to your browser
+            (localStorage) only; the underlying database is not modified.
+          </p>
+
+          <div class="dropzone" id="dropzone">
+            <div class="icon">📥</div>
+            <div><b style="color:white;">Drop a CSV here</b> or click to choose</div>
+            <div class="hint">Accepts .csv files up to ~50 MB. XLSX support coming later.</div>
+            <input type="file" id="import-file-input" accept=".csv,text/csv" style="display:none;">
+          </div>
+
+          <div id="import-step1" class="import-step" style="display:none;">
+            <h4>Step 1 · File loaded</h4>
+            <div class="row">
+              <label>File</label><span id="i1-filename" style="color:white;font-weight:500;"></span>
+              <span class="meta" id="i1-meta" style="color:var(--text-dim);font-size:11.5px;"></span>
+            </div>
+            <div class="row">
+              <label>Detected vendor</label><span id="i1-vendor" style="color:var(--text);font-weight:500;">—</span>
+            </div>
+            <div class="row">
+              <label>Region</label>
+              <select id="i1-region"></select>
+              <span class="meta">Owners only matched within this region</span>
+            </div>
+          </div>
+
+          <div id="import-step2" class="import-step" style="display:none;">
+            <h4>Step 2 · Column map</h4>
+            <p style="margin:0 0 8px;font-size:11.5px;color:var(--text-dim);">Each schema field below maps to one source column. Defaults come from vendor auto-detection; override any row.</p>
+            <div class="column-map" id="i2-map"></div>
+          </div>
+
+          <div id="import-step3" class="import-step" style="display:none;">
+            <h4>Step 3 · Preview</h4>
+            <div class="import-preview">
+              <div class="stat matched"><div class="num" id="i3-matched">0</div><div class="label">Matched</div></div>
+              <div class="stat unmatched"><div class="num" id="i3-unmatched">0</div><div class="label">Unmatched</div></div>
+              <div class="stat duplicates"><div class="num" id="i3-already">0</div><div class="label">Already present</div></div>
+            </div>
+            <div id="i3-unmatched-list-wrap" style="display:none;">
+              <p style="margin:12px 0 4px;font-size:11.5px;color:var(--text-dim);">First 50 unmatched owner names (consider checking name spelling or whether the right region was selected):</p>
+              <div class="unmatched-list" id="i3-unmatched-list"></div>
+            </div>
+            <div class="import-actions">
+              <button class="btn" id="i3-cancel">Cancel</button>
+              <button class="btn primary" id="i3-commit">Commit</button>
+            </div>
+          </div>
+
+          <div class="import-history">
+            <h4>Recent imports (saved in browser)</h4>
+            <div id="import-history-list"><div style="color:var(--text-dim);font-size:11.5px;">No imports yet.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-dedup">
+        <div class="table-header">
+          <div class="summary"><b id="dedup-region-label"></b> · <b id="dedup-pending">0</b> pending pairs · <b id="dedup-resolved">0</b> resolved</div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn" id="btn-dedup-clear">Clear local decisions</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="dedup-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <button class="close" id="drawer-close">×</button>
+    <div class="owner" id="d-owner"></div>
+    <div class="meta" id="d-meta"></div>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+// =========================================================================
+// Embedded data — DATA.regions = [{id, name, state, county, lat, lon, owners[], parcels[], dedup_queue[]}, ...]
+// =========================================================================
+const DATA = {"regions":[{"id":"baltimore_md","display_name":"Baltimore County","state":"MD","county":"Baltimore","center_lat":39.4015,"center_lon":-76.6019,"notes":null,"owner_count":249601,"parcel_count":350352,"dedup_count":165,"owners":[],"parcels":[],"dedup_queue":[]},{"id":"fayette_ky","display_name":"Lexington / Fayette","state":"KY","county":"Fayette","center_lat":38.0406,"center_lon":-84.5037,"notes":"Fayette/Lexington source files (LFUCG GIS) do not include owner names or mailing data. Owners are synthesized as 'PVA #<num>' placeholders — owner-centric filters (ICP / value / absentee) are degraded for this region until skip-trace data is imported.","owner_count":114024,"parcel_count":114183,"dedup_count":0,"owners":[],"parcels":[],"dedup_queue":[]},{"id":"nashville_tn","display_name":"Nashville","state":"TN","county":"Davidson","center_lat":36.1627,"center_lon":-86.7816,"notes":null,"owner_count":226615,"parcel_count":286448,"dedup_count":110,"owners":[],"parcels":[],"dedup_queue":[]}],"lazy":true};
+const LAZY = DATA.lazy === true;         // multi-file build (data fetched on demand)
+const REGIONS = DATA.regions;            // array of region objects
+const REGION_BY_ID = Object.fromEntries(REGIONS.map(r => [r.id, r]));
+const REGION_LOADED = {};                // {regionId: true} once data populated
+
+async function ensureRegionLoaded(regionId) {
+  if (REGION_LOADED[regionId]) return;
+  if (!LAZY) { REGION_LOADED[regionId] = true; return; }
+  const r = REGION_BY_ID[regionId];
+  if (r._loading) return r._loading;
+  r._loading = (async () => {
+    setGlobalLoading(true, `Loading ${r.display_name}…`);
+    try {
+      const resp = await fetch(`data/${regionId}.json`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      r.owners      = data.owners      || [];
+      r.parcels     = data.parcels     || [];
+      r.dedup_queue = data.dedup_queue || [];
+      REGION_LOADED[regionId] = true;
+    } catch (err) {
+      console.error(`Failed to load ${regionId}:`, err);
+      showToast(`Failed to load ${r.display_name}: ${err.message}`);
+    } finally {
+      setGlobalLoading(false);
+      delete r._loading;
+    }
+  })();
+  return r._loading;
+}
+
+function setGlobalLoading(on, msg) {
+  let el = document.getElementById('global-loading');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'global-loading';
+    el.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);color:var(--text);padding:8px 16px;border-radius:18px;font-size:12px;z-index:3000;box-shadow:var(--shadow);display:none;';
+    document.body.appendChild(el);
+  }
+  if (on) { el.textContent = msg || 'Loading…'; el.style.display = ''; }
+  else    { el.style.display = 'none'; }
+}
+
+// owner-count helper that works pre-load (uses manifest counts when needed)
+function regionOwnerCount(r) {
+  return r.owners.length > 0 ? r.owners.length : (r.owner_count || 0);
+}
+
+// Compact owner/parcel field layouts (positional arrays, matches legacy app)
+const O = { name:0, n:1, n_home:2, n_vacant_res:3, n_commercial:4, total_val:5, home_val:6, state:7, city:8, zip:9, addr:10, icp:11, is_hoa:12, absentee_pct:13 };
+const P = { lat:0, lon:1, owner_id:2, addr:3, total_val:4, sale_date:5, sale_price:6, acres:7, zoning:8, district:9, property_type:10, absentee:11, land_use:12, apn:13 };
+const PT_HOME = 0, PT_VACANT = 1, PT_COMMERCIAL = 2;
+
+// "Current region" view of OWNERS / PARCELS — swapped when region chip is clicked
+let CURRENT_REGION = REGIONS[0]?.id;
+let OWNERS = REGION_BY_ID[CURRENT_REGION].owners;
+let PARCELS = REGION_BY_ID[CURRENT_REGION].parcels;
+
+const REGION_BADGE_CLASS = {
+  nashville_tn: 'region-nash',
+  baltimore_md: 'region-bal',
+  fayette_ky:   'region-fay',
+};
+const REGION_SHORT = {
+  nashville_tn: 'NSH',
+  baltimore_md: 'BAL',
+  fayette_ky:   'LEX',
+};
+
+// =========================================================================
+// State
+// =========================================================================
+const STATE = {
+  filters: {
+    icp: 'all',
+    custom_min: null,
+    custom_max: null,
+    ptype: 'home',
+    own: 'both',
+    hoa_only: false,
+    exclude_gov: false,
+    search: '',
+  },
+  layers: { density: true, value: false, markers: false, dark: false },
+  tab: 'map',
+  selectedOwnerId: null,
+  ownersRegionFilter: new Set(REGIONS.map(r => r.id)),  // all on by default
+};
+
+const OUTREACH_KEY = 'propagentic_outreach_v2';   // bumped from v1 for multi-region keys
+const DEDUP_KEY = 'propagentic_dedup_decisions_v1';
+const STATUSES = [
+  { id: 'new', label: 'New' },
+  { id: 'researching', label: 'Researching' },
+  { id: 'contacted', label: 'Contacted' },
+  { id: 'demo', label: 'Demo scheduled' },
+  { id: 'trial', label: 'In trial' },
+  { id: 'paid', label: 'Paid customer' },
+  { id: 'not_interested', label: 'Not interested' },
+];
+const STATUS_LABEL = Object.fromEntries(STATUSES.map(s => [s.id, s.label]));
+
+let OUTREACH = loadOutreach();
+let DEDUP_DECISIONS = loadDedup();
+let CONTACTS = loadContacts();           // {(region::name): {phones:[], emails:[], source, ts}}
+let IMPORT_HISTORY = loadImports();      // [{filename, vendor, region, ts, matched, unmatched, ...}]
+
+function loadOutreach() {
+  try { return JSON.parse(localStorage.getItem(OUTREACH_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveOutreach() { localStorage.setItem(OUTREACH_KEY, JSON.stringify(OUTREACH)); }
+function outreachKey(regionId, ownerName) { return `${regionId}::${ownerName}`; }
+function getOutreach(regionId, ownerName) { return OUTREACH[outreachKey(regionId, ownerName)] || null; }
+
+function loadDedup() {
+  try { return JSON.parse(localStorage.getItem(DEDUP_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveDedup() { localStorage.setItem(DEDUP_KEY, JSON.stringify(DEDUP_DECISIONS)); }
+function dedupPairKey(regionId, pair) { return `${regionId}::${pair.a_oid}::${pair.b_oid}`; }
+
+const CONTACTS_KEY = 'propagentic_contacts_v1';
+const IMPORTS_KEY = 'propagentic_imports_v1';
+function loadContacts() {
+  try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveContacts() { localStorage.setItem(CONTACTS_KEY, JSON.stringify(CONTACTS)); }
+function contactKey(regionId, ownerName) { return `${regionId}::${ownerName}`; }
+function getContacts(regionId, ownerName) { return CONTACTS[contactKey(regionId, ownerName)] || null; }
+function loadImports() {
+  try { return JSON.parse(localStorage.getItem(IMPORTS_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveImports() { localStorage.setItem(IMPORTS_KEY, JSON.stringify(IMPORT_HISTORY)); }
+
+// =========================================================================
+// Helpers
+// =========================================================================
+const GOV_PATTERNS = ['METRO GOV', 'STATE OF', 'METROPOLITAN GOV', 'METRO NASHVILLE', 'MDHA', 'TENNESSEE VALLEY AUTHORITY', 'TVA', 'CITY OF', 'COUNTY OF', 'METROPOLITAN NASHVILLE', 'UNITED STATES', 'U S A', 'U.S.A', 'FEDERAL', 'POWER BOARD', 'WATER & SEWER', 'AIRPORT AUTHORITY', 'TRANSIT AUTH', 'PARKS', 'BOARD OF EDUC', 'BALTIMORE COUNTY', 'BALTIMORE CITY', 'MARYLAND ', 'STATE HIGHWAY', 'LFUCG', 'LEXINGTON FAYETTE'];
+function isGov(name) {
+  const up = (name || '').toUpperCase();
+  return GOV_PATTERNS.some(p => up.includes(p));
+}
+
+function fmt$(v) { if (v == null || isNaN(v)) return '—'; return '$' + Math.round(v).toLocaleString(); }
+function fmtN(v) { if (v == null) return '—'; return v.toLocaleString(); }
+function fmtAcres(v) { if (v == null) return '—'; return v.toFixed(2) + ' ac'; }
+function fmtAbbr(v) {
+  if (v == null) return '—';
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+  return '$' + v;
+}
+function icpTag(icp) {
+  const labels = { 0:'<5', 1:'ICP-1', 2:'ICP-2', 3:'ICP-3', 4:'ICP-4', 5:'500+' };
+  return `<span class="tag icp${icp}">${labels[icp]}</span>`;
+}
+function regionTag(regionId) {
+  return `<span class="tag ${REGION_BADGE_CLASS[regionId] || ''}">${REGION_SHORT[regionId] || regionId}</span>`;
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+}
+
+// =========================================================================
+// Filtering (operates on the CURRENT region's OWNERS / PARCELS for map view;
+// see renderOwnersTable for the cross-region view).
+// =========================================================================
+function ownerMatchesFilters(o) {
+  const f = STATE.filters;
+  const n = o[O.n], icp = o[O.icp], isHoa = o[O.is_hoa], abPct = o[O.absentee_pct];
+  if (f.icp === '1' && icp !== 1) return false;
+  if (f.icp === '2' && icp !== 2) return false;
+  if (f.icp === '3' && icp !== 3) return false;
+  if (f.icp === '4' && icp !== 4) return false;
+  if (f.icp === 'any-multi' && n < 2) return false;
+  if (f.icp === 'custom') {
+    if (f.custom_min != null && n < f.custom_min) return false;
+    if (f.custom_max != null && n > f.custom_max) return false;
+  }
+  if (f.ptype === 'home' && o[O.n_home] === 0) return false;
+  if (f.ptype === 'res-all' && (o[O.n_home] + o[O.n_vacant_res]) === 0) return false;
+  if (f.ptype === 'commercial' && o[O.n_commercial] === 0) return false;
+  if (f.own === 'local' && abPct > 0.5) return false;
+  if (f.own === 'absentee' && abPct < 0.5) return false;
+  if (f.hoa_only && !isHoa) return false;
+  if (f.exclude_gov && isGov(o[O.name])) return false;
+  if (f.search && !o[O.name].toUpperCase().includes(f.search.toUpperCase())) return false;
+  return true;
+}
+
+function parcelMatchesFilters(p, ownerOK) {
+  const f = STATE.filters;
+  if (!ownerOK[p[P.owner_id]]) return false;
+  const pt = p[P.property_type];
+  if (f.ptype === 'home' && pt !== PT_HOME) return false;
+  if (f.ptype === 'res-all' && pt === PT_COMMERCIAL) return false;
+  if (f.ptype === 'commercial' && pt !== PT_COMMERCIAL) return false;
+  if (f.own === 'local' && p[P.absentee]) return false;
+  if (f.own === 'absentee' && !p[P.absentee]) return false;
+  return true;
+}
+
+function computeFilterSet() {
+  const ownerOK = new Uint8Array(OWNERS.length);
+  let okOwnerCount = 0;
+  for (let i = 0; i < OWNERS.length; i++) {
+    if (ownerMatchesFilters(OWNERS[i])) { ownerOK[i] = 1; okOwnerCount++; }
+  }
+  return { ownerOK, okOwnerCount };
+}
+
+// =========================================================================
+// Map
+// =========================================================================
+let map, basemap, basemapDark, densityLayer, valueLayer, markerCluster;
+
+function initMap() {
+  const r = REGION_BY_ID[CURRENT_REGION];
+  map = L.map('map', { preferCanvas: true }).setView([r.center_lat, r.center_lon], 11);
+  basemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap, © CARTO',
+  }).addTo(map);
+  basemapDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap, © CARTO',
+  });
+  densityLayer = L.heatLayer([], {
+    radius: 14, blur: 16, maxZoom: 16, max: 1.0, minOpacity: 0.32,
+    gradient: { 0.05:'#1e3a8a', 0.15:'#0ea5e9', 0.3:'#14b8a6', 0.5:'#84cc16', 0.7:'#facc15', 0.85:'#f97316', 1.0:'#ef4444' },
+  }).addTo(map);
+  valueLayer = L.heatLayer([], {
+    radius: 16, blur: 18, maxZoom: 16, max: 1.0, minOpacity: 0.3,
+    gradient: { 0.05:'#1e1b4b', 0.2:'#6d28d9', 0.4:'#db2777', 0.6:'#f59e0b', 0.85:'#fde047', 1.0:'#ffffff' },
+  });
+  markerCluster = L.markerClusterGroup({
+    chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true, showCoverageOnHover: false,
+    disableClusteringAtZoom: 17,
+  });
+}
+
+function rebuildMap() {
+  const { ownerOK } = computeFilterSet();
+  const dens = [], val = [];
+  const wantMarkers = STATE.layers.markers;
+  if (wantMarkers) markerCluster.clearLayers();
+
+  let visibleParcels = [];
+  for (let i = 0; i < PARCELS.length; i++) {
+    const p = PARCELS[i];
+    if (!parcelMatchesFilters(p, ownerOK)) continue;
+    visibleParcels.push(p);
+  }
+
+  const vals = visibleParcels.filter(p => p[P.property_type] === PT_HOME && p[P.total_val] > 0).map(p => p[P.total_val]).sort((a,b) => a-b);
+  const capIdx = Math.floor(vals.length * 0.95);
+  const capVal = vals.length ? Math.max(vals[capIdx] || vals[vals.length-1], 1) : 1;
+
+  const cellCounts = new Map();
+  if (STATE.layers.density) {
+    for (const p of visibleParcels) {
+      const key = (Math.round(p[P.lat]*1000)/1000) + ',' + (Math.round(p[P.lon]*1000)/1000);
+      cellCounts.set(key, (cellCounts.get(key) || 0) + 1);
+    }
+  }
+  const maxCell = Math.max(1, ...cellCounts.values());
+  const logMaxCell = Math.log(maxCell + 1);
+
+  const markersToAdd = [];
+  for (const p of visibleParcels) {
+    if (STATE.layers.density) {
+      const key = (Math.round(p[P.lat]*1000)/1000) + ',' + (Math.round(p[P.lon]*1000)/1000);
+      const w = Math.log((cellCounts.get(key) || 1) + 1) / logMaxCell;
+      dens.push([p[P.lat], p[P.lon], w]);
+    }
+    if (STATE.layers.value && p[P.property_type] === PT_HOME && p[P.total_val] > 0) {
+      const w = Math.min(1, p[P.total_val] / capVal);
+      val.push([p[P.lat], p[P.lon], Math.pow(w, 0.6)]);
+    }
+    if (wantMarkers) markersToAdd.push(buildMarker(p));
+  }
+  densityLayer.setLatLngs(dens);
+  valueLayer.setLatLngs(val);
+  if (wantMarkers && markersToAdd.length) markerCluster.addLayers(markersToAdd);
+
+  toggleLayer(densityLayer, STATE.layers.density);
+  toggleLayer(valueLayer, STATE.layers.value);
+  toggleLayer(markerCluster, STATE.layers.markers);
+
+  if (STATE.layers.dark) {
+    if (map.hasLayer(basemap)) map.removeLayer(basemap);
+    if (!map.hasLayer(basemapDark)) basemapDark.addTo(map);
+  } else {
+    if (map.hasLayer(basemapDark)) map.removeLayer(basemapDark);
+    if (!map.hasLayer(basemap)) basemap.addTo(map);
+  }
+  return visibleParcels.length;
+}
+
+function toggleLayer(layer, on) {
+  if (on && !map.hasLayer(layer)) layer.addTo(map);
+  if (!on && map.hasLayer(layer)) map.removeLayer(layer);
+}
+
+function buildMarker(p) {
+  const owner = OWNERS[p[P.owner_id]];
+  const isHoa = owner ? owner[O.is_hoa] : false;
+  const color = isHoa ? '#a78bfa' : (p[P.absentee] ? '#ef4444' : '#10b981');
+  const icon = L.divIcon({
+    html: `<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>`,
+    className: '', iconSize: [14,14], iconAnchor: [7,7],
+  });
+  const m = L.marker([p[P.lat], p[P.lon]], { icon });
+  m.bindPopup(() => buildPopup(p), { maxWidth: 360 });
+  return m;
+}
+
+function buildPopup(p) {
+  const owner = OWNERS[p[P.owner_id]];
+  const ownerName = owner ? owner[O.name] : '(unknown)';
+  const ownerN = owner ? owner[O.n] : '';
+  const icp = owner ? owner[O.icp] : 0;
+  const isHoa = owner ? owner[O.is_hoa] : false;
+  const rec = getOutreach(CURRENT_REGION, ownerName);
+  const status = rec?.status || 'new';
+  const ownerLoc = owner ? [owner[O.city], owner[O.state], owner[O.zip]].filter(Boolean).join(', ') : '';
+  const ownerAddr = owner ? owner[O.addr] : '';
+  const saleLine = p[P.sale_date]
+    ? `${p[P.sale_date]}${p[P.sale_price] ? ' · ' + fmt$(p[P.sale_price]) : ''}`
+    : '—';
+
+  let badges = `${regionTag(CURRENT_REGION)} ${icpTag(icp)}`;
+  if (isHoa) badges += ' <span class="popup-badge hoa">HOA</span>';
+  if (p[P.absentee]) badges += ' <span class="popup-badge absent">Absentee</span>';
+  const contacts = getContacts(CURRENT_REGION, ownerName);
+  if (contacts) {
+    if (contacts.phones?.length) badges += ` <span class="popup-badge" style="background:rgba(16,185,129,0.18);color:#6ee7b7;">📞 ${contacts.phones.length}</span>`;
+    if (contacts.emails?.length) badges += ` <span class="popup-badge" style="background:rgba(56,189,248,0.18);color:#7dd3fc;">✉ ${contacts.emails.length}</span>`;
+  }
+  const ownerStat = ownerN ? `<span style="color:rgba(255,255,255,0.8);font-size:11px;">owns ${ownerN} ${ownerN === 1 ? 'parcel' : 'parcels'}</span>` : '';
+
+  return `
+<div class="parcel-popup">
+  <div class="head">
+    <div class="name">${escapeHtml(ownerName)}</div>
+    <div class="addr">${escapeHtml(p[P.addr] || '(no parcel address)')}</div>
+    <div style="margin-top:6px;">${badges} ${ownerStat}</div>
+  </div>
+  <div class="body">
+    <table>
+      <tr><td class="k">Land use</td><td class="v">${escapeHtml(p[P.land_use] || '—')}</td></tr>
+      <tr><td class="k">Total appraised</td><td class="v money">${fmt$(p[P.total_val])}</td></tr>
+      <tr><td class="k">Last sale</td><td class="v">${saleLine}</td></tr>
+      <tr><td class="k">Acreage</td><td class="v">${fmtAcres(p[P.acres])}</td></tr>
+      <tr><td class="k">Zoning</td><td class="v">${escapeHtml(p[P.zoning] || '—')}</td></tr>
+      <tr><td class="k">District</td><td class="v">${p[P.district] ?? '—'}</td></tr>
+      <tr><td class="k">Owner mails to</td><td class="v">${escapeHtml(ownerAddr || '—')}${ownerLoc ? '<br><span style="color:var(--text-dim);font-size:11px;">'+escapeHtml(ownerLoc)+'</span>' : ''}</td></tr>
+      <tr><td class="k">APN / ID</td><td class="v" style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;color:var(--text-dim);">${escapeHtml(p[P.apn] || '—')}</td></tr>
+      <tr><td class="k">Outreach</td><td class="v"><span class="status-pill status-${status}">${STATUS_LABEL[status]}</span></td></tr>
+    </table>
+  </div>
+  <div class="actions">
+    <button class="btn primary" onclick="openOwnerDrawer('${CURRENT_REGION}', ${p[P.owner_id]})">View owner & track outreach →</button>
+  </div>
+</div>`;
+}
+
+// =========================================================================
+// Owners table — cross-region
+// =========================================================================
+const ownersSort = { key: 'n', dir: -1 };
+
+async function renderOwnersTable() {
+  // In lazy mode, ensure all selected regions are loaded before iterating.
+  if (LAZY) {
+    const wanted = [...STATE.ownersRegionFilter].filter(r => !REGION_LOADED[r]);
+    if (wanted.length) {
+      const tbody = document.getElementById('owners-tbody');
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:24px;">Loading ' + wanted.length + ' region(s)…</td></tr>';
+      await Promise.all(wanted.map(r => ensureRegionLoaded(r)));
+    }
+  }
+  const sortKey = ownersSort.key;
+  const dir = ownersSort.dir;
+  const searchTxt = (document.getElementById('owners-search').value || '').toUpperCase();
+
+  // Walk every region the user has selected; apply current filters per region.
+  let rows = [];   // array of {region, idx, o}
+  let totalOwners = 0;
+  for (const r of REGIONS) {
+    if (!STATE.ownersRegionFilter.has(r.id)) continue;
+    totalOwners += r.owners.length;
+    // Filtering for owners list uses the same predicate as the map but against
+    // *this* region's OWNERS array (not necessarily CURRENT_REGION's).
+    const savedOwners = OWNERS;
+    OWNERS = r.owners;
+    for (let i = 0; i < r.owners.length; i++) {
+      if (!ownerMatchesFilters(r.owners[i])) continue;
+      if (searchTxt && !r.owners[i][O.name].toUpperCase().includes(searchTxt)) continue;
+      rows.push({ region: r.id, idx: i, o: r.owners[i] });
+    }
+    OWNERS = savedOwners;
+  }
+
+  rows.sort((a, b) => {
+    const oa = a.o, ob = b.o;
+    let av, bv;
+    if (sortKey === 'owner') { av = oa[O.name]; bv = ob[O.name]; }
+    else if (sortKey === 'n') { av = oa[O.n]; bv = ob[O.n]; }
+    else if (sortKey === 'n_home') { av = oa[O.n_home]; bv = ob[O.n_home]; }
+    else if (sortKey === 'total_val') { av = oa[O.total_val]; bv = ob[O.total_val]; }
+    else if (sortKey === 'state') { av = oa[O.state] || ''; bv = ob[O.state] || ''; }
+    else if (sortKey === 'icp') { av = oa[O.icp]; bv = ob[O.icp]; }
+    else if (sortKey === 'region') { av = a.region; bv = b.region; }
+    else if (sortKey === 'status') {
+      av = getOutreach(a.region, oa[O.name])?.status || 'new';
+      bv = getOutreach(b.region, ob[O.name])?.status || 'new';
+    }
+    if (av < bv) return -1 * dir;
+    if (av > bv) return  1 * dir;
+    return 0;
+  });
+
+  const MAX_RENDER = 2000;
+  const renderRows = rows.slice(0, MAX_RENDER);
+  let totalParcels = 0, totalValue = 0;
+  rows.forEach(({o}) => { totalParcels += o[O.n]; totalValue += o[O.total_val]; });
+
+  const tbody = document.getElementById('owners-tbody');
+  tbody.innerHTML = renderRows.map(({region, idx, o}) => {
+    const rec = getOutreach(region, o[O.name]);
+    const status = rec?.status || 'new';
+    let flags = '';
+    if (o[O.is_hoa]) flags += '<span class="tag hoa">HOA</span> ';
+    if (isGov(o[O.name])) flags += '<span class="tag" style="background:#1f2c4d;color:#94a3b8;">GOV</span> ';
+    if (o[O.absentee_pct] > 0.5) flags += '<span class="tag absent">Absentee</span> ';
+    const c = getContacts(region, o[O.name]);
+    if (c?.phones?.length) flags += `<span class="tag" style="background:rgba(16,185,129,0.16);color:#6ee7b7;">📞 ${c.phones.length}</span> `;
+    if (c?.emails?.length) flags += `<span class="tag region-nash">✉ ${c.emails.length}</span> `;
+    return `<tr data-region="${region}" data-oid="${idx}">
+      <td><span class="status-pill status-${status}">${STATUS_LABEL[status]}</span></td>
+      <td>${regionTag(region)}</td>
+      <td class="right"><b>${o[O.n]}</b></td>
+      <td class="right">${o[O.n_home]}</td>
+      <td class="right money">${fmtAbbr(o[O.total_val])}</td>
+      <td class="owner-name">${escapeHtml(o[O.name])}</td>
+      <td>${escapeHtml(o[O.state] || '—')}</td>
+      <td>${icpTag(o[O.icp])}</td>
+      <td>${flags || '<span style="color:var(--text-dim);">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  if (rows.length > MAX_RENDER) {
+    tbody.insertAdjacentHTML('beforeend',
+      `<tr><td colspan="9" style="text-align:center;color:var(--text-dim);font-style:italic;">
+        Showing first ${MAX_RENDER.toLocaleString()} of ${rows.length.toLocaleString()} matching owners — narrow filters to see more.
+      </td></tr>`);
+  }
+
+  document.getElementById('owners-shown').textContent = rows.length.toLocaleString();
+  document.getElementById('owners-total').textContent = totalOwners.toLocaleString();
+  document.getElementById('owners-parcels').textContent = totalParcels.toLocaleString();
+  document.getElementById('owners-value').textContent = fmtAbbr(totalValue);
+  document.getElementById('owners-count').textContent = rows.length.toLocaleString();
+}
+
+// =========================================================================
+// Outreach tab
+// =========================================================================
+function findOwnerByName(regionId, name) {
+  const arr = REGION_BY_ID[regionId].owners;
+  for (let i = 0; i < arr.length; i++) if (arr[i][O.name] === name) return i;
+  return -1;
+}
+
+function renderOutreach() {
+  const tbody = document.getElementById('outreach-tbody');
+  const empty = document.getElementById('outreach-empty');
+  const searchTxt = (document.getElementById('outreach-search').value || '').toUpperCase();
+
+  let entries = [];
+  for (const [k, v] of Object.entries(OUTREACH)) {
+    if (!v || !v.status || v.status === 'new') continue;
+    const sep = k.indexOf('::');
+    const regionId = k.slice(0, sep);
+    const name = k.slice(sep + 2);
+    entries.push({ regionId, name, rec: v });
+  }
+  if (searchTxt) entries = entries.filter(e => e.name.toUpperCase().includes(searchTxt));
+
+  const counts = {};
+  for (const s of STATUSES) counts[s.id] = 0;
+  for (const e of entries) counts[e.rec.status] = (counts[e.rec.status] || 0) + 1;
+
+  document.getElementById('outreach-cards').innerHTML = STATUSES.filter(s => s.id !== 'new').map(s =>
+    `<div class="outreach-card ${s.id}">
+      <div class="num">${counts[s.id] || 0}</div>
+      <div class="label">${s.label}</div>
+    </div>`
+  ).join('');
+
+  document.getElementById('outreach-shown').textContent = entries.length;
+  document.getElementById('outreach-count').textContent = entries.length;
+
+  if (entries.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  entries.sort((a, b) => (b.rec.ts || 0) - (a.rec.ts || 0));
+
+  tbody.innerHTML = entries.map(({ regionId, name, rec }) => {
+    const oid = findOwnerByName(regionId, name);
+    const o = oid >= 0 ? REGION_BY_ID[regionId].owners[oid] : null;
+    const updated = rec.ts ? new Date(rec.ts).toLocaleDateString() : '—';
+    return `<tr data-region="${regionId}" data-oid="${oid}">
+      <td><span class="status-pill status-${rec.status}">${STATUS_LABEL[rec.status]}</span></td>
+      <td>${regionTag(regionId)}</td>
+      <td class="owner-name">${escapeHtml(name)}</td>
+      <td class="right">${o ? o[O.n] : '—'}</td>
+      <td class="right money">${o ? fmtAbbr(o[O.total_val]) : '—'}</td>
+      <td>${updated}</td>
+      <td style="max-width:380px;color:var(--text-dim);font-size:11.5px;">${escapeHtml((rec.notes || '').slice(0, 120))}${(rec.notes || '').length > 120 ? '…' : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// =========================================================================
+// Owner drawer
+// =========================================================================
+function openOwnerDrawer(regionId, oid) {
+  const region = REGION_BY_ID[regionId];
+  if (!region) return;
+  const owners = region.owners, parcels = region.parcels;
+  if (oid < 0 || oid >= owners.length) return;
+
+  STATE.selectedOwnerId = { regionId, oid };
+  const o = owners[oid];
+  const name = o[O.name];
+  document.getElementById('d-owner').textContent = name;
+
+  const myParcels = [];
+  for (const p of parcels) if (p[P.owner_id] === oid) myParcels.push(p);
+
+  const ownerLoc = [o[O.city], o[O.state], o[O.zip]].filter(Boolean).join(', ');
+  const meta = [];
+  meta.push(regionTag(regionId));
+  meta.push(`<span><b style="color:white;">${o[O.n]}</b> parcels</span>`);
+  meta.push(`<span><b style="color:white;">${fmtAbbr(o[O.total_val])}</b> total</span>`);
+  meta.push(icpTag(o[O.icp]));
+  if (o[O.is_hoa]) meta.push('<span class="tag hoa">HOA</span>');
+  if (isGov(name)) meta.push('<span class="tag" style="background:#1f2c4d;color:#94a3b8;">GOV</span>');
+  if (o[O.absentee_pct] > 0.5) meta.push('<span class="tag absent">Absentee</span>');
+  document.getElementById('d-meta').innerHTML = meta.join(' ');
+
+  const rec = getOutreach(regionId, name) || { status: 'new', notes: '', ts: null };
+  const statusOpts = STATUSES.map(s => `<option value="${s.id}" ${s.id === rec.status ? 'selected' : ''}>${s.label}</option>`).join('');
+
+  // Contact info from CONTACTS localStorage (populated by Import Contacts tab)
+  const contacts = getContacts(regionId, name);
+  const contactHtml = contacts && (contacts.phones?.length || contacts.emails?.length) ? `
+    <div class="drawer-section">
+      <h4>Contact Info <span style="color:var(--text-dim);font-weight:400;text-transform:none;font-size:11px;">· source: ${escapeHtml(contacts.source || '—')}</span></h4>
+      <div class="contact-list">
+        ${(contacts.phones || []).map((p, pi) => `
+          <div class="contact-row">
+            <span class="v">${escapeHtml(p.value)}</span>
+            ${p.type ? `<span class="badge-tag">${escapeHtml(p.type)}</span>` : ''}
+            ${p.confidence ? `<span class="badge-tag ${p.confidence}">${p.confidence}</span>` : ''}
+            ${p.dnc ? '<span class="badge-tag dnc">DNC</span>' : ''}
+            <button class="mini" data-kind="phone" data-idx="${pi}" title="Mark as bad / remove">✕</button>
+          </div>
+        `).join('')}
+        ${(contacts.emails || []).map((e, ei) => `
+          <div class="contact-row">
+            <span class="v">${escapeHtml(e.value)}</span>
+            ${e.confidence ? `<span class="badge-tag ${e.confidence}">${e.confidence}</span>` : ''}
+            <button class="mini" data-kind="email" data-idx="${ei}" title="Mark as bad / remove">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : `
+    <div class="drawer-section">
+      <h4>Contact Info</h4>
+      <div style="color:var(--text-dim);font-size:11.5px;">No phones / emails imported for this owner yet. Use the Import Contacts tab to attach skip-trace data.</div>
+    </div>
+  `;
+
+  const body = `
+    <div class="drawer-section">
+      <h4>Portfolio Summary</h4>
+      <div class="kv">
+        <div class="k">Total parcels</div><div class="v">${o[O.n]}</div>
+        <div class="k">Homes (w/ structure)</div><div class="v">${o[O.n_home]}</div>
+        <div class="k">Vacant residential</div><div class="v">${o[O.n_vacant_res]}</div>
+        <div class="k">Commercial / other</div><div class="v">${o[O.n_commercial]}</div>
+        <div class="k">Total appraised</div><div class="v money">${fmt$(o[O.total_val])}</div>
+        <div class="k">Of which homes</div><div class="v money">${fmt$(o[O.home_val])}</div>
+        <div class="k">Absentee parcels</div><div class="v">${Math.round(o[O.absentee_pct]*100)}%</div>
+        <div class="k">Owner mailing</div><div class="v">${escapeHtml(o[O.addr] || '—')}<br><span style="color:var(--text-dim);">${escapeHtml(ownerLoc)}</span></div>
+      </div>
+    </div>
+
+    ${contactHtml}
+
+    <div class="drawer-section">
+      <h4>Outreach Tracking</h4>
+      <div class="outreach-controls">
+        <div class="row">
+          <label>Status</label>
+          <select id="d-status">${statusOpts}</select>
+        </div>
+        <div class="row">
+          <label>Notes</label>
+          <textarea id="d-notes" placeholder="Call summary, contact info, next steps…">${escapeHtml(rec.notes || '')}</textarea>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="d-save">Save</button>
+          <button class="btn" id="d-clear">Clear tracking</button>
+          ${rec.ts ? `<div class="updated">Last saved ${new Date(rec.ts).toLocaleString()}</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Properties (${myParcels.length})</h4>
+      <div class="parcel-list">
+        ${myParcels.slice(0, 100).map(p => {
+          const pt = ['Home','Vacant land','Commercial'][p[P.property_type]];
+          return `<div class="item" data-lat="${p[P.lat]}" data-lon="${p[P.lon]}">
+            <div class="addr">${escapeHtml(p[P.addr] || '(no address)')}</div>
+            <div class="meta">${pt} · ${escapeHtml(p[P.land_use] || '—')} · ${fmt$(p[P.total_val])} · ${fmtAcres(p[P.acres])}</div>
+          </div>`;
+        }).join('') + (myParcels.length > 100 ? `<div style="text-align:center;padding:8px;color:var(--text-dim);font-size:11px;">+ ${myParcels.length - 100} more parcels</div>` : '')}
+      </div>
+    </div>
+  `;
+  document.getElementById('drawer-body').innerHTML = body;
+
+  document.getElementById('d-save').onclick = () => {
+    const status = document.getElementById('d-status').value;
+    const notes = document.getElementById('d-notes').value;
+    OUTREACH[outreachKey(regionId, name)] = { status, notes, ts: Date.now() };
+    saveOutreach();
+    renderOwnersTable();
+    renderOutreach();
+    showToast(`Saved · ${name}`);
+  };
+  document.getElementById('d-clear').onclick = () => {
+    delete OUTREACH[outreachKey(regionId, name)];
+    saveOutreach();
+    renderOwnersTable();
+    renderOutreach();
+    closeOwnerDrawer();
+    showToast(`Cleared tracking for ${name}`);
+  };
+
+  document.querySelectorAll('.parcel-list .item').forEach(el => {
+    el.onclick = () => {
+      const lat = parseFloat(el.dataset.lat), lon = parseFloat(el.dataset.lon);
+      switchToRegion(regionId);
+      switchTab('map');
+      map.flyTo([lat, lon], 18, { duration: 0.5 });
+    };
+  });
+  document.querySelectorAll('.contact-row button.mini').forEach(btn => {
+    btn.onclick = () => {
+      const k = contactKey(regionId, name);
+      const rec = CONTACTS[k];
+      if (!rec) return;
+      const kind = btn.dataset.kind, idx = +btn.dataset.idx;
+      if (kind === 'phone') rec.phones.splice(idx, 1);
+      else if (kind === 'email') rec.emails.splice(idx, 1);
+      if (!rec.phones.length && !rec.emails.length) delete CONTACTS[k];
+      else CONTACTS[k] = rec;
+      saveContacts();
+      openOwnerDrawer(regionId, oid);  // re-render
+      renderOwnersTable();
+    };
+  });
+
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-backdrop').classList.add('open');
+}
+function closeOwnerDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-backdrop').classList.remove('open');
+  STATE.selectedOwnerId = null;
+}
+window.openOwnerDrawer = openOwnerDrawer;
+
+// =========================================================================
+// Dedup Review tab
+// =========================================================================
+function pendingDedupForRegion(regionId) {
+  const r = REGION_BY_ID[regionId];
+  const queue = r.dedup_queue || [];
+  return queue.filter(pair => !DEDUP_DECISIONS[dedupPairKey(regionId, pair)]);
+}
+
+function renderDedup() {
+  const r = REGION_BY_ID[CURRENT_REGION];
+  document.getElementById('dedup-region-label').textContent = r.display_name;
+  const queue = r.dedup_queue || [];
+  const pending = pendingDedupForRegion(CURRENT_REGION);
+  const resolved = queue.length - pending.length;
+  document.getElementById('dedup-pending').textContent = pending.length;
+  document.getElementById('dedup-resolved').textContent = resolved;
+  document.getElementById('dedup-count').textContent = pending.length;
+  document.getElementById('tab-dedup-btn').style.display = queue.length > 0 ? '' : 'none';
+
+  const list = document.getElementById('dedup-list');
+  if (pending.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">✓</div><div>No pending pairs for ${escapeHtml(r.display_name)}.</div></div>`;
+    return;
+  }
+
+  list.innerHTML = pending.map((pair, idx) => {
+    const a = r.owners[pair.a_oid];
+    const b = r.owners[pair.b_oid];
+    if (!a || !b) return '';
+    return `<div class="dedup-card" data-pair-idx="${idx}">
+      <div class="head">
+        <div style="font-size:12px;color:var(--text-dim);">Pair ${idx+1} of ${pending.length}</div>
+        <div style="font-size:11px;color:var(--text-dim);">score ${pair.score.toFixed(3)} · addr <code style="color:var(--text-soft);font-family:ui-monospace,monospace;">${escapeHtml(pair.addr_norm)}</code></div>
+      </div>
+      <div class="pair">
+        <div class="side">
+          <div class="label">Owner A</div>
+          <div class="nm">${escapeHtml(a[O.name])}</div>
+          <div class="mt">${escapeHtml(a[O.addr] || '—')}<br>${escapeHtml([a[O.city], a[O.state], a[O.zip]].filter(Boolean).join(', '))}</div>
+          <div class="stats">${icpTag(a[O.icp])} · ${a[O.n]} parcels · ${fmtAbbr(a[O.total_val])}</div>
+        </div>
+        <div class="side">
+          <div class="label">Owner B</div>
+          <div class="nm">${escapeHtml(b[O.name])}</div>
+          <div class="mt">${escapeHtml(b[O.addr] || '—')}<br>${escapeHtml([b[O.city], b[O.state], b[O.zip]].filter(Boolean).join(', '))}</div>
+          <div class="stats">${icpTag(b[O.icp])} · ${b[O.n]} parcels · ${fmtAbbr(b[O.total_val])}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" data-act="separate" data-idx="${idx}">Keep separate</button>
+        <button class="btn primary" data-act="merge" data-idx="${idx}">Confirm merge</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.onclick = () => {
+      const idx = +btn.dataset.idx;
+      const pair = pending[idx];
+      const k = dedupPairKey(CURRENT_REGION, pair);
+      DEDUP_DECISIONS[k] = {
+        decision: btn.dataset.act === 'merge' ? 'merge' : 'separate',
+        ts: Date.now(),
+      };
+      saveDedup();
+      renderDedup();
+      showToast(btn.dataset.act === 'merge' ? 'Merge confirmed (saved locally)' : 'Kept separate');
+    };
+  });
+}
+
+// =========================================================================
+// Import Contacts — CSV parse, vendor detect, match preview, commit
+// =========================================================================
+const SKIPTRACE_VENDORS = {
+  batchdata: {
+    owner_name:    ['full_name', 'owner_name', 'fullname', 'owner', 'name'],
+    mailing_addr:  ['mailing_address', 'mail_address_line_1', 'address_line_1', 'address1'],
+    mailing_city:  ['mailing_city', 'mail_city', 'city'],
+    mailing_state: ['mailing_state', 'state'],
+    mailing_zip:   ['mailing_zip', 'mail_zip', 'zip', 'postal_code'],
+    phone1:        ['phone_1', 'phone1', 'primary_phone', 'best_phone'],
+    phone1_type:   ['phone_1_type', 'phone1_type'],
+    phone1_dnc:    ['phone_1_dnc', 'phone1_dnc', 'dnc'],
+    phone2:        ['phone_2', 'phone2'],
+    phone3:        ['phone_3', 'phone3'],
+    email1:        ['email_1', 'email1', 'primary_email', 'email'],
+    email2:        ['email_2', 'email2'],
+  },
+  tracerfy: {
+    owner_name: ['owner_name', 'full_name', 'name'],
+    mailing_addr: ['mailing_address', 'address1'],
+    mailing_city: ['mailing_city'], mailing_state: ['mailing_state'], mailing_zip: ['mailing_zip'],
+    phone1: ['phone_1', 'phone1'], phone2: ['phone_2', 'phone2'],
+    email1: ['email_1', 'email1'],
+  },
+  reiskip: {
+    owner_name: ['owner_first_last', 'full_name', 'owner_name'],
+    mailing_addr: ['mailing_street', 'address'],
+    mailing_city: ['mailing_city'], mailing_state: ['mailing_state'], mailing_zip: ['mailing_zip'],
+    phone1: ['phone_number', 'mobile_1', 'phone1'], phone2: ['mobile_2', 'phone2'],
+    email1: ['email_address', 'email1'],
+  },
+  datazapp: {
+    owner_name: ['fullname', 'full_name', 'owner_name'],
+    mailing_addr: ['mailing_address', 'address'],
+    mailing_city: ['city'], mailing_state: ['state'], mailing_zip: ['zip'],
+    phone1: ['phone1', 'cell_phone', 'landline_phone'], phone2: ['phone2', 'additional_phone'],
+    email1: ['email1', 'email'],
+  },
+};
+const IMPORT_FIELDS = [
+  'owner_name', 'mailing_addr', 'mailing_city', 'mailing_state', 'mailing_zip',
+  'phone1', 'phone1_type', 'phone1_dnc',
+  'phone2', 'phone3',
+  'email1', 'email2', 'source_url',
+];
+const IMPORT_REQUIRED = new Set(['owner_name']);
+
+function normHeader(h) {
+  return (h || '').trim().toLowerCase().replace(/[\s\-.]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+function detectVendor(headers) {
+  const norm = new Set(headers.map(normHeader));
+  let best = null, bestTotal = -1;
+  for (const [vendor, fields] of Object.entries(SKIPTRACE_VENDORS)) {
+    const owners = (fields.owner_name || []).map(normHeader);
+    if (!owners.some(a => norm.has(a))) continue;
+    let total = 0;
+    for (const aliases of Object.values(fields)) {
+      for (const a of aliases) if (norm.has(normHeader(a))) { total++; break; }
+    }
+    if (total > bestTotal) { best = vendor; bestTotal = total; }
+  }
+  return best;
+}
+
+function autoMapColumns(headers, vendor) {
+  const lookup = {};   // norm header -> original header
+  headers.forEach(h => { lookup[normHeader(h)] = h; });
+  const mapping = {};
+  for (const f of IMPORT_FIELDS) {
+    let picked = null;
+    if (vendor && SKIPTRACE_VENDORS[vendor][f]) {
+      for (const alias of SKIPTRACE_VENDORS[vendor][f]) {
+        const n = normHeader(alias);
+        if (n in lookup) { picked = lookup[n]; break; }
+      }
+    }
+    mapping[f] = picked;
+  }
+  return mapping;
+}
+
+// Minimal CSV parser — handles quoted fields with commas and CRLF/LF lines.
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);   // strip BOM
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true;
+      } else if (c === ',') {
+        row.push(field); field = '';
+      } else if (c === '\r') {
+        // ignore — \r\n handled by \n branch
+      } else if (c === '\n') {
+        row.push(field); field = '';
+        rows.push(row); row = [];
+      } else {
+        field += c;
+      }
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  // strip trailing empty rows
+  while (rows.length && rows[rows.length-1].length === 1 && rows[rows.length-1][0] === '') rows.pop();
+  if (rows.length === 0) return { headers: [], rows: [] };
+  const headers = rows[0];
+  const dataRows = rows.slice(1).map(r => {
+    const o = {};
+    for (let i = 0; i < headers.length; i++) o[headers[i]] = r[i] != null ? r[i].trim() : '';
+    return o;
+  });
+  return { headers, rows: dataRows };
+}
+
+// Working state for the in-progress import.
+const IMPORT_STATE = {
+  filename: null,
+  vendor: null,
+  region: null,
+  headers: [],
+  rows: [],          // parsed CSV rows
+  mapping: {},       // {schema_field: source_header}
+  matched: [],       // [{rowIdx, ownerName, ownerIdx, contact}]
+  unmatched: [],     // [{rowIdx, ownerName}]
+  alreadyPresent: 0, // count of rows whose contact value was already on the owner
+};
+
+function buildOwnerNameIndex(regionId) {
+  const arr = REGION_BY_ID[regionId].owners;
+  const idx = new Map();
+  for (let i = 0; i < arr.length; i++) {
+    const name = (arr[i][O.name] || '').toUpperCase().trim();
+    if (!name) continue;
+    if (!idx.has(name)) idx.set(name, i);  // first wins (sorted by n_parcels desc earlier)
+  }
+  return idx;
+}
+
+function previewMatches() {
+  IMPORT_STATE.matched = [];
+  IMPORT_STATE.unmatched = [];
+  IMPORT_STATE.alreadyPresent = 0;
+  const ownerNameIdx = buildOwnerNameIndex(IMPORT_STATE.region);
+  const mapping = IMPORT_STATE.mapping;
+  const nameCol = mapping.owner_name;
+  if (!nameCol) return;
+
+  const existing = (regionId, ownerName) => getContacts(regionId, ownerName) || { phones: [], emails: [] };
+
+  IMPORT_STATE.rows.forEach((row, rowIdx) => {
+    const rawName = (row[nameCol] || '').toUpperCase().trim();
+    if (!rawName) return;
+    const ownerIdx = ownerNameIdx.get(rawName);
+    const phones = [];
+    const emails = [];
+    for (const slot of ['phone1', 'phone2', 'phone3']) {
+      const v = (row[mapping[slot]] || '').trim();
+      if (v) {
+        phones.push({
+          value: v,
+          type:       row[mapping[slot + '_type']] || '',
+          dnc:        ['1','true','yes','y'].includes((row[mapping[slot + '_dnc']] || '').toLowerCase()),
+          confidence: slot === 'phone1' ? 'high' : (slot === 'phone2' ? 'medium' : 'low'),
+        });
+      }
+    }
+    for (const slot of ['email1', 'email2']) {
+      const v = (row[mapping[slot]] || '').trim();
+      if (v) {
+        emails.push({
+          value: v,
+          confidence: slot === 'email1' ? 'high' : 'medium',
+        });
+      }
+    }
+
+    if (ownerIdx === undefined) {
+      IMPORT_STATE.unmatched.push({ rowIdx, ownerName: rawName });
+    } else {
+      // count "already present" phones/emails
+      const present = existing(IMPORT_STATE.region, REGION_BY_ID[IMPORT_STATE.region].owners[ownerIdx][O.name]);
+      const presentPhones = new Set((present.phones || []).map(p => p.value));
+      const presentEmails = new Set((present.emails || []).map(p => p.value));
+      const newPhones = phones.filter(p => !presentPhones.has(p.value));
+      const newEmails = emails.filter(e => !presentEmails.has(e.value));
+      if (phones.length + emails.length > newPhones.length + newEmails.length) {
+        IMPORT_STATE.alreadyPresent++;
+      }
+      IMPORT_STATE.matched.push({
+        rowIdx, ownerIdx,
+        ownerName: REGION_BY_ID[IMPORT_STATE.region].owners[ownerIdx][O.name],
+        contact: { phones: newPhones, emails: newEmails },
+      });
+    }
+  });
+}
+
+function renderImportStep1() {
+  const e = document.getElementById('import-step1');
+  e.style.display = '';
+  document.getElementById('i1-filename').textContent = IMPORT_STATE.filename;
+  document.getElementById('i1-meta').textContent =
+    `${IMPORT_STATE.rows.length.toLocaleString()} rows · ${IMPORT_STATE.headers.length} columns`;
+  document.getElementById('i1-vendor').innerHTML = IMPORT_STATE.vendor
+    ? `<b style="color:#7dd3fc;">${IMPORT_STATE.vendor}</b> (auto-detected — column map pre-populated)`
+    : '<span style="color:var(--text-dim);">not auto-detected — set columns manually below</span>';
+  // region select
+  const sel = document.getElementById('i1-region');
+  sel.innerHTML = REGIONS.map(r => `<option value="${r.id}" ${r.id === IMPORT_STATE.region ? 'selected' : ''}>${escapeHtml(r.display_name)}</option>`).join('');
+  sel.onchange = () => { IMPORT_STATE.region = sel.value; renderImportStep3(); };
+}
+
+function renderImportStep2() {
+  const e = document.getElementById('import-step2');
+  e.style.display = '';
+  const wrap = document.getElementById('i2-map');
+  wrap.innerHTML = '';
+  const headerOpts = ['<option value="">(none)</option>',
+    ...IMPORT_STATE.headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`),
+  ].join('');
+  for (const f of IMPORT_FIELDS) {
+    const required = IMPORT_REQUIRED.has(f) ? ' <span style="color:#fca5a5;">*</span>' : '';
+    wrap.insertAdjacentHTML('beforeend', `
+      <label>${f}${required}</label>
+      <select data-field="${f}">${headerOpts}</select>
+    `);
+    const sel = wrap.querySelector(`select[data-field="${f}"]`);
+    sel.value = IMPORT_STATE.mapping[f] || '';
+    sel.onchange = () => {
+      IMPORT_STATE.mapping[f] = sel.value || null;
+      renderImportStep3();
+    };
+  }
+}
+
+function renderImportStep3() {
+  if (!IMPORT_STATE.region || !IMPORT_STATE.mapping.owner_name) {
+    document.getElementById('import-step3').style.display = 'none';
+    return;
+  }
+  previewMatches();
+  const e = document.getElementById('import-step3');
+  e.style.display = '';
+  document.getElementById('i3-matched').textContent = IMPORT_STATE.matched.length.toLocaleString();
+  document.getElementById('i3-unmatched').textContent = IMPORT_STATE.unmatched.length.toLocaleString();
+  document.getElementById('i3-already').textContent = IMPORT_STATE.alreadyPresent.toLocaleString();
+  const list = document.getElementById('i3-unmatched-list');
+  const wrap = document.getElementById('i3-unmatched-list-wrap');
+  if (IMPORT_STATE.unmatched.length === 0) {
+    wrap.style.display = 'none';
+  } else {
+    wrap.style.display = '';
+    list.innerHTML = IMPORT_STATE.unmatched.slice(0, 50).map(u =>
+      `<div class="item">${escapeHtml(u.ownerName)}</div>`
+    ).join('');
+  }
+}
+
+function commitImport() {
+  let phonesWritten = 0, emailsWritten = 0, ownersTouched = 0;
+  for (const m of IMPORT_STATE.matched) {
+    if (!m.contact.phones.length && !m.contact.emails.length) continue;
+    const k = contactKey(IMPORT_STATE.region, m.ownerName);
+    const existing = CONTACTS[k] || { phones: [], emails: [], source: IMPORT_STATE.vendor || 'manual', ts: Date.now() };
+    for (const p of m.contact.phones) {
+      if (existing.phones.length >= 3) break;
+      existing.phones.push({ ...p, source: IMPORT_STATE.vendor || 'manual', ts: Date.now() });
+      phonesWritten++;
+    }
+    for (const ee of m.contact.emails) {
+      if (existing.emails.length >= 2) break;
+      existing.emails.push({ ...ee, source: IMPORT_STATE.vendor || 'manual', ts: Date.now() });
+      emailsWritten++;
+    }
+    existing.ts = Date.now();
+    CONTACTS[k] = existing;
+    ownersTouched++;
+  }
+  saveContacts();
+  IMPORT_HISTORY.unshift({
+    filename: IMPORT_STATE.filename,
+    vendor: IMPORT_STATE.vendor,
+    region: IMPORT_STATE.region,
+    ts: Date.now(),
+    rows_total: IMPORT_STATE.rows.length,
+    rows_matched: IMPORT_STATE.matched.length,
+    rows_unmatched: IMPORT_STATE.unmatched.length,
+    phones_written: phonesWritten,
+    emails_written: emailsWritten,
+    owners_touched: ownersTouched,
+  });
+  saveImports();
+  renderImportHistory();
+  resetImportFlow();
+  renderOwnersTable();
+  showToast(`Imported · ${ownersTouched} owners updated · ${phonesWritten} phones · ${emailsWritten} emails`);
+}
+
+function resetImportFlow() {
+  IMPORT_STATE.filename = null;
+  IMPORT_STATE.vendor = null;
+  IMPORT_STATE.headers = [];
+  IMPORT_STATE.rows = [];
+  IMPORT_STATE.mapping = {};
+  IMPORT_STATE.matched = [];
+  IMPORT_STATE.unmatched = [];
+  IMPORT_STATE.alreadyPresent = 0;
+  document.getElementById('import-step1').style.display = 'none';
+  document.getElementById('import-step2').style.display = 'none';
+  document.getElementById('import-step3').style.display = 'none';
+  document.getElementById('import-file-input').value = '';
+}
+
+function renderImportHistory() {
+  const wrap = document.getElementById('import-history-list');
+  if (!IMPORT_HISTORY.length) {
+    wrap.innerHTML = '<div style="color:var(--text-dim);font-size:11.5px;">No imports yet.</div>';
+    return;
+  }
+  wrap.innerHTML = IMPORT_HISTORY.slice(0, 20).map(h => `
+    <div class="row">
+      <div>
+        <b style="color:white;">${escapeHtml(h.filename || '(unknown)')}</b>
+        <span class="meta"> · ${escapeHtml(h.vendor || 'custom')} → ${escapeHtml(REGION_SHORT[h.region] || h.region)}</span>
+      </div>
+      <div class="meta">${new Date(h.ts).toLocaleString()} · ${h.owners_touched} owners · ${h.phones_written} phones · ${h.emails_written} emails</div>
+    </div>
+  `).join('');
+}
+
+function handleImportFile(file) {
+  if (!file) return;
+  if (file.size > 100 * 1024 * 1024) {
+    alert('File too large (>100 MB). Split it into chunks or use the Python CLI for bulk imports.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const { headers, rows } = parseCSV(reader.result);
+      if (headers.length === 0) { alert('CSV appears empty.'); return; }
+      IMPORT_STATE.filename = file.name;
+      IMPORT_STATE.headers = headers;
+      IMPORT_STATE.rows = rows;
+      IMPORT_STATE.vendor = detectVendor(headers);
+      IMPORT_STATE.region = IMPORT_STATE.region || CURRENT_REGION;
+      IMPORT_STATE.mapping = autoMapColumns(headers, IMPORT_STATE.vendor);
+      renderImportStep1();
+      renderImportStep2();
+      renderImportStep3();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to parse CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// =========================================================================
+// Region switching
+// =========================================================================
+async function switchToRegion(regionId) {
+  if (!REGION_BY_ID[regionId]) return;
+  if (regionId === CURRENT_REGION) return;
+  await ensureRegionLoaded(regionId);
+  CURRENT_REGION = regionId;
+  OWNERS = REGION_BY_ID[regionId].owners;
+  PARCELS = REGION_BY_ID[regionId].parcels;
+  updateRegionChips();
+  updateHeaderStats();
+  updateRegionWarning();
+  if (map) {
+    const r = REGION_BY_ID[regionId];
+    map.flyTo([r.center_lat, r.center_lon], 11, { duration: 0.4 });
+  }
+  applyFilters();
+  renderDedup();
+}
+
+function updateRegionChips() {
+  const wrap = document.getElementById('region-chips');
+  wrap.innerHTML = REGIONS.map(r => `
+    <button class="region-chip ${r.id === CURRENT_REGION ? 'active' : ''}" data-region="${r.id}">
+      ${escapeHtml(r.display_name)} <span class="pill">${regionOwnerCount(r).toLocaleString()}</span>
+    </button>
+  `).join('');
+  wrap.querySelectorAll('button.region-chip').forEach(b => {
+    b.onclick = () => switchToRegion(b.dataset.region);
+  });
+}
+
+function updateRegionWarning() {
+  // Insert/remove the warning under the region bar based on region notes
+  const existing = document.getElementById('region-warning-msg');
+  if (existing) existing.remove();
+  const r = REGION_BY_ID[CURRENT_REGION];
+  if (r.notes) {
+    const html = `<div class="region-warning" id="region-warning-msg"><b>Note:</b> ${escapeHtml(r.notes)}</div>`;
+    document.querySelector('.region-bar').insertAdjacentHTML('afterend', html);
+  }
+}
+
+function updateHeaderStats() {
+  document.getElementById('stat-parcels').textContent = PARCELS.length.toLocaleString();
+  document.getElementById('stat-owners').textContent = OWNERS.length.toLocaleString();
+  let total = 0;
+  for (const o of OWNERS) total += o[O.total_val];
+  document.getElementById('stat-value').textContent = fmtAbbr(total);
+
+  const buckets = { 1:0, 2:0, 3:0, 4:0 };
+  for (const o of OWNERS) if (buckets[o[O.icp]] !== undefined) buckets[o[O.icp]]++;
+  document.getElementById('cnt-icp1').textContent = `${buckets[1]} owners`;
+  document.getElementById('cnt-icp2').textContent = `${buckets[2]} owners`;
+  document.getElementById('cnt-icp3').textContent = `${buckets[3]} owners`;
+  document.getElementById('cnt-icp4').textContent = `${buckets[4]} owners`;
+}
+
+// =========================================================================
+// UI wiring
+// =========================================================================
+function switchTab(tab) {
+  STATE.tab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+  if (tab === 'map') setTimeout(() => map.invalidateSize(), 50);
+  if (tab === 'owners') renderOwnersTable();
+  if (tab === 'outreach') renderOutreach();
+  if (tab === 'dedup') renderDedup();
+}
+
+function readFilters() {
+  STATE.filters.icp = document.querySelector('input[name="icp"]:checked').value;
+  STATE.filters.ptype = document.querySelector('input[name="ptype"]:checked').value;
+  STATE.filters.own = document.querySelector('input[name="own"]:checked').value;
+  STATE.filters.hoa_only = document.getElementById('hoa-only').checked;
+  STATE.filters.exclude_gov = document.getElementById('exclude-gov').checked;
+  STATE.filters.search = document.getElementById('search-owner').value;
+  const min = parseInt(document.getElementById('min-parcels').value, 10);
+  const max = parseInt(document.getElementById('max-parcels').value, 10);
+  STATE.filters.custom_min = isNaN(min) ? null : min;
+  STATE.filters.custom_max = isNaN(max) ? null : max;
+}
+
+function applyFilters() {
+  readFilters();
+  const visibleParcels = rebuildMap();
+  document.getElementById('stat-target').textContent = visibleParcels.toLocaleString();
+  if (STATE.tab === 'owners') renderOwnersTable();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 1700);
+}
+
+function buildOwnersRegionFilter() {
+  const wrap = document.getElementById('owners-region-filter');
+  wrap.innerHTML = REGIONS.map(r => `
+    <label class="${STATE.ownersRegionFilter.has(r.id) ? 'checked' : ''}">
+      <input type="checkbox" data-region="${r.id}" ${STATE.ownersRegionFilter.has(r.id) ? 'checked' : ''}>
+      ${REGION_SHORT[r.id] || r.id}
+    </label>
+  `).join('');
+  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) STATE.ownersRegionFilter.add(cb.dataset.region);
+      else            STATE.ownersRegionFilter.delete(cb.dataset.region);
+      cb.parentElement.classList.toggle('checked', cb.checked);
+      renderOwnersTable();
+    });
+  });
+}
+
+// =========================================================================
+// Init
+// =========================================================================
+async function init() {
+  initMap();
+  updateRegionChips();
+  updateRegionWarning();
+  buildOwnersRegionFilter();
+
+  // Lazy mode: fetch the default region before painting data-dependent UI.
+  await ensureRegionLoaded(CURRENT_REGION);
+  OWNERS = REGION_BY_ID[CURRENT_REGION].owners;
+  PARCELS = REGION_BY_ID[CURRENT_REGION].parcels;
+  updateHeaderStats();
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+  document.querySelectorAll('.sidebar input').forEach(el => {
+    const ev = el.type === 'text' || el.type === 'number' ? 'input' : 'change';
+    el.addEventListener(ev, debounce(applyFilters, el.type === 'text' || el.type === 'number' ? 250 : 0));
+  });
+  document.getElementById('btn-reset').onclick = () => {
+    document.querySelector('input[name="icp"][value="all"]').checked = true;
+    document.querySelector('input[name="ptype"][value="home"]').checked = true;
+    document.querySelector('input[name="own"][value="both"]').checked = true;
+    document.getElementById('hoa-only').checked = false;
+    document.getElementById('exclude-gov').checked = false;
+    document.getElementById('search-owner').value = '';
+    document.getElementById('min-parcels').value = '';
+    document.getElementById('max-parcels').value = '';
+    applyFilters();
+  };
+
+  ['density','value','markers','dark'].forEach(k => {
+    const el = document.getElementById('lyr-' + k);
+    el.addEventListener('change', () => { STATE.layers[k] = el.checked; rebuildMap(); });
+  });
+
+  document.getElementById('owners-search').addEventListener('input', debounce(renderOwnersTable, 200));
+  document.getElementById('outreach-search').addEventListener('input', debounce(renderOutreach, 200));
+
+  document.querySelectorAll('#owners-table th.sortable').forEach(th => {
+    th.onclick = () => {
+      const k = th.dataset.key;
+      if (ownersSort.key === k) ownersSort.dir = -ownersSort.dir;
+      else { ownersSort.key = k; ownersSort.dir = (k === 'owner' || k === 'state' || k === 'region') ? 1 : -1; }
+      document.querySelectorAll('#owners-table th').forEach(t => t.classList.remove('sorted-asc','sorted-desc'));
+      th.classList.add(ownersSort.dir > 0 ? 'sorted-asc' : 'sorted-desc');
+      renderOwnersTable();
+    };
+  });
+
+  document.getElementById('owners-tbody').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-oid]'); if (!tr) return;
+    openOwnerDrawer(tr.dataset.region, +tr.dataset.oid);
+  });
+  document.getElementById('outreach-tbody').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-oid]'); if (!tr) return;
+    const oid = +tr.dataset.oid;
+    if (oid >= 0) openOwnerDrawer(tr.dataset.region, oid);
+  });
+
+  document.getElementById('drawer-close').onclick = closeOwnerDrawer;
+  document.getElementById('drawer-backdrop').onclick = closeOwnerDrawer;
+
+  document.getElementById('btn-export').onclick = () => {
+    const blob = new Blob([JSON.stringify({ outreach: OUTREACH, dedup: DEDUP_DECISIONS }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `propagentic_export_${new Date().toISOString().slice(0,10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Exported');
+  };
+  document.getElementById('btn-import').onclick = () => document.getElementById('import-file').click();
+  document.getElementById('import-file').onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = JSON.parse(r.result);
+        // v2 format has {outreach, dedup}; older versions were flat outreach map
+        if (data.outreach || data.dedup) {
+          if (data.outreach) OUTREACH = { ...OUTREACH, ...data.outreach };
+          if (data.dedup) DEDUP_DECISIONS = { ...DEDUP_DECISIONS, ...data.dedup };
+        } else {
+          OUTREACH = { ...OUTREACH, ...data };
+        }
+        saveOutreach();
+        saveDedup();
+        renderOwnersTable(); renderOutreach(); renderDedup();
+        showToast('Imported');
+      } catch (err) { alert('Invalid JSON file'); }
+    };
+    r.readAsText(file);
+  };
+
+  document.getElementById('btn-export-csv').onclick = () => {
+    const lines = ['region,owner,parcels,homes,vacant_res,commercial,total_value,home_value,state,city,icp,is_hoa,absentee_pct,status,notes'];
+    for (const r of REGIONS) {
+      if (!STATE.ownersRegionFilter.has(r.id)) continue;
+      const savedOwners = OWNERS;
+      OWNERS = r.owners;
+      for (let i = 0; i < r.owners.length; i++) {
+        if (!ownerMatchesFilters(r.owners[i])) continue;
+        const o = r.owners[i];
+        const rec = getOutreach(r.id, o[O.name]) || {};
+        const row = [r.id, o[O.name], o[O.n], o[O.n_home], o[O.n_vacant_res], o[O.n_commercial], o[O.total_val], o[O.home_val], o[O.state], o[O.city], o[O.icp], o[O.is_hoa]?1:0, o[O.absentee_pct], rec.status || '', (rec.notes || '').replace(/[\r\n,"]/g, ' ')];
+        lines.push(row.map(v => typeof v === 'string' && /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v).join(','));
+      }
+      OWNERS = savedOwners;
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'owners_filtered.csv'; a.click(); URL.revokeObjectURL(url);
+    showToast('CSV exported');
+  };
+
+  document.getElementById('btn-dedup-clear').onclick = () => {
+    if (!confirm('Clear all local dedup decisions for all regions? This cannot be undone.')) return;
+    DEDUP_DECISIONS = {};
+    saveDedup();
+    renderDedup();
+    showToast('Local dedup decisions cleared');
+  };
+
+  // -- Import Contacts wiring --
+  const dz = document.getElementById('dropzone');
+  const fi = document.getElementById('import-file-input');
+  dz.onclick = () => fi.click();
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    if (e.dataTransfer.files.length) handleImportFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', () => {
+    if (fi.files.length) handleImportFile(fi.files[0]);
+  });
+  document.getElementById('i3-commit').onclick = () => {
+    if (!IMPORT_STATE.matched.length) {
+      alert('Nothing to commit — no rows matched any owner. Check the owner_name column mapping and region selection.');
+      return;
+    }
+    commitImport();
+  };
+  document.getElementById('i3-cancel').onclick = resetImportFlow;
+  renderImportHistory();
+
+  applyFilters();
+  renderOwnersTable();
+  renderOutreach();
+  renderDedup();
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

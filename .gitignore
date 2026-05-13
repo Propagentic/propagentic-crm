@@ -14,6 +14,7 @@ enrichment.db
 
 # --- Build artifacts (regenerable via `python3 build.py`) ---
 # app_template.html is a SOURCE file (the template build.py reads). Keep it.
+# docs/ is the GitHub Pages publish folder — IT IS TRACKED IN GIT.
 app.html
 app_nashville_tn.html
 app_baltimore_md.html
