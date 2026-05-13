@@ -1,0 +1,124 @@
+{
+  "_meta": {
+    "source": "enrichment.db",
+    "extracted_at_utc": "2026-05-13T19:51:03+00:00",
+    "chunk_target_mb": 52.4288,
+    "extraction_script": "scripts/export_to_jsonl.py"
+  },
+  "regions": {
+    "fields": {
+      "region_id": "string",
+      "display_name": "string",
+      "state": "string",
+      "county": "string",
+      "center_lat": "number",
+      "center_lon": "number",
+      "last_ingested": "string",
+      "source_versions": "string"
+    }
+  },
+  "owners": {
+    "fields": {
+      "owner_id": "integer",
+      "region_id": "string",
+      "owner_name": "string",
+      "owner_name_norm": "string",
+      "mailing_addr1": "string",
+      "mailing_addr2": "string",
+      "mailing_city": "string",
+      "mailing_state": "string",
+      "mailing_zip": "string",
+      "mailing_addr_norm": "string",
+      "n_parcels": "integer",
+      "n_homes": "integer",
+      "n_vacant": "integer",
+      "n_commercial": "integer",
+      "total_value": "integer",
+      "home_value": "integer",
+      "absentee_pct": "number",
+      "icp": "integer",
+      "is_hoa": "integer",
+      "entity_type": "null",
+      "phone1": "null",
+      "phone1_type": "null",
+      "phone1_confidence": "null",
+      "phone1_source": "null",
+      "phone1_dnc": "null",
+      "phone1_updated": "null",
+      "phone2": "null",
+      "phone2_type": "null",
+      "phone2_confidence": "null",
+      "phone2_source": "null",
+      "phone2_dnc": "null",
+      "phone2_updated": "null",
+      "phone3": "null",
+      "phone3_type": "null",
+      "phone3_confidence": "null",
+      "phone3_source": "null",
+      "phone3_dnc": "null",
+      "phone3_updated": "null",
+      "email1": "null",
+      "email1_confidence": "null",
+      "email1_source": "null",
+      "email1_updated": "null",
+      "email2": "null",
+      "email2_confidence": "null",
+      "email2_source": "null",
+      "email2_updated": "null",
+      "status": "null",
+      "notes": "null",
+      "last_touched": "null"
+    }
+  },
+  "parcels": {
+    "fields": {
+      "parcel_id": "string",
+      "region_id": "string",
+      "owner_id": "integer",
+      "parcel_addr": "string",
+      "parcel_city": "string",
+      "parcel_zip": "string",
+      "land_use": "string",
+      "land_use_code": "string",
+      "zoning": "string",
+      "acres": "number",
+      "land_value": "integer",
+      "imp_value": "integer",
+      "total_value": "integer",
+      "sale_date": "string",
+      "sale_price": "integer",
+      "council_district": "string",
+      "lat": "number",
+      "lon": "number",
+      "apn": "string",
+      "raw_owner_name": "string",
+      "raw_owner_addr": "string"
+    }
+  },
+  "owner_aliases": {
+    "fields": {
+      "alias_id": "integer",
+      "owner_id": "integer",
+      "raw_owner_name": "string",
+      "raw_owner_addr": "string",
+      "match_method": "string",
+      "match_score": "number",
+      "confirmed_at": "string",
+      "confirmed_by": "string"
+    }
+  },
+  "contact_imports": {
+    "fields": {
+      "import_id": "null",
+      "filename": "null",
+      "imported_at": "null",
+      "rows_total": "null",
+      "rows_matched": "null",
+      "rows_unmatched": "null",
+      "rows_updated": "null",
+      "rows_overwritten": "null",
+      "source_label": "null",
+      "notes": "null"
+    }
+  }
+}
