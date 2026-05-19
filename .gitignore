@@ -2,6 +2,15 @@
 .env
 .env.local
 .env.production
+secrets/
+*-firebase-adminsdk-*.json
+
+# --- Local tool binaries ---
+.local-bin/
+.firebase/
+
+# --- Geocoder cache (regenerable, ~MB scale) ---
+data/geocode_cache.json
 
 # --- Local databases ---
 enrichment.db

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Propagentic Parcel Explorer</title>
+<title>Propagentic CRM</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -24,1986 +24,1634 @@
   --shadow: 0 4px 16px rgba(0,0,0,0.25);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.45; }
+html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.45; overflow: hidden; }
 button { font: inherit; cursor: pointer; }
 input, select, textarea { font: inherit; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-.app { display: grid; grid-template-rows: 56px 1fr; height: 100vh; }
-header.top {
-  background: linear-gradient(135deg, #1e293b 0%, #312e81 100%);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 18px; gap: 24px;
-  box-shadow: var(--shadow);
-}
-header.top h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: white; }
-header.top .stats { display: flex; gap: 18px; font-size: 12px; color: #cbd5e1; }
-header.top .stats b { color: white; font-weight: 600; }
-header.top .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.btn {
-  background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.12);
-  padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: all 0.15s;
-}
-.btn:hover { background: rgba(255,255,255,0.16); }
-.btn.primary { background: var(--accent); color: #0b1220; border-color: transparent; font-weight: 600; }
-.btn.primary:hover { background: #7dd3fc; }
-.btn.danger { background: rgba(239,68,68,0.18); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
-.btn.danger:hover { background: rgba(239,68,68,0.30); }
+/* --- Layout --- */
+.app { display: grid; grid-template-rows: 50px 1fr; height: 100vh; }
+.top { display: flex; align-items: center; padding: 0 18px; gap: 18px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.top h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
+.top h1 .tag { color: var(--accent); font-weight: 500; font-size: 11.5px; margin-left: 6px; padding: 2px 6px; background: rgba(56, 189, 248, 0.12); border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.25); }
+.stats { display: flex; gap: 16px; color: var(--text-dim); font-size: 12px; }
+.stats b { color: var(--text); font-weight: 600; margin-right: 3px; }
+.top .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.user-pill { font-size: 11.5px; color: var(--text-dim); padding: 3px 9px; border-radius: 100px; background: var(--panel-2); border: 1px solid var(--border); }
+.btn { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }
+.btn:hover { background: #213262; }
+.btn.btn-primary { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
+.btn.btn-primary:hover { background: #0ea5e9; }
+.btn.btn-danger { color: #fca5a5; border-color: rgba(239,68,68,0.4); background: transparent; }
+.btn.btn-danger:hover { background: rgba(239,68,68,0.12); }
 
-.body-area { display: grid; grid-template-columns: 280px 1fr; overflow: hidden; min-height: 0; }
+.body { display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
 
-aside.sidebar {
-  background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px;
-}
-.sidebar h3 { margin: 4px 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
-.sidebar .group { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
-.sidebar .group:last-child { border-bottom: none; }
-.sidebar label { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--text-soft); font-size: 12px; cursor: pointer; }
-.sidebar label:hover { color: white; }
-.sidebar input[type="radio"], .sidebar input[type="checkbox"] { accent-color: var(--accent); }
-.sidebar input[type="text"], .sidebar select {
-  width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
-  padding: 7px 9px; border-radius: 5px; outline: none;
-}
-.sidebar input[type="text"]:focus, .sidebar select:focus { border-color: var(--accent); }
-.range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-.range-row input { width: 100%; }
-.bucket-counts { font-size: 10.5px; color: var(--text-dim); margin-left: 22px; }
+/* --- Filters sidebar --- */
+.filters { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
+.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-group .label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.filter-group .sublabel { font-size: 11.5px; color: var(--text-dim); margin-top: -2px; }
+.checkbox-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; padding-right: 4px; }
+.checkbox-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-soft); cursor: pointer; padding: 3px 0; }
+.checkbox-row input { margin: 0; cursor: pointer; }
+.checkbox-row .count { color: var(--text-dim); margin-left: auto; font-size: 11.5px; }
+.checkbox-row:hover { color: var(--text); }
+.select-input, .text-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 5px; font-size: 12.5px; width: 100%; outline: none; }
+.select-input:focus, .text-input:focus { border-color: var(--accent); }
+.toggle-pills { display: flex; gap: 4px; }
+.toggle-pills button { flex: 1; padding: 5px 0; font-size: 11.5px; background: var(--bg); border: 1px solid var(--border); color: var(--text-dim); border-radius: 5px; }
+.toggle-pills button.active { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
+.filters-reset { font-size: 11.5px; color: var(--accent); background: transparent; border: none; padding: 0; text-align: left; cursor: pointer; }
+.filters-reset:hover { text-decoration: underline; }
 
-.tabs { display: flex; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.tab-btn { background: none; border: none; color: var(--text-dim); padding: 12px 18px; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s; }
-.tab-btn:hover { color: var(--text); }
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-btn .badge { display: inline-block; margin-left: 5px; background: rgba(56,189,248,0.18); color: var(--accent); padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+/* --- Main pane (tabs + content) --- */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.tabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 14px; }
+.tab { padding: 12px 18px; color: var(--text-dim); font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; transition: color 0.15s; }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--text); }
+.tab .badge { margin-left: 6px; padding: 1px 7px; background: var(--panel-2); border-radius: 100px; font-size: 11px; color: var(--text-dim); }
+.tab.active .badge { background: var(--accent); color: #0a1428; }
 
-.main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
-.tab-panel { display: none; flex: 1; overflow: hidden; min-height: 0; position: relative; }
-.tab-panel.active { display: flex; flex-direction: column; }
+.tab-content { flex: 1; min-height: 0; position: relative; }
+.tab-pane { display: none; height: 100%; }
+.tab-pane.active { display: flex; flex-direction: column; }
 
-/* Region selector */
-.region-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; background: var(--panel);
-  border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-.region-bar .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
-.region-chip {
-  background: var(--panel-2); color: var(--text-soft);
-  border: 1px solid var(--border);
-  padding: 5px 14px; border-radius: 999px;
-  font-size: 12px; cursor: pointer; transition: all 0.15s;
-}
-.region-chip:hover { color: white; border-color: var(--accent); }
-.region-chip.active { background: var(--accent); color: #0b1220; border-color: transparent; font-weight: 600; }
-.region-chip .pill {
-  display: inline-block; margin-left: 6px;
-  background: rgba(255,255,255,0.25); color: inherit;
-  padding: 1px 7px; border-radius: 10px; font-size: 10.5px; font-weight: 600;
-}
-.region-chip.active .pill { background: rgba(11,18,32,0.18); }
-.region-chip:not(.active) .pill { background: rgba(56,189,248,0.16); color: var(--accent); }
-
-/* Region warning banner */
-.region-warning {
-  margin: 10px 14px 0; padding: 10px 14px;
-  background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
-  border-radius: 6px; color: #fde68a; font-size: 11.5px;
-}
-.region-warning b { color: var(--amber); }
-
-/* Map */
-#map { flex: 1; min-height: 0; background: #0b1220; }
-.map-legend {
-  position: absolute; bottom: 16px; left: 16px; z-index: 500;
-  background: rgba(17,26,46,0.95); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px;
-  min-width: 200px; font-size: 11px; backdrop-filter: blur(8px); color: var(--text-soft);
-}
-.map-legend .legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-.dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.6); }
-.dot.local { background: var(--green); }
-.dot.absentee { background: var(--red); }
-.dot.hoa { background: #a78bfa; }
-.heat-bar { height: 8px; border-radius: 3px; margin-top: 6px;
-  background: linear-gradient(90deg, #1e3a8a, #0ea5e9, #14b8a6, #84cc16, #facc15, #f97316, #ef4444); }
-.heat-bar-val { height: 8px; border-radius: 3px; margin-top: 6px;
-  background: linear-gradient(90deg, #1e1b4b, #6d28d9, #db2777, #f59e0b, #fde047, #ffffff); }
-.legend-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
-.layer-toggle {
-  position: absolute; top: 14px; right: 14px; z-index: 500;
-  background: rgba(17,26,46,0.95); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 12px;
-  backdrop-filter: blur(8px); min-width: 200px;
-}
-.layer-toggle h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.06em; }
-.layer-toggle label { display: flex; align-items: center; gap: 8px; padding: 3px 0; color: var(--text-soft); cursor: pointer; }
-.layer-toggle label:hover { color: white; }
-
-/* Custom popup styling */
-.leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); border-radius: 8px; padding: 0; }
-.leaflet-popup-content { margin: 0; }
+/* --- Map --- */
+#map { flex: 1; min-height: 0; background: #0a0f1f; }
+.leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); border-radius: 7px; box-shadow: var(--shadow); }
 .leaflet-popup-tip { background: var(--panel); }
-.parcel-popup { padding: 0; min-width: 280px; }
-.parcel-popup .head { background: linear-gradient(135deg, #1e3a8a, #6d28d9); padding: 10px 14px; border-radius: 8px 8px 0 0; }
-.parcel-popup .head .name { font-weight: 700; font-size: 13px; color: white; }
-.parcel-popup .head .addr { font-size: 11.5px; color: rgba(255,255,255,0.85); margin-top: 2px; }
-.parcel-popup .body { padding: 8px 14px 12px; }
-.parcel-popup table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.parcel-popup td { padding: 3px 0; vertical-align: top; }
-.parcel-popup td.k { color: var(--text-dim); width: 95px; padding-right: 10px; }
-.parcel-popup td.v { color: var(--text); }
-.parcel-popup .money { color: #34d399; font-weight: 600; }
-.parcel-popup .actions { padding: 8px 14px 12px; border-top: 1px solid var(--border); }
-.parcel-popup .actions button { width: 100%; }
-.popup-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-.popup-badge.absent { background: rgba(239,68,68,0.18); color: #fca5a5; }
-.popup-badge.hoa { background: rgba(167,139,250,0.18); color: #c4b5fd; }
-.popup-badge.icp1 { background: rgba(52,211,153,0.18); color: #6ee7b7; }
-.popup-badge.icp2 { background: rgba(56,189,248,0.18); color: #7dd3fc; }
-.popup-badge.icp3 { background: rgba(168,85,247,0.18); color: #d8b4fe; }
-.popup-badge.icp4 { background: rgba(245,158,11,0.18); color: #fcd34d; }
+.leaflet-popup-content { margin: 10px 12px; font-size: 12.5px; }
+.leaflet-popup-content h4 { margin: 0 0 4px 0; font-size: 13px; }
+.leaflet-popup-content .pop-meta { color: var(--text-dim); font-size: 11.5px; }
+.leaflet-popup-content button { margin-top: 8px; background: var(--accent); color: #0a1428; border: none; padding: 5px 10px; font-size: 12px; border-radius: 5px; font-weight: 500; }
 
-/* Owners / Outreach tables */
-.table-wrap { flex: 1; overflow: auto; padding: 16px; min-height: 0; }
-.table-header { padding: 14px 18px 0; flex-shrink: 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.table-header input.search { flex: 1; max-width: 320px; min-width: 200px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; outline: none; }
-.table-header input.search:focus { border-color: var(--accent); }
-.table-header .summary { color: var(--text-dim); font-size: 12px; }
-.table-header .summary b { color: white; }
-.table-header .region-select { display: flex; gap: 6px; align-items: center; }
-.table-header .region-select label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); cursor: pointer; padding: 4px 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); }
-.table-header .region-select label:hover { color: white; }
-.table-header .region-select input { margin: 0; }
-.table-header .region-select label.checked { background: rgba(56,189,248,0.18); color: #7dd3fc; border-color: var(--accent); }
-table.data { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; }
-table.data thead { background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
-table.data th { padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.04em; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
-table.data th:hover { color: white; }
-table.data th.sortable::after { content: ' ⇅'; opacity: 0.4; }
-table.data th.sorted-asc::after { content: ' ↑'; opacity: 1; color: var(--accent); }
-table.data th.sorted-desc::after { content: ' ↓'; opacity: 1; color: var(--accent); }
-table.data td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
-table.data tbody tr:hover { background: rgba(56,189,248,0.06); cursor: pointer; }
-table.data .right { text-align: right; }
-table.data .center { text-align: center; }
-table.data td.owner-name { font-weight: 500; color: var(--text); }
-.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 600; }
-.tag.icp0 { background: #1f2c4d; color: var(--text-dim); }
-.tag.icp1 { background: rgba(52,211,153,0.16); color: #6ee7b7; }
-.tag.icp2 { background: rgba(56,189,248,0.16); color: #7dd3fc; }
-.tag.icp3 { background: rgba(168,85,247,0.16); color: #d8b4fe; }
-.tag.icp4 { background: rgba(245,158,11,0.16); color: #fcd34d; }
-.tag.icp5 { background: rgba(239,68,68,0.16); color: #fca5a5; }
-.tag.hoa { background: rgba(167,139,250,0.16); color: #c4b5fd; }
-.tag.absent { background: rgba(239,68,68,0.14); color: #fca5a5; }
-.tag.local { background: rgba(16,185,129,0.14); color: #6ee7b7; }
-.tag.region-nash { background: rgba(56,189,248,0.18); color: #7dd3fc; }
-.tag.region-bal { background: rgba(168,85,247,0.18); color: #d8b4fe; }
-.tag.region-fay { background: rgba(245,158,11,0.18); color: #fcd34d; }
-.status-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-.status-new { background: #1f2c4d; color: #94a3b8; }
-.status-researching { background: rgba(56,189,248,0.16); color: #7dd3fc; }
-.status-contacted { background: rgba(168,85,247,0.16); color: #d8b4fe; }
-.status-demo { background: rgba(245,158,11,0.16); color: #fcd34d; }
-.status-trial { background: rgba(34,197,94,0.16); color: #86efac; }
-.status-paid { background: rgba(16,185,129,0.32); color: #d1fae5; font-weight: 700; }
-.status-not_interested { background: rgba(239,68,68,0.16); color: #fca5a5; }
+.marker-cluster { background-clip: padding-box; border-radius: 22px; }
+.marker-cluster div { background: var(--accent); color: #0a1428; font-weight: 600; }
+.marker-cluster span { line-height: 30px; }
+.lead-marker { background: var(--accent); border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+.lead-marker.has-status { background: var(--amber); }
+.lead-marker.dnc { background: var(--red); }
 
-/* Owner detail drawer */
-.drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; display: none; }
-.drawer-backdrop.open { display: block; }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 90vw; background: var(--panel); border-left: 1px solid var(--border); z-index: 1000; transform: translateX(100%); transition: transform 0.2s ease; display: flex; flex-direction: column; }
+/* --- List view --- */
+.list-wrap { flex: 1; overflow-y: auto; padding: 0; min-height: 0; }
+table.leads-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.leads-table thead { position: sticky; top: 0; z-index: 1; background: var(--panel); border-bottom: 1px solid var(--border); }
+table.leads-table th { text-align: left; padding: 10px 12px; font-weight: 600; color: var(--text-dim); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; user-select: none; }
+table.leads-table th:hover { color: var(--text); }
+table.leads-table th .sort-arrow { font-size: 10px; opacity: 0.5; margin-left: 4px; }
+table.leads-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+table.leads-table tbody tr:hover { background: rgba(56, 189, 248, 0.06); }
+table.leads-table tbody tr.selected { background: rgba(56, 189, 248, 0.12); }
+table.leads-table td { padding: 8px 12px; color: var(--text-soft); }
+table.leads-table td.name { font-weight: 500; color: var(--text); }
+.badge-pill { display: inline-block; padding: 1px 7px; border-radius: 100px; font-size: 10.5px; font-weight: 500; }
+.badge-status-researching { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.badge-status-contacted { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+.badge-status-demo_scheduled { background: rgba(129, 140, 248, 0.18); color: #a5b4fc; }
+.badge-status-paid { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+.badge-dnc { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+.badge-market { background: var(--panel-2); color: var(--text-dim); }
+
+/* --- Outreach kanban --- */
+.kanban { display: flex; gap: 12px; padding: 14px; overflow-x: auto; flex: 1; min-height: 0; }
+.kanban-col { min-width: 280px; flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; max-height: 100%; transition: background 0.15s, border-color 0.15s; }
+.kanban-col__head { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.kanban-col__head .name { font-weight: 600; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.kanban-col__head .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.kanban-col__head .count { color: var(--text-dim); font-size: 11.5px; background: var(--bg); padding: 2px 9px; border-radius: 100px; }
+.kanban-col__body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
+.kanban-col.drop-target { background: rgba(56, 189, 248, 0.08); border-color: var(--accent); }
+.kanban-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; cursor: grab; user-select: none; transition: border-color 0.12s; }
+.kanban-card:hover { border-color: var(--accent); }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card.dragging { opacity: 0.4; }
+.kanban-card .card-name { font-weight: 500; font-size: 12.5px; color: var(--text); margin-bottom: 3px; }
+.kanban-card .card-addr { color: var(--text-dim); font-size: 11.5px; margin-bottom: 7px; }
+.kanban-card .card-meta { display: flex; gap: 6px; font-size: 11px; flex-wrap: wrap; align-items: center; }
+.kanban-card .card-phone { color: var(--text-soft); }
+.kanban-empty { color: var(--text-dim); font-size: 11.5px; text-align: center; padding: 24px 10px; font-style: italic; }
+/* Color accents per column */
+.kanban-col[data-status="researching"] .dot { background: #fbbf24; }
+.kanban-col[data-status="contacted"]   .dot { background: #38bdf8; }
+.kanban-col[data-status="demo_scheduled"] .dot { background: #a5b4fc; }
+.kanban-col[data-status="paid"]        .dot { background: #34d399; }
+
+/* --- Drawer --- */
+.drawer { position: fixed; top: 0; right: 0; height: 100vh; width: 460px; background: var(--panel); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,0.35); transform: translateX(100%); transition: transform 0.25s ease; display: flex; flex-direction: column; z-index: 1000; }
 .drawer.open { transform: translateX(0); }
-.drawer-head { padding: 18px 22px; border-bottom: 1px solid var(--border); position: relative; }
-.drawer-head .owner { font-size: 16px; font-weight: 700; color: white; }
-.drawer-head .meta { font-size: 12px; color: var(--text-dim); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
-.drawer-head .close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; }
-.drawer-head .close:hover { color: white; }
-.drawer-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
-.drawer-section { margin-bottom: 22px; }
-.drawer-section h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; }
-.kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; font-size: 12px; }
+.drawer-head { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+.drawer-head .name { font-size: 16px; font-weight: 600; }
+.drawer-head .sub { font-size: 12.5px; color: var(--text-dim); }
+.drawer-head .badges { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.drawer-close { position: absolute; top: 14px; right: 16px; background: transparent; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; padding: 4px 8px; }
+.drawer-close:hover { color: var(--text); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 16px; }
+.drawer-section { display: flex; flex-direction: column; gap: 6px; }
+.drawer-section h4 { margin: 0; font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 12.5px; }
 .kv .k { color: var(--text-dim); }
-.kv .v { color: var(--text); }
-.kv .v.money { color: #34d399; font-weight: 600; }
-.outreach-controls { background: var(--panel-2); padding: 14px; border-radius: 8px; }
-.outreach-controls label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-weight: 700; }
-.outreach-controls select, .outreach-controls textarea { width: 100%; background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 5px; outline: none; font-family: inherit; }
-.outreach-controls textarea { min-height: 88px; resize: vertical; }
-.outreach-controls .row { margin-bottom: 12px; }
-.outreach-controls .row:last-child { margin-bottom: 0; }
-.outreach-controls .updated { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
-.parcel-list { max-height: 200px; overflow-y: auto; }
-.parcel-list .item { padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px; cursor: pointer; font-size: 12px; }
-.parcel-list .item:hover { border-color: var(--accent); }
-.parcel-list .item .addr { color: var(--text); font-weight: 500; }
-.parcel-list .item .meta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+.kv .v { color: var(--text); word-break: break-word; }
+.kv .v.muted { color: var(--text-dim); font-style: italic; }
+.notes-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 5px; font-size: 12.5px; resize: vertical; min-height: 80px; width: 100%; outline: none; font-family: inherit; }
+.notes-input:focus { border-color: var(--accent); }
+.status-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.status-pills button { padding: 4px 10px; font-size: 11.5px; background: var(--bg); border: 1px solid var(--border); color: var(--text-dim); border-radius: 100px; cursor: pointer; transition: all 0.12s; }
+.status-pills button:hover { color: var(--text); border-color: var(--text-dim); }
+.status-pills button.active { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
+.contact-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; }
+.contact-row .label { color: var(--text-dim); width: 50px; flex-shrink: 0; }
+.contact-row .val { color: var(--text); flex: 1; word-break: break-all; }
+.contact-row .val a { color: var(--accent); }
+.contact-row.dnc-row { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.04); }
+.contact-row .dnc-warn { color: #fca5a5; font-size: 11px; margin-left: 6px; }
+.last-touch { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; }
 
-/* Dedup tab */
-.dedup-card {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-  padding: 16px 18px; margin-bottom: 14px; max-width: 900px;
-}
-.dedup-card .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.dedup-card .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.dedup-card .side { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-.dedup-card .side .label { font-size: 10px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; margin-bottom: 4px; }
-.dedup-card .side .nm { font-weight: 600; color: white; font-size: 13px; }
-.dedup-card .side .mt { color: var(--text-dim); font-size: 11.5px; margin-top: 4px; }
-.dedup-card .stats { color: var(--text-dim); font-size: 11.5px; margin-top: 6px; }
-.dedup-card .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+/* --- Auth gate --- */
+.auth-gate { position: fixed; inset: 0; background: var(--bg); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-gate.hidden { display: none; }
+.auth-gate__box { background: var(--panel); border: 1px solid var(--border); padding: 32px 36px; border-radius: 12px; max-width: 460px; width: 100%; text-align: center; box-shadow: var(--shadow); }
+.auth-gate__brand { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.auth-gate__sub { color: var(--text-dim); margin-bottom: 24px; font-size: 13px; line-height: 1.5; }
+.auth-gate__sub b { color: var(--accent); }
+.auth-gate__btn { background: #fff; color: #222; border: none; padding: 10px 22px; border-radius: 6px; font-weight: 500; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; }
+.auth-gate__btn:hover { background: #f3f4f6; }
+.auth-gate__btn:disabled { opacity: 0.5; cursor: wait; }
+.auth-gate__error { margin-top: 18px; color: #fecaca; font-size: 12.5px; background: rgba(239, 68, 68, 0.08); padding: 10px 14px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3); text-align: left; line-height: 1.5; }
+.auth-gate__error.hidden { display: none; }
 
-/* Outreach summary cards */
-.outreach-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 14px 18px 0; flex-shrink: 0; }
-.outreach-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
-.outreach-card .num { font-size: 22px; font-weight: 700; color: white; }
-.outreach-card .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; font-weight: 600; }
-.outreach-card.researching .num { color: #7dd3fc; }
-.outreach-card.contacted .num { color: #d8b4fe; }
-.outreach-card.demo .num { color: #fcd34d; }
-.outreach-card.trial .num { color: #86efac; }
-.outreach-card.paid .num { color: #6ee7b7; }
-.outreach-card.not_interested .num { color: #fca5a5; }
-.empty-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
-.empty-state .icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+/* --- Import tab --- */
+.import-wrap { padding: 18px; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; max-width: 980px; }
+.import-step { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; }
+.import-step h3 { margin: 0 0 10px 0; font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.import-step h3 .step-num { background: var(--accent); color: #0a1428; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.import-step.disabled { opacity: 0.55; pointer-events: none; }
+.import-step p.help { font-size: 12px; color: var(--text-dim); margin: 0 0 12px 0; line-height: 1.55; }
 
-/* Import Contacts tab */
-.import-shell { padding: 18px; overflow-y: auto; flex: 1; }
-.import-shell > * { max-width: 980px; }
-.dropzone {
-  border: 2px dashed var(--border); border-radius: 12px;
-  padding: 36px 24px; text-align: center;
-  background: var(--panel); color: var(--text-dim);
-  transition: all 0.2s; cursor: pointer;
-}
-.dropzone:hover, .dropzone.drag {
-  border-color: var(--accent); background: rgba(56,189,248,0.06); color: var(--text-soft);
-}
-.dropzone .icon { font-size: 38px; margin-bottom: 6px; opacity: 0.5; }
-.dropzone .hint { font-size: 11.5px; color: var(--text-dim); margin-top: 8px; }
+.dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; color: var(--text-dim); cursor: pointer; transition: all 0.15s; }
+.dropzone:hover { border-color: var(--accent); color: var(--text); background: rgba(56, 189, 248, 0.04); }
+.dropzone.drag-over { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.08); }
+.dropzone .big { font-size: 14px; margin-bottom: 4px; color: var(--text); font-weight: 500; }
+.dropzone .small { font-size: 11.5px; }
 
-.import-step { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-top: 14px; }
-.import-step h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; }
-.import-step .row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-.import-step .row label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; min-width: 110px; }
-.import-step .row select, .import-step .row input { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 5px; outline: none; font-size: 12px; }
-.import-step .row select:focus, .import-step .row input:focus { border-color: var(--accent); }
-.column-map { display: grid; grid-template-columns: 160px 1fr; gap: 8px 12px; margin-top: 8px; }
-.column-map label { color: var(--text-dim); font-size: 11.5px; align-self: center; }
-.column-map select { width: 100%; }
-.import-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-.import-preview .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
-.import-preview .stat .num { font-size: 22px; font-weight: 700; color: white; }
-.import-preview .stat .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; font-weight: 600; }
-.import-preview .stat.matched .num { color: #6ee7b7; }
-.import-preview .stat.unmatched .num { color: #fca5a5; }
-.import-preview .stat.duplicates .num { color: var(--text-dim); }
-.unmatched-list { max-height: 200px; overflow-y: auto; margin-top: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 11.5px; color: var(--text-dim); }
-.unmatched-list .item { padding: 3px 0; border-bottom: 1px solid var(--border); }
-.unmatched-list .item:last-child { border-bottom: none; }
-.import-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+.file-info { display: flex; align-items: center; gap: 12px; background: var(--bg); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; font-size: 12.5px; }
+.file-info .name { color: var(--text); font-weight: 500; flex: 1; }
+.file-info .meta { color: var(--text-dim); }
+.file-info button { background: transparent; border: none; color: var(--text-dim); cursor: pointer; padding: 4px 8px; }
+.file-info button:hover { color: var(--red); }
 
-.import-history { margin-top: 18px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; }
-.import-history h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; font-weight: 700; }
-.import-history .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--text-soft); }
-.import-history .row:last-child { border-bottom: none; }
-.import-history .row .meta { color: var(--text-dim); }
+.vendor-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.vendor-pills button { padding: 6px 14px; font-size: 12.5px; background: var(--bg); border: 1px solid var(--border); color: var(--text-soft); border-radius: 6px; cursor: pointer; }
+.vendor-pills button:hover { border-color: var(--text-dim); color: var(--text); }
+.vendor-pills button.active { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
+.vendor-pills button .auto-tag { color: #0a1428; opacity: 0.6; font-size: 10.5px; margin-left: 5px; }
 
-.contact-list { margin-top: 4px; }
-.contact-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 12px; }
-.contact-row:last-child { border-bottom: none; }
-.contact-row .v { color: var(--text); font-weight: 500; font-family: ui-monospace,SFMono-Regular,monospace; }
-.contact-row .meta { color: var(--text-dim); font-size: 11px; }
-.contact-row .badge-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--panel); color: var(--text-dim); }
-.contact-row .badge-tag.dnc { background: rgba(239,68,68,0.15); color: #fca5a5; }
-.contact-row .badge-tag.high { background: rgba(16,185,129,0.18); color: #6ee7b7; }
-.contact-row .badge-tag.medium { background: rgba(56,189,248,0.18); color: #7dd3fc; }
-.contact-row .badge-tag.low { background: rgba(239,68,68,0.14); color: #fca5a5; }
-.contact-row button.mini { background: none; border: none; color: var(--text-dim); font-size: 10.5px; cursor: pointer; padding: 1px 4px; }
-.contact-row button.mini:hover { color: var(--red); }
+.mapping-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mapping-table th, .mapping-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.mapping-table th { text-align: left; color: var(--text-dim); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+.mapping-table .src { color: var(--text-soft); }
+.mapping-table .tgt { color: var(--text); }
+.mapping-table .unmapped { color: var(--text-dim); font-style: italic; }
+.mapping-table select { width: 100%; }
 
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+.preview-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat-box { background: var(--bg); border: 1px solid var(--border); padding: 12px 14px; border-radius: 6px; }
+.stat-box .v { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1.1; }
+.stat-box .k { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.stat-box.new { border-left: 3px solid var(--green); }
+.stat-box.update { border-left: 3px solid var(--accent); }
+.stat-box.skip { border-left: 3px solid var(--amber); }
+.stat-box.error { border-left: 3px solid var(--red); }
 
+.commit-bar { display: flex; gap: 10px; align-items: center; padding-top: 4px; }
+.commit-bar button { padding: 9px 20px; font-size: 13px; font-weight: 500; }
+
+.progress-bar { width: 100%; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+.progress-bar > div { height: 100%; background: var(--accent); transition: width 0.2s; }
+.progress-text { font-size: 11.5px; color: var(--text-dim); margin-top: 8px; }
+
+.import-result { padding: 14px 16px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #6ee7b7; font-size: 13px; line-height: 1.55; }
+.import-result.error { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+
+/* --- Loading + empty --- */
+.loading-overlay { position: absolute; inset: 0; background: rgba(11, 18, 32, 0.7); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 13px; z-index: 100; }
+.loading-overlay.hidden { display: none; }
+.empty-state { padding: 32px; color: var(--text-dim); text-align: center; font-size: 13px; }
+
+/* --- Toast --- */
 .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--accent); color: var(--text); padding: 10px 18px; border-radius: 7px; z-index: 2000; font-size: 13px; box-shadow: var(--shadow); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 </style>
+
+<!-- Firebase SDK (compat globals) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+(function() {
+  var firebaseConfig = {
+    apiKey: "AIzaSyDhEGGhW8EiBlHHoClukfEXnYExx68_b38",
+    authDomain: "propagentic-crm.firebaseapp.com",
+    projectId: "propagentic-crm",
+    storageBucket: "propagentic-crm.firebasestorage.app",
+    messagingSenderId: "309385337334",
+    appId: "1:309385337334:web:f4ed1db5304b33e6aa0fd7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var ALLOWED_DOMAIN = "propagenticai.com";
+  window.propagenticAuth = { user: null, ready: false };
+
+  function isAllowed(u) {
+    return !!(u && u.email && u.emailVerified
+      && u.email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN));
+  }
+  function showGate(msg) {
+    var g = document.getElementById("auth-gate");
+    if (g) g.classList.remove("hidden");
+    var e = document.getElementById("auth-gate-error");
+    if (e) {
+      if (msg) { e.textContent = msg; e.classList.remove("hidden"); }
+      else { e.classList.add("hidden"); }
+    }
+  }
+  function hideGate() {
+    var g = document.getElementById("auth-gate");
+    if (g) g.classList.add("hidden");
+  }
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (isAllowed(user)) {
+      window.propagenticAuth.user = user;
+      window.propagenticAuth.ready = true;
+      hideGate();
+      if (typeof window.onAuthReady === "function") window.onAuthReady(user);
+    } else if (user) {
+      var badEmail = user.email || "(no email)";
+      firebase.auth().signOut().finally(function() {
+        showGate("Access restricted to @" + ALLOWED_DOMAIN + " accounts. The account " + badEmail + " is not authorized.");
+      });
+    } else {
+      showGate();
+    }
+  });
+  window.signInWithGoogle = function() {
+    var btn = document.getElementById("auth-gate-btn");
+    if (btn) btn.disabled = true;
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ hd: ALLOWED_DOMAIN });
+    firebase.auth().signInWithPopup(provider).catch(function(err) {
+      showGate("Sign-in failed: " + (err.message || err.code || "unknown error"));
+    }).finally(function() { if (btn) btn.disabled = false; });
+  };
+  window.signOutUser = function() {
+    firebase.auth().signOut();
+  };
+})();
+</script>
 </head>
 <body>
 
+<div id="auth-gate" class="auth-gate">
+  <div class="auth-gate__box">
+    <div class="auth-gate__brand">Propagentic CRM</div>
+    <div class="auth-gate__sub">Sign in with your <b>@propagenticai.com</b> Google Workspace account to continue.</div>
+    <button id="auth-gate-btn" class="auth-gate__btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.836.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="auth-gate-error" class="auth-gate__error hidden"></div>
+  </div>
+</div>
+
 <div class="app">
   <header class="top">
-    <h1>Propagentic Parcel Explorer</h1>
+    <h1>Propagentic CRM <span class="tag">v2.0</span></h1>
     <div class="stats">
-      <span><b id="stat-parcels">…</b> parcels</span>
-      <span><b id="stat-owners">…</b> unique owners</span>
-      <span><b id="stat-value">…</b> total appraised</span>
-      <span><b id="stat-target">…</b> matching filters</span>
+      <span><b id="stat-total">…</b>leads</span>
+      <span><b id="stat-filtered">…</b>matching filters</span>
+      <span><b id="stat-status">…</b>in pipeline</span>
     </div>
     <div class="right">
-      <button class="btn" id="btn-export">Export progress</button>
-      <button class="btn" id="btn-import">Import</button>
-      <input id="import-file" type="file" accept="application/json" style="display:none">
+      <span class="user-pill" id="user-pill"></span>
+      <button class="btn btn-danger" onclick="signOutUser()">Sign out</button>
     </div>
   </header>
 
-  <div class="body-area">
-    <aside class="sidebar">
-      <div class="group">
-        <h3>ICP Bucket</h3>
-        <label><input type="radio" name="icp" value="all" checked>All owners</label>
-        <label><input type="radio" name="icp" value="1">ICP-1 · 5–19 parcels</label>
-        <div class="bucket-counts" id="cnt-icp1"></div>
-        <label><input type="radio" name="icp" value="2">ICP-2 · 20–49 parcels</label>
-        <div class="bucket-counts" id="cnt-icp2"></div>
-        <label><input type="radio" name="icp" value="3">ICP-3 cand. · 50–99</label>
-        <div class="bucket-counts" id="cnt-icp3"></div>
-        <label><input type="radio" name="icp" value="4">ICP-4 cand. · 100–500</label>
-        <div class="bucket-counts" id="cnt-icp4"></div>
-        <label><input type="radio" name="icp" value="any-multi">Any 2+ parcels</label>
-        <label><input type="radio" name="icp" value="custom">Custom range:</label>
-        <div class="range-row">
-          <input type="number" id="min-parcels" placeholder="min" min="1">
-          <input type="number" id="max-parcels" placeholder="max" min="1">
+  <div class="body">
+    <aside class="filters">
+      <div class="filter-group">
+        <span class="label">Search</span>
+        <input id="f-search" class="text-input" type="text" placeholder="name, address, email, phone…" />
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Markets</span>
+        <div id="f-markets" class="checkbox-list"></div>
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Status</span>
+        <select id="f-status" class="select-input">
+          <option value="any">All</option>
+          <option value="none">No status (untouched)</option>
+          <option value="researching">Researching</option>
+          <option value="contacted">Contacted</option>
+          <option value="demo_scheduled">Demo Scheduled</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <span class="label">Contact info</span>
+        <span class="sublabel">Has phone</span>
+        <div class="toggle-pills" id="f-phone">
+          <button data-value="any" class="active">Any</button>
+          <button data-value="yes">Yes</button>
+          <button data-value="no">No</button>
+        </div>
+        <span class="sublabel">Has email</span>
+        <div class="toggle-pills" id="f-email">
+          <button data-value="any" class="active">Any</button>
+          <button data-value="yes">Yes</button>
+          <button data-value="no">No</button>
         </div>
       </div>
 
-      <div class="group">
-        <h3>Property Type</h3>
-        <label><input type="radio" name="ptype" value="home" checked>Residential homes only</label>
-        <label><input type="radio" name="ptype" value="res-all">All residential (incl. vacant)</label>
-        <label><input type="radio" name="ptype" value="commercial">Commercial / other</label>
-        <label><input type="radio" name="ptype" value="all">All property types</label>
+      <div class="filter-group">
+        <span class="label">Outreach safety</span>
+        <span class="sublabel">DNC (Do Not Call)</span>
+        <div class="toggle-pills" id="f-dnc">
+          <button data-value="hide" class="active">Hide DNC</button>
+          <button data-value="any">All</button>
+          <button data-value="only">Only DNC</button>
+        </div>
       </div>
 
-      <div class="group">
-        <h3>Ownership</h3>
-        <label><input type="radio" name="own" value="both" checked>All owners</label>
-        <label><input type="radio" name="own" value="local">Local owners only</label>
-        <label><input type="radio" name="own" value="absentee">Absentee owners only</label>
+      <div class="filter-group">
+        <span class="label">Owner type</span>
+        <select id="f-owner-type" class="select-input">
+          <option value="any">All</option>
+          <option value="Individual-Single">Individual — Single</option>
+          <option value="Individual-Joint">Individual — Joint</option>
+        </select>
       </div>
 
-      <div class="group">
-        <h3>Special</h3>
-        <label><input type="checkbox" id="hoa-only">HOA-named entities only</label>
-        <label><input type="checkbox" id="exclude-gov">Exclude gov / utility / metro</label>
+      <div class="filter-group">
+        <span class="label">Absentee owner</span>
+        <div class="toggle-pills" id="f-absentee">
+          <button data-value="any" class="active">Any</button>
+          <button data-value="yes">Yes</button>
+          <button data-value="no">No</button>
+        </div>
       </div>
 
-      <div class="group">
-        <h3>Search</h3>
-        <input type="text" id="search-owner" placeholder="Owner name contains…">
-      </div>
-
-      <div class="group">
-        <h3>Reset</h3>
-        <button class="btn" id="btn-reset" style="width:100%">Clear all filters</button>
-      </div>
+      <button class="filters-reset" onclick="resetFilters()">Reset all filters</button>
     </aside>
 
     <div class="main">
-      <div class="region-bar">
-        <span class="label">Region</span>
-        <div id="region-chips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-      </div>
-
       <div class="tabs">
-        <button class="tab-btn active" data-tab="map">Map</button>
-        <button class="tab-btn" data-tab="owners">Owners <span class="badge" id="owners-count">0</span></button>
-        <button class="tab-btn" data-tab="outreach">Outreach Tracker <span class="badge" id="outreach-count">0</span></button>
-        <button class="tab-btn" data-tab="dedup" id="tab-dedup-btn" style="display:none;">Dedup Review <span class="badge" id="dedup-count">0</span></button>
-        <button class="tab-btn" data-tab="import">Import Contacts</button>
+        <button class="tab active" data-tab="map">Map <span class="badge" id="tab-count-map">0</span></button>
+        <button class="tab" data-tab="list">List <span class="badge" id="tab-count-list">0</span></button>
+        <button class="tab" data-tab="outreach">Outreach <span class="badge" id="tab-count-outreach">0</span></button>
+        <button class="tab" data-tab="import">Import</button>
       </div>
-
-      <div class="tab-panel active" id="tab-map">
-        <div id="map"></div>
-        <div class="layer-toggle">
-          <h4>Map Layers</h4>
-          <label><input type="checkbox" id="lyr-density" checked>Density heatmap</label>
-          <label><input type="checkbox" id="lyr-value">Value heatmap (residential homes)</label>
-          <label><input type="checkbox" id="lyr-markers">Individual parcels (click)</label>
-          <label><input type="checkbox" id="lyr-dark" >Dark basemap</label>
+      <div class="tab-content">
+        <div class="tab-pane active" data-tab="map">
+          <div id="map"></div>
         </div>
-        <div class="map-legend">
-          <div style="font-weight:700;color:white;margin-bottom:6px;">Marker color</div>
-          <div class="legend-row"><span class="dot local"></span><span>Local owner (in-state, same city)</span></div>
-          <div class="legend-row"><span class="dot absentee"></span><span>Absentee owner</span></div>
-          <div class="legend-row"><span class="dot hoa"></span><span>HOA-named entity</span></div>
-          <div style="font-weight:700;color:white;margin:10px 0 4px;">Density heatmap</div>
-          <div class="heat-bar"></div>
-          <div class="legend-label"><span>Sparse</span><span>Dense</span></div>
-          <div style="font-weight:700;color:white;margin:10px 0 4px;">Value heatmap</div>
-          <div class="heat-bar-val"></div>
-          <div class="legend-label"><span>Low</span><span>High</span></div>
-        </div>
-      </div>
-
-      <div class="tab-panel" id="tab-owners">
-        <div class="table-header">
-          <input type="text" class="search" id="owners-search" placeholder="Quick search this table…">
-          <div class="region-select" id="owners-region-filter"></div>
-          <div class="summary">Showing <b id="owners-shown">0</b> of <b id="owners-total">0</b> owners · combined <b id="owners-parcels">0</b> parcels · <b id="owners-value">$0</b></div>
-          <div style="margin-left:auto"><button class="btn" id="btn-export-csv">Export CSV</button></div>
-        </div>
-        <div class="table-wrap">
-          <table class="data" id="owners-table">
-            <thead><tr>
-              <th class="sortable" data-key="status">Status</th>
-              <th class="sortable" data-key="region">Region</th>
-              <th class="sortable sorted-desc" data-key="n">Parcels</th>
-              <th class="sortable" data-key="n_home">Homes</th>
-              <th class="sortable" data-key="total_val">Total appraised</th>
-              <th class="sortable" data-key="owner">Owner</th>
-              <th class="sortable" data-key="state">State</th>
-              <th class="sortable" data-key="icp">ICP</th>
-              <th>Flags</th>
-            </tr></thead>
-            <tbody id="owners-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="tab-panel" id="tab-outreach">
-        <div class="outreach-cards" id="outreach-cards"></div>
-        <div class="table-header" style="margin-top:6px;">
-          <input type="text" class="search" id="outreach-search" placeholder="Quick search tracked owners…">
-          <div class="summary">Tracking <b id="outreach-shown">0</b> owners</div>
-        </div>
-        <div class="table-wrap">
-          <table class="data" id="outreach-table">
-            <thead><tr>
-              <th class="sortable" data-key="status">Status</th>
-              <th class="sortable" data-key="region">Region</th>
-              <th class="sortable" data-key="owner">Owner</th>
-              <th class="sortable" data-key="n">Parcels</th>
-              <th class="sortable" data-key="total_val">Total value</th>
-              <th class="sortable" data-key="ts">Updated</th>
-              <th>Notes</th>
-            </tr></thead>
-            <tbody id="outreach-tbody"></tbody>
-          </table>
-          <div id="outreach-empty" class="empty-state" style="display:none;">
-            <div class="icon">📋</div>
-            <div>No owners tracked yet.</div>
-            <div style="margin-top:6px;font-size:11px;">Open any owner from the Owners tab or click a map marker to add them.</div>
+        <div class="tab-pane" data-tab="list">
+          <div class="list-wrap">
+            <table class="leads-table" id="leads-table">
+              <thead>
+                <tr>
+                  <th data-sort="owner_name">Owner <span class="sort-arrow">↕</span></th>
+                  <th data-sort="property_address">Address <span class="sort-arrow">↕</span></th>
+                  <th data-sort="market">Market <span class="sort-arrow">↕</span></th>
+                  <th data-sort="property_type">Type <span class="sort-arrow">↕</span></th>
+                  <th data-sort="phone">Phone <span class="sort-arrow">↕</span></th>
+                  <th data-sort="email">Email <span class="sort-arrow">↕</span></th>
+                  <th data-sort="crm_status">Status <span class="sort-arrow">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="leads-tbody"></tbody>
+            </table>
+            <div id="list-empty" class="empty-state" style="display:none">No leads match the current filters.</div>
           </div>
         </div>
-      </div>
+        <div class="tab-pane" data-tab="outreach">
+          <div class="kanban" id="kanban"></div>
+        </div>
+        <div class="tab-pane" data-tab="import">
+          <div class="import-wrap">
 
-      <div class="tab-panel" id="tab-import">
-        <div class="import-shell">
-          <h2 style="margin:0 0 6px;font-size:16px;color:white;">Import skip-trace contacts</h2>
-          <p style="margin:0 0 14px;font-size:12px;color:var(--text-dim);max-width:760px;">
-            Upload a CSV from a skip-trace vendor (BatchData, Tracerfy, REISkip, Datazapp, or any custom export).
-            Rows are matched to existing owners by exact name (case-insensitive). Phones and emails are added to the
-            next-available slot per owner — never overwriting existing values. Contact data is saved to your browser
-            (localStorage) only; the underlying database is not modified.
-          </p>
-
-          <div class="dropzone" id="dropzone">
-            <div class="icon">📥</div>
-            <div><b style="color:white;">Drop a CSV here</b> or click to choose</div>
-            <div class="hint">Accepts .csv files up to ~50 MB. XLSX support coming later.</div>
-            <input type="file" id="import-file-input" accept=".csv,text/csv" style="display:none;">
-          </div>
-
-          <div id="import-step1" class="import-step" style="display:none;">
-            <h4>Step 1 · File loaded</h4>
-            <div class="row">
-              <label>File</label><span id="i1-filename" style="color:white;font-weight:500;"></span>
-              <span class="meta" id="i1-meta" style="color:var(--text-dim);font-size:11.5px;"></span>
+            <div class="import-step" id="step-file">
+              <h3><span class="step-num">1</span>Upload lead list</h3>
+              <p class="help">Drop an XLSX or CSV file from DataZapp, BatchData, or any skip-trace source. The file is parsed in your browser — nothing is uploaded anywhere until you click Commit.</p>
+              <div id="dropzone" class="dropzone">
+                <div class="big">Drop XLSX or CSV here</div>
+                <div class="small">…or click to browse</div>
+                <input id="file-input" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
+              </div>
+              <div id="file-info" class="file-info" style="display:none">
+                <span class="name" id="fi-name">—</span>
+                <span class="meta" id="fi-meta">—</span>
+                <button onclick="resetImport()">remove</button>
+              </div>
             </div>
-            <div class="row">
-              <label>Detected vendor</label><span id="i1-vendor" style="color:var(--text);font-weight:500;">—</span>
-            </div>
-            <div class="row">
-              <label>Region</label>
-              <select id="i1-region"></select>
-              <span class="meta">Owners only matched within this region</span>
-            </div>
-          </div>
 
-          <div id="import-step2" class="import-step" style="display:none;">
-            <h4>Step 2 · Column map</h4>
-            <p style="margin:0 0 8px;font-size:11.5px;color:var(--text-dim);">Each schema field below maps to one source column. Defaults come from vendor auto-detection; override any row.</p>
-            <div class="column-map" id="i2-map"></div>
-          </div>
+            <div class="import-step disabled" id="step-vendor">
+              <h3><span class="step-num">2</span>Source format</h3>
+              <p class="help">We try to auto-detect the source based on column names. Override if needed.</p>
+              <div id="vendor-pills" class="vendor-pills">
+                <button data-vendor="datazapp">DataZapp</button>
+                <button data-vendor="batchdata">BatchData</button>
+                <button data-vendor="manual">Manual / custom</button>
+              </div>
+            </div>
 
-          <div id="import-step3" class="import-step" style="display:none;">
-            <h4>Step 3 · Preview</h4>
-            <div class="import-preview">
-              <div class="stat matched"><div class="num" id="i3-matched">0</div><div class="label">Matched</div></div>
-              <div class="stat unmatched"><div class="num" id="i3-unmatched">0</div><div class="label">Unmatched</div></div>
-              <div class="stat duplicates"><div class="num" id="i3-already">0</div><div class="label">Already present</div></div>
+            <div class="import-step disabled" id="step-mapping">
+              <h3><span class="step-num">3</span>Column mapping</h3>
+              <p class="help">Source columns on the left mapped to schema fields on the right. Auto-applied for known vendors. Edit any row if needed.</p>
+              <table class="mapping-table">
+                <thead><tr><th>Source column</th><th>Maps to schema field</th></tr></thead>
+                <tbody id="mapping-tbody"></tbody>
+              </table>
             </div>
-            <div id="i3-unmatched-list-wrap" style="display:none;">
-              <p style="margin:12px 0 4px;font-size:11.5px;color:var(--text-dim);">First 50 unmatched owner names (consider checking name spelling or whether the right region was selected):</p>
-              <div class="unmatched-list" id="i3-unmatched-list"></div>
-            </div>
-            <div class="import-actions">
-              <button class="btn" id="i3-cancel">Cancel</button>
-              <button class="btn primary" id="i3-commit">Commit</button>
-            </div>
-          </div>
 
-          <div class="import-history">
-            <h4>Recent imports (saved in browser)</h4>
-            <div id="import-history-list"><div style="color:var(--text-dim);font-size:11.5px;">No imports yet.</div></div>
+            <div class="import-step disabled" id="step-preview">
+              <h3><span class="step-num">4</span>Preview</h3>
+              <div class="preview-stats" id="preview-stats"></div>
+            </div>
+
+            <div class="import-step disabled" id="step-commit">
+              <h3><span class="step-num">5</span>Commit to Firestore</h3>
+              <p class="help">Each new lead is geocoded (1 Google Maps call per address) then upserted. Existing leads matching by property address are updated in-place; their outreach status &amp; notes are preserved.</p>
+              <div class="commit-bar">
+                <button class="btn btn-primary" id="btn-commit" onclick="commitImport()">Commit import</button>
+                <span id="commit-status" style="font-size:12px;color:var(--text-dim)"></span>
+              </div>
+              <div id="progress-wrap" style="display:none">
+                <div class="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
+                <div class="progress-text" id="progress-text">—</div>
+              </div>
+              <div id="import-result" style="display:none"></div>
+            </div>
+
           </div>
         </div>
-      </div>
-
-      <div class="tab-panel" id="tab-dedup">
-        <div class="table-header">
-          <div class="summary"><b id="dedup-region-label"></b> · <b id="dedup-pending">0</b> pending pairs · <b id="dedup-resolved">0</b> resolved</div>
-          <div style="margin-left:auto;display:flex;gap:8px;">
-            <button class="btn" id="btn-dedup-clear">Clear local decisions</button>
-          </div>
-        </div>
-        <div class="table-wrap" id="dedup-list"></div>
+        <div id="loading-overlay" class="loading-overlay">Loading leads…</div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="drawer-backdrop" id="drawer-backdrop"></div>
-<div class="drawer" id="drawer">
+<div id="drawer" class="drawer">
+  <button class="drawer-close" onclick="closeDrawer()">×</button>
   <div class="drawer-head">
-    <button class="close" id="drawer-close">×</button>
-    <div class="owner" id="d-owner"></div>
-    <div class="meta" id="d-meta"></div>
+    <div class="name" id="drawer-name">—</div>
+    <div class="sub" id="drawer-sub">—</div>
+    <div class="badges" id="drawer-badges"></div>
   </div>
   <div class="drawer-body" id="drawer-body"></div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="toast" class="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <script>
-// =========================================================================
-// Embedded data — DATA.regions = [{id, name, state, county, lat, lon, owners[], parcels[], dedup_queue[]}, ...]
-// =========================================================================
-const DATA = {"regions":[{"id":"baltimore_md","display_name":"Baltimore County","state":"MD","county":"Baltimore","center_lat":39.4015,"center_lon":-76.6019,"notes":null,"owner_count":249601,"parcel_count":350352,"dedup_count":165,"owners":[],"parcels":[],"dedup_queue":[]},{"id":"fayette_ky","display_name":"Lexington / Fayette","state":"KY","county":"Fayette","center_lat":38.0406,"center_lon":-84.5037,"notes":"Fayette/Lexington source files (LFUCG GIS) do not include owner names or mailing data. Owners are synthesized as 'PVA #<num>' placeholders — owner-centric filters (ICP / value / absentee) are degraded for this region until skip-trace data is imported.","owner_count":114024,"parcel_count":114183,"dedup_count":0,"owners":[],"parcels":[],"dedup_queue":[]},{"id":"nashville_tn","display_name":"Nashville","state":"TN","county":"Davidson","center_lat":36.1627,"center_lon":-86.7816,"notes":null,"owner_count":226615,"parcel_count":286448,"dedup_count":110,"owners":[],"parcels":[],"dedup_queue":[]}],"lazy":true};
-const LAZY = DATA.lazy === true;         // multi-file build (data fetched on demand)
-const REGIONS = DATA.regions;            // array of region objects
-const REGION_BY_ID = Object.fromEntries(REGIONS.map(r => [r.id, r]));
-const REGION_LOADED = {};                // {regionId: true} once data populated
+// ===========================================================================
+// Propagentic CRM v2.0 — main app
+// ===========================================================================
 
-async function ensureRegionLoaded(regionId) {
-  if (REGION_LOADED[regionId]) return;
-  if (!LAZY) { REGION_LOADED[regionId] = true; return; }
-  const r = REGION_BY_ID[regionId];
-  if (r._loading) return r._loading;
-  r._loading = (async () => {
-    setGlobalLoading(true, `Loading ${r.display_name}…`);
-    try {
-      const resp = await fetch(`data/${regionId}.json`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      r.owners      = data.owners      || [];
-      r.parcels     = data.parcels     || [];
-      r.dedup_queue = data.dedup_queue || [];
-      REGION_LOADED[regionId] = true;
-    } catch (err) {
-      console.error(`Failed to load ${regionId}:`, err);
-      showToast(`Failed to load ${r.display_name}: ${err.message}`);
-    } finally {
-      setGlobalLoading(false);
-      delete r._loading;
-    }
-  })();
-  return r._loading;
-}
-
-function setGlobalLoading(on, msg) {
-  let el = document.getElementById('global-loading');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'global-loading';
-    el.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);color:var(--text);padding:8px 16px;border-radius:18px;font-size:12px;z-index:3000;box-shadow:var(--shadow);display:none;';
-    document.body.appendChild(el);
-  }
-  if (on) { el.textContent = msg || 'Loading…'; el.style.display = ''; }
-  else    { el.style.display = 'none'; }
-}
-
-// owner-count helper that works pre-load (uses manifest counts when needed)
-function regionOwnerCount(r) {
-  return r.owners.length > 0 ? r.owners.length : (r.owner_count || 0);
-}
-
-// Compact owner/parcel field layouts (positional arrays, matches legacy app)
-const O = { name:0, n:1, n_home:2, n_vacant_res:3, n_commercial:4, total_val:5, home_val:6, state:7, city:8, zip:9, addr:10, icp:11, is_hoa:12, absentee_pct:13 };
-const P = { lat:0, lon:1, owner_id:2, addr:3, total_val:4, sale_date:5, sale_price:6, acres:7, zoning:8, district:9, property_type:10, absentee:11, land_use:12, apn:13 };
-const PT_HOME = 0, PT_VACANT = 1, PT_COMMERCIAL = 2;
-
-// "Current region" view of OWNERS / PARCELS — swapped when region chip is clicked
-let CURRENT_REGION = REGIONS[0]?.id;
-let OWNERS = REGION_BY_ID[CURRENT_REGION].owners;
-let PARCELS = REGION_BY_ID[CURRENT_REGION].parcels;
-
-const REGION_BADGE_CLASS = {
-  nashville_tn: 'region-nash',
-  baltimore_md: 'region-bal',
-  fayette_ky:   'region-fay',
+const STATUSES = ["researching", "contacted", "demo_scheduled", "paid"];
+const STATUS_LABELS = {
+  researching: "Researching",
+  contacted: "Contacted",
+  demo_scheduled: "Demo Scheduled",
+  paid: "Paid",
 };
-const REGION_SHORT = {
-  nashville_tn: 'NSH',
-  baltimore_md: 'BAL',
-  fayette_ky:   'LEX',
-};
+function statusLabel(s) { return STATUS_LABELS[s] || s; }
 
-// =========================================================================
-// State
-// =========================================================================
-const STATE = {
+// Mutable app state
+const state = {
+  leads: new Map(),          // doc_id -> lead doc
   filters: {
-    icp: 'all',
-    custom_min: null,
-    custom_max: null,
-    ptype: 'home',
-    own: 'both',
-    hoa_only: false,
-    exclude_gov: false,
-    search: '',
+    search: "",
+    markets: new Set(),      // selected market keys; empty = all
+    status: "any",
+    phone: "any",
+    email: "any",
+    dnc: "hide",
+    owner_type: "any",
+    absentee: "any",
   },
-  layers: { density: true, value: false, markers: false, dark: false },
-  tab: 'map',
-  selectedOwnerId: null,
-  ownersRegionFilter: new Set(REGIONS.map(r => r.id)),  // all on by default
+  sort: { key: "owner_name", dir: 1 },  // 1 asc, -1 desc
+  activeTab: "map",
+  selectedId: null,
 };
 
-const OUTREACH_KEY = 'propagentic_outreach_v2';   // bumped from v1 for multi-region keys
-const DEDUP_KEY = 'propagentic_dedup_decisions_v1';
-const STATUSES = [
-  { id: 'new', label: 'New' },
-  { id: 'researching', label: 'Researching' },
-  { id: 'contacted', label: 'Contacted' },
-  { id: 'demo', label: 'Demo scheduled' },
-  { id: 'trial', label: 'In trial' },
-  { id: 'paid', label: 'Paid customer' },
-  { id: 'not_interested', label: 'Not interested' },
-];
-const STATUS_LABEL = Object.fromEntries(STATUSES.map(s => [s.id, s.label]));
-
-let OUTREACH = loadOutreach();
-let DEDUP_DECISIONS = loadDedup();
-let CONTACTS = loadContacts();           // {(region::name): {phones:[], emails:[], source, ts}}
-let IMPORT_HISTORY = loadImports();      // [{filename, vendor, region, ts, matched, unmatched, ...}]
-
-function loadOutreach() {
-  try { return JSON.parse(localStorage.getItem(OUTREACH_KEY) || '{}'); }
-  catch { return {}; }
-}
-function saveOutreach() { localStorage.setItem(OUTREACH_KEY, JSON.stringify(OUTREACH)); }
-function outreachKey(regionId, ownerName) { return `${regionId}::${ownerName}`; }
-function getOutreach(regionId, ownerName) { return OUTREACH[outreachKey(regionId, ownerName)] || null; }
-
-function loadDedup() {
-  try { return JSON.parse(localStorage.getItem(DEDUP_KEY) || '{}'); }
-  catch { return {}; }
-}
-function saveDedup() { localStorage.setItem(DEDUP_KEY, JSON.stringify(DEDUP_DECISIONS)); }
-function dedupPairKey(regionId, pair) { return `${regionId}::${pair.a_oid}::${pair.b_oid}`; }
-
-const CONTACTS_KEY = 'propagentic_contacts_v1';
-const IMPORTS_KEY = 'propagentic_imports_v1';
-function loadContacts() {
-  try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '{}'); }
-  catch { return {}; }
-}
-function saveContacts() { localStorage.setItem(CONTACTS_KEY, JSON.stringify(CONTACTS)); }
-function contactKey(regionId, ownerName) { return `${regionId}::${ownerName}`; }
-function getContacts(regionId, ownerName) { return CONTACTS[contactKey(regionId, ownerName)] || null; }
-function loadImports() {
-  try { return JSON.parse(localStorage.getItem(IMPORTS_KEY) || '[]'); }
-  catch { return []; }
-}
-function saveImports() { localStorage.setItem(IMPORTS_KEY, JSON.stringify(IMPORT_HISTORY)); }
+// Map state
+let map, markerCluster, markersById = new Map();
 
 // =========================================================================
-// Helpers
+// Initialization (after auth resolves)
 // =========================================================================
-const GOV_PATTERNS = ['METRO GOV', 'STATE OF', 'METROPOLITAN GOV', 'METRO NASHVILLE', 'MDHA', 'TENNESSEE VALLEY AUTHORITY', 'TVA', 'CITY OF', 'COUNTY OF', 'METROPOLITAN NASHVILLE', 'UNITED STATES', 'U S A', 'U.S.A', 'FEDERAL', 'POWER BOARD', 'WATER & SEWER', 'AIRPORT AUTHORITY', 'TRANSIT AUTH', 'PARKS', 'BOARD OF EDUC', 'BALTIMORE COUNTY', 'BALTIMORE CITY', 'MARYLAND ', 'STATE HIGHWAY', 'LFUCG', 'LEXINGTON FAYETTE'];
-function isGov(name) {
-  const up = (name || '').toUpperCase();
-  return GOV_PATTERNS.some(p => up.includes(p));
-}
-
-function fmt$(v) { if (v == null || isNaN(v)) return '—'; return '$' + Math.round(v).toLocaleString(); }
-function fmtN(v) { if (v == null) return '—'; return v.toLocaleString(); }
-function fmtAcres(v) { if (v == null) return '—'; return v.toFixed(2) + ' ac'; }
-function fmtAbbr(v) {
-  if (v == null) return '—';
-  if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
-  if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
-  if (v >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
-  return '$' + v;
-}
-function icpTag(icp) {
-  const labels = { 0:'<5', 1:'ICP-1', 2:'ICP-2', 3:'ICP-3', 4:'ICP-4', 5:'500+' };
-  return `<span class="tag icp${icp}">${labels[icp]}</span>`;
-}
-function regionTag(regionId) {
-  return `<span class="tag ${REGION_BADGE_CLASS[regionId] || ''}">${REGION_SHORT[regionId] || regionId}</span>`;
-}
-
-function escapeHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
-}
-
-// =========================================================================
-// Filtering (operates on the CURRENT region's OWNERS / PARCELS for map view;
-// see renderOwnersTable for the cross-region view).
-// =========================================================================
-function ownerMatchesFilters(o) {
-  const f = STATE.filters;
-  const n = o[O.n], icp = o[O.icp], isHoa = o[O.is_hoa], abPct = o[O.absentee_pct];
-  if (f.icp === '1' && icp !== 1) return false;
-  if (f.icp === '2' && icp !== 2) return false;
-  if (f.icp === '3' && icp !== 3) return false;
-  if (f.icp === '4' && icp !== 4) return false;
-  if (f.icp === 'any-multi' && n < 2) return false;
-  if (f.icp === 'custom') {
-    if (f.custom_min != null && n < f.custom_min) return false;
-    if (f.custom_max != null && n > f.custom_max) return false;
-  }
-  if (f.ptype === 'home' && o[O.n_home] === 0) return false;
-  if (f.ptype === 'res-all' && (o[O.n_home] + o[O.n_vacant_res]) === 0) return false;
-  if (f.ptype === 'commercial' && o[O.n_commercial] === 0) return false;
-  if (f.own === 'local' && abPct > 0.5) return false;
-  if (f.own === 'absentee' && abPct < 0.5) return false;
-  if (f.hoa_only && !isHoa) return false;
-  if (f.exclude_gov && isGov(o[O.name])) return false;
-  if (f.search && !o[O.name].toUpperCase().includes(f.search.toUpperCase())) return false;
-  return true;
-}
-
-function parcelMatchesFilters(p, ownerOK) {
-  const f = STATE.filters;
-  if (!ownerOK[p[P.owner_id]]) return false;
-  const pt = p[P.property_type];
-  if (f.ptype === 'home' && pt !== PT_HOME) return false;
-  if (f.ptype === 'res-all' && pt === PT_COMMERCIAL) return false;
-  if (f.ptype === 'commercial' && pt !== PT_COMMERCIAL) return false;
-  if (f.own === 'local' && p[P.absentee]) return false;
-  if (f.own === 'absentee' && !p[P.absentee]) return false;
-  return true;
-}
-
-function computeFilterSet() {
-  const ownerOK = new Uint8Array(OWNERS.length);
-  let okOwnerCount = 0;
-  for (let i = 0; i < OWNERS.length; i++) {
-    if (ownerMatchesFilters(OWNERS[i])) { ownerOK[i] = 1; okOwnerCount++; }
-  }
-  return { ownerOK, okOwnerCount };
-}
+window.onAuthReady = function(user) {
+  document.getElementById("user-pill").textContent = user.email;
+  initMap();
+  subscribeToLeads();
+  attachFilterHandlers();
+  attachTabHandlers();
+  attachImportHandlers();
+};
 
 // =========================================================================
 // Map
 // =========================================================================
-let map, basemap, basemapDark, densityLayer, valueLayer, markerCluster;
-
 function initMap() {
-  const r = REGION_BY_ID[CURRENT_REGION];
-  map = L.map('map', { preferCanvas: true }).setView([r.center_lat, r.center_lon], 11);
-  basemap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19, attribution: '© OpenStreetMap, © CARTO',
+  map = L.map("map", { zoomControl: true }).setView([37.5, -83.0], 6);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
   }).addTo(map);
-  basemapDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19, attribution: '© OpenStreetMap, © CARTO',
-  });
-  densityLayer = L.heatLayer([], {
-    radius: 14, blur: 16, maxZoom: 16, max: 1.0, minOpacity: 0.32,
-    gradient: { 0.05:'#1e3a8a', 0.15:'#0ea5e9', 0.3:'#14b8a6', 0.5:'#84cc16', 0.7:'#facc15', 0.85:'#f97316', 1.0:'#ef4444' },
-  }).addTo(map);
-  valueLayer = L.heatLayer([], {
-    radius: 16, blur: 18, maxZoom: 16, max: 1.0, minOpacity: 0.3,
-    gradient: { 0.05:'#1e1b4b', 0.2:'#6d28d9', 0.4:'#db2777', 0.6:'#f59e0b', 0.85:'#fde047', 1.0:'#ffffff' },
-  });
   markerCluster = L.markerClusterGroup({
-    chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true, showCoverageOnHover: false,
-    disableClusteringAtZoom: 17,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 50,
   });
+  map.addLayer(markerCluster);
 }
 
-function rebuildMap() {
-  const { ownerOK } = computeFilterSet();
-  const dens = [], val = [];
-  const wantMarkers = STATE.layers.markers;
-  if (wantMarkers) markerCluster.clearLayers();
-
-  let visibleParcels = [];
-  for (let i = 0; i < PARCELS.length; i++) {
-    const p = PARCELS[i];
-    if (!parcelMatchesFilters(p, ownerOK)) continue;
-    visibleParcels.push(p);
+function rebuildMapMarkers(filteredLeads) {
+  if (!markerCluster) return;
+  markerCluster.clearLayers();
+  markersById.clear();
+  const bounds = [];
+  for (const lead of filteredLeads) {
+    if (lead.property_lat == null || lead.property_lon == null) continue;
+    const cls = lead.crm_status ? "lead-marker has-status" : (lead.dnc ? "lead-marker dnc" : "lead-marker");
+    const icon = L.divIcon({
+      className: cls,
+      iconSize: [12, 12],
+      html: "",
+    });
+    const m = L.marker([lead.property_lat, lead.property_lon], { icon, leadId: lead._id });
+    m.bindPopup(makePopupHtml(lead));
+    m.on("click", () => openDrawer(lead._id));
+    markerCluster.addLayer(m);
+    markersById.set(lead._id, m);
+    bounds.push([lead.property_lat, lead.property_lon]);
   }
-
-  const vals = visibleParcels.filter(p => p[P.property_type] === PT_HOME && p[P.total_val] > 0).map(p => p[P.total_val]).sort((a,b) => a-b);
-  const capIdx = Math.floor(vals.length * 0.95);
-  const capVal = vals.length ? Math.max(vals[capIdx] || vals[vals.length-1], 1) : 1;
-
-  const cellCounts = new Map();
-  if (STATE.layers.density) {
-    for (const p of visibleParcels) {
-      const key = (Math.round(p[P.lat]*1000)/1000) + ',' + (Math.round(p[P.lon]*1000)/1000);
-      cellCounts.set(key, (cellCounts.get(key) || 0) + 1);
-    }
+  if (bounds.length > 0 && state.filters.markets.size > 0) {
+    try { map.fitBounds(bounds, { padding: [30, 30], maxZoom: 13 }); } catch(e) {}
   }
-  const maxCell = Math.max(1, ...cellCounts.values());
-  const logMaxCell = Math.log(maxCell + 1);
-
-  const markersToAdd = [];
-  for (const p of visibleParcels) {
-    if (STATE.layers.density) {
-      const key = (Math.round(p[P.lat]*1000)/1000) + ',' + (Math.round(p[P.lon]*1000)/1000);
-      const w = Math.log((cellCounts.get(key) || 1) + 1) / logMaxCell;
-      dens.push([p[P.lat], p[P.lon], w]);
-    }
-    if (STATE.layers.value && p[P.property_type] === PT_HOME && p[P.total_val] > 0) {
-      const w = Math.min(1, p[P.total_val] / capVal);
-      val.push([p[P.lat], p[P.lon], Math.pow(w, 0.6)]);
-    }
-    if (wantMarkers) markersToAdd.push(buildMarker(p));
-  }
-  densityLayer.setLatLngs(dens);
-  valueLayer.setLatLngs(val);
-  if (wantMarkers && markersToAdd.length) markerCluster.addLayers(markersToAdd);
-
-  toggleLayer(densityLayer, STATE.layers.density);
-  toggleLayer(valueLayer, STATE.layers.value);
-  toggleLayer(markerCluster, STATE.layers.markers);
-
-  if (STATE.layers.dark) {
-    if (map.hasLayer(basemap)) map.removeLayer(basemap);
-    if (!map.hasLayer(basemapDark)) basemapDark.addTo(map);
-  } else {
-    if (map.hasLayer(basemapDark)) map.removeLayer(basemapDark);
-    if (!map.hasLayer(basemap)) basemap.addTo(map);
-  }
-  return visibleParcels.length;
 }
-
-function toggleLayer(layer, on) {
-  if (on && !map.hasLayer(layer)) layer.addTo(map);
-  if (!on && map.hasLayer(layer)) map.removeLayer(layer);
-}
-
-function buildMarker(p) {
-  const owner = OWNERS[p[P.owner_id]];
-  const isHoa = owner ? owner[O.is_hoa] : false;
-  const color = isHoa ? '#a78bfa' : (p[P.absentee] ? '#ef4444' : '#10b981');
-  const icon = L.divIcon({
-    html: `<div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>`,
-    className: '', iconSize: [14,14], iconAnchor: [7,7],
-  });
-  const m = L.marker([p[P.lat], p[P.lon]], { icon });
-  m.bindPopup(() => buildPopup(p), { maxWidth: 360 });
-  return m;
-}
-
-function buildPopup(p) {
-  const owner = OWNERS[p[P.owner_id]];
-  const ownerName = owner ? owner[O.name] : '(unknown)';
-  const ownerN = owner ? owner[O.n] : '';
-  const icp = owner ? owner[O.icp] : 0;
-  const isHoa = owner ? owner[O.is_hoa] : false;
-  const rec = getOutreach(CURRENT_REGION, ownerName);
-  const status = rec?.status || 'new';
-  const ownerLoc = owner ? [owner[O.city], owner[O.state], owner[O.zip]].filter(Boolean).join(', ') : '';
-  const ownerAddr = owner ? owner[O.addr] : '';
-  const saleLine = p[P.sale_date]
-    ? `${p[P.sale_date]}${p[P.sale_price] ? ' · ' + fmt$(p[P.sale_price]) : ''}`
-    : '—';
-
-  let badges = `${regionTag(CURRENT_REGION)} ${icpTag(icp)}`;
-  if (isHoa) badges += ' <span class="popup-badge hoa">HOA</span>';
-  if (p[P.absentee]) badges += ' <span class="popup-badge absent">Absentee</span>';
-  const contacts = getContacts(CURRENT_REGION, ownerName);
-  if (contacts) {
-    if (contacts.phones?.length) badges += ` <span class="popup-badge" style="background:rgba(16,185,129,0.18);color:#6ee7b7;">📞 ${contacts.phones.length}</span>`;
-    if (contacts.emails?.length) badges += ` <span class="popup-badge" style="background:rgba(56,189,248,0.18);color:#7dd3fc;">✉ ${contacts.emails.length}</span>`;
-  }
-  const ownerStat = ownerN ? `<span style="color:rgba(255,255,255,0.8);font-size:11px;">owns ${ownerN} ${ownerN === 1 ? 'parcel' : 'parcels'}</span>` : '';
-
-  return `
-<div class="parcel-popup">
-  <div class="head">
-    <div class="name">${escapeHtml(ownerName)}</div>
-    <div class="addr">${escapeHtml(p[P.addr] || '(no parcel address)')}</div>
-    <div style="margin-top:6px;">${badges} ${ownerStat}</div>
-  </div>
-  <div class="body">
-    <table>
-      <tr><td class="k">Land use</td><td class="v">${escapeHtml(p[P.land_use] || '—')}</td></tr>
-      <tr><td class="k">Total appraised</td><td class="v money">${fmt$(p[P.total_val])}</td></tr>
-      <tr><td class="k">Last sale</td><td class="v">${saleLine}</td></tr>
-      <tr><td class="k">Acreage</td><td class="v">${fmtAcres(p[P.acres])}</td></tr>
-      <tr><td class="k">Zoning</td><td class="v">${escapeHtml(p[P.zoning] || '—')}</td></tr>
-      <tr><td class="k">District</td><td class="v">${p[P.district] ?? '—'}</td></tr>
-      <tr><td class="k">Owner mails to</td><td class="v">${escapeHtml(ownerAddr || '—')}${ownerLoc ? '<br><span style="color:var(--text-dim);font-size:11px;">'+escapeHtml(ownerLoc)+'</span>' : ''}</td></tr>
-      <tr><td class="k">APN / ID</td><td class="v" style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;color:var(--text-dim);">${escapeHtml(p[P.apn] || '—')}</td></tr>
-      <tr><td class="k">Outreach</td><td class="v"><span class="status-pill status-${status}">${STATUS_LABEL[status]}</span></td></tr>
-    </table>
-  </div>
-  <div class="actions">
-    <button class="btn primary" onclick="openOwnerDrawer('${CURRENT_REGION}', ${p[P.owner_id]})">View owner & track outreach →</button>
-  </div>
-</div>`;
+function makePopupHtml(lead) {
+  return `<h4>${escapeHtml(lead.owner_name || "(no name)")}</h4>
+    <div class="pop-meta">${escapeHtml(lead.property_address || "")}, ${escapeHtml(lead.property_city || "")}</div>
+    <div class="pop-meta">${escapeHtml(formatMarket(lead.market))}</div>
+    <button onclick="openDrawer('${lead._id}')">View details</button>`;
 }
 
 // =========================================================================
-// Owners table — cross-region
+// Firestore subscription
 // =========================================================================
-const ownersSort = { key: 'n', dir: -1 };
+function subscribeToLeads() {
+  const db = firebase.firestore();
+  db.collection("leads").onSnapshot((snap) => {
+    snap.docChanges().forEach((ch) => {
+      if (ch.type === "removed") {
+        state.leads.delete(ch.doc.id);
+      } else {
+        const d = ch.doc.data();
+        d._id = ch.doc.id;
+        state.leads.set(ch.doc.id, d);
+      }
+    });
+    document.getElementById("loading-overlay").classList.add("hidden");
+    renderAll();
+  }, (err) => {
+    console.error("leads snapshot error", err);
+    showToast("Failed to load leads: " + err.message);
+  });
+}
 
-async function renderOwnersTable() {
-  // In lazy mode, ensure all selected regions are loaded before iterating.
-  if (LAZY) {
-    const wanted = [...STATE.ownersRegionFilter].filter(r => !REGION_LOADED[r]);
-    if (wanted.length) {
-      const tbody = document.getElementById('owners-tbody');
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-dim);padding:24px;">Loading ' + wanted.length + ' region(s)…</td></tr>';
-      await Promise.all(wanted.map(r => ensureRegionLoaded(r)));
+// =========================================================================
+// Filtering
+// =========================================================================
+function applyFilters(leads) {
+  const f = state.filters;
+  const q = f.search.trim().toLowerCase();
+  const out = [];
+  for (const lead of leads) {
+    if (q) {
+      const blob = [
+        lead.owner_name, lead.property_address, lead.property_city,
+        lead.email, lead.phone, lead.mailing_address, lead.mailing_city,
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (!blob.includes(q)) continue;
     }
+    if (f.markets.size > 0 && !f.markets.has(lead.market)) continue;
+    if (f.status === "none" && lead.crm_status) continue;
+    if (STATUSES.includes(f.status) && lead.crm_status !== f.status) continue;
+    if (f.phone === "yes" && !lead.phone) continue;
+    if (f.phone === "no" && lead.phone) continue;
+    if (f.email === "yes" && !lead.email) continue;
+    if (f.email === "no" && lead.email) continue;
+    if (f.dnc === "hide" && lead.dnc === true) continue;
+    if (f.dnc === "only" && lead.dnc !== true) continue;
+    if (f.owner_type !== "any" && lead.owner_type !== f.owner_type) continue;
+    if (f.absentee === "yes" && lead.absentee !== true) continue;
+    if (f.absentee === "no" && lead.absentee === true) continue;
+    out.push(lead);
   }
-  const sortKey = ownersSort.key;
-  const dir = ownersSort.dir;
-  const searchTxt = (document.getElementById('owners-search').value || '').toUpperCase();
+  return out;
+}
 
-  // Walk every region the user has selected; apply current filters per region.
-  let rows = [];   // array of {region, idx, o}
-  let totalOwners = 0;
-  for (const r of REGIONS) {
-    if (!STATE.ownersRegionFilter.has(r.id)) continue;
-    totalOwners += r.owners.length;
-    // Filtering for owners list uses the same predicate as the map but against
-    // *this* region's OWNERS array (not necessarily CURRENT_REGION's).
-    const savedOwners = OWNERS;
-    OWNERS = r.owners;
-    for (let i = 0; i < r.owners.length; i++) {
-      if (!ownerMatchesFilters(r.owners[i])) continue;
-      if (searchTxt && !r.owners[i][O.name].toUpperCase().includes(searchTxt)) continue;
-      rows.push({ region: r.id, idx: i, o: r.owners[i] });
-    }
-    OWNERS = savedOwners;
-  }
-
-  rows.sort((a, b) => {
-    const oa = a.o, ob = b.o;
-    let av, bv;
-    if (sortKey === 'owner') { av = oa[O.name]; bv = ob[O.name]; }
-    else if (sortKey === 'n') { av = oa[O.n]; bv = ob[O.n]; }
-    else if (sortKey === 'n_home') { av = oa[O.n_home]; bv = ob[O.n_home]; }
-    else if (sortKey === 'total_val') { av = oa[O.total_val]; bv = ob[O.total_val]; }
-    else if (sortKey === 'state') { av = oa[O.state] || ''; bv = ob[O.state] || ''; }
-    else if (sortKey === 'icp') { av = oa[O.icp]; bv = ob[O.icp]; }
-    else if (sortKey === 'region') { av = a.region; bv = b.region; }
-    else if (sortKey === 'status') {
-      av = getOutreach(a.region, oa[O.name])?.status || 'new';
-      bv = getOutreach(b.region, ob[O.name])?.status || 'new';
-    }
+function applySort(leads) {
+  const { key, dir } = state.sort;
+  const safe = v => v == null ? "" : String(v).toLowerCase();
+  return leads.slice().sort((a, b) => {
+    const av = safe(a[key]); const bv = safe(b[key]);
     if (av < bv) return -1 * dir;
-    if (av > bv) return  1 * dir;
+    if (av > bv) return 1 * dir;
     return 0;
   });
-
-  const MAX_RENDER = 2000;
-  const renderRows = rows.slice(0, MAX_RENDER);
-  let totalParcels = 0, totalValue = 0;
-  rows.forEach(({o}) => { totalParcels += o[O.n]; totalValue += o[O.total_val]; });
-
-  const tbody = document.getElementById('owners-tbody');
-  tbody.innerHTML = renderRows.map(({region, idx, o}) => {
-    const rec = getOutreach(region, o[O.name]);
-    const status = rec?.status || 'new';
-    let flags = '';
-    if (o[O.is_hoa]) flags += '<span class="tag hoa">HOA</span> ';
-    if (isGov(o[O.name])) flags += '<span class="tag" style="background:#1f2c4d;color:#94a3b8;">GOV</span> ';
-    if (o[O.absentee_pct] > 0.5) flags += '<span class="tag absent">Absentee</span> ';
-    const c = getContacts(region, o[O.name]);
-    if (c?.phones?.length) flags += `<span class="tag" style="background:rgba(16,185,129,0.16);color:#6ee7b7;">📞 ${c.phones.length}</span> `;
-    if (c?.emails?.length) flags += `<span class="tag region-nash">✉ ${c.emails.length}</span> `;
-    return `<tr data-region="${region}" data-oid="${idx}">
-      <td><span class="status-pill status-${status}">${STATUS_LABEL[status]}</span></td>
-      <td>${regionTag(region)}</td>
-      <td class="right"><b>${o[O.n]}</b></td>
-      <td class="right">${o[O.n_home]}</td>
-      <td class="right money">${fmtAbbr(o[O.total_val])}</td>
-      <td class="owner-name">${escapeHtml(o[O.name])}</td>
-      <td>${escapeHtml(o[O.state] || '—')}</td>
-      <td>${icpTag(o[O.icp])}</td>
-      <td>${flags || '<span style="color:var(--text-dim);">—</span>'}</td>
-    </tr>`;
-  }).join('');
-
-  if (rows.length > MAX_RENDER) {
-    tbody.insertAdjacentHTML('beforeend',
-      `<tr><td colspan="9" style="text-align:center;color:var(--text-dim);font-style:italic;">
-        Showing first ${MAX_RENDER.toLocaleString()} of ${rows.length.toLocaleString()} matching owners — narrow filters to see more.
-      </td></tr>`);
-  }
-
-  document.getElementById('owners-shown').textContent = rows.length.toLocaleString();
-  document.getElementById('owners-total').textContent = totalOwners.toLocaleString();
-  document.getElementById('owners-parcels').textContent = totalParcels.toLocaleString();
-  document.getElementById('owners-value').textContent = fmtAbbr(totalValue);
-  document.getElementById('owners-count').textContent = rows.length.toLocaleString();
 }
 
 // =========================================================================
-// Outreach tab
+// Render
 // =========================================================================
-function findOwnerByName(regionId, name) {
-  const arr = REGION_BY_ID[regionId].owners;
-  for (let i = 0; i < arr.length; i++) if (arr[i][O.name] === name) return i;
-  return -1;
-}
+function renderAll() {
+  const all = Array.from(state.leads.values());
+  const filtered = applyFilters(all);
+  const sorted = applySort(filtered);
 
-function renderOutreach() {
-  const tbody = document.getElementById('outreach-tbody');
-  const empty = document.getElementById('outreach-empty');
-  const searchTxt = (document.getElementById('outreach-search').value || '').toUpperCase();
-
-  let entries = [];
-  for (const [k, v] of Object.entries(OUTREACH)) {
-    if (!v || !v.status || v.status === 'new') continue;
-    const sep = k.indexOf('::');
-    const regionId = k.slice(0, sep);
-    const name = k.slice(sep + 2);
-    entries.push({ regionId, name, rec: v });
-  }
-  if (searchTxt) entries = entries.filter(e => e.name.toUpperCase().includes(searchTxt));
-
-  const counts = {};
-  for (const s of STATUSES) counts[s.id] = 0;
-  for (const e of entries) counts[e.rec.status] = (counts[e.rec.status] || 0) + 1;
-
-  document.getElementById('outreach-cards').innerHTML = STATUSES.filter(s => s.id !== 'new').map(s =>
-    `<div class="outreach-card ${s.id}">
-      <div class="num">${counts[s.id] || 0}</div>
-      <div class="label">${s.label}</div>
-    </div>`
-  ).join('');
-
-  document.getElementById('outreach-shown').textContent = entries.length;
-  document.getElementById('outreach-count').textContent = entries.length;
-
-  if (entries.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-
-  entries.sort((a, b) => (b.rec.ts || 0) - (a.rec.ts || 0));
-
-  tbody.innerHTML = entries.map(({ regionId, name, rec }) => {
-    const oid = findOwnerByName(regionId, name);
-    const o = oid >= 0 ? REGION_BY_ID[regionId].owners[oid] : null;
-    const updated = rec.ts ? new Date(rec.ts).toLocaleDateString() : '—';
-    return `<tr data-region="${regionId}" data-oid="${oid}">
-      <td><span class="status-pill status-${rec.status}">${STATUS_LABEL[rec.status]}</span></td>
-      <td>${regionTag(regionId)}</td>
-      <td class="owner-name">${escapeHtml(name)}</td>
-      <td class="right">${o ? o[O.n] : '—'}</td>
-      <td class="right money">${o ? fmtAbbr(o[O.total_val]) : '—'}</td>
-      <td>${updated}</td>
-      <td style="max-width:380px;color:var(--text-dim);font-size:11.5px;">${escapeHtml((rec.notes || '').slice(0, 120))}${(rec.notes || '').length > 120 ? '…' : ''}</td>
-    </tr>`;
-  }).join('');
+  renderStats(all, filtered);
+  renderMarketFilter(all);
+  rebuildMapMarkers(filtered);
+  renderList(sorted);
+  renderKanban(filtered);
+  document.getElementById("tab-count-map").textContent = filtered.length.toLocaleString();
+  document.getElementById("tab-count-list").textContent = filtered.length.toLocaleString();
+  const inPipeline = filtered.filter(l => l.crm_status && STATUSES.includes(l.crm_status)).length;
+  document.getElementById("tab-count-outreach").textContent = inPipeline.toLocaleString();
 }
 
 // =========================================================================
-// Owner drawer
+// Outreach kanban — drag-and-drop pipeline view
 // =========================================================================
-function openOwnerDrawer(regionId, oid) {
-  const region = REGION_BY_ID[regionId];
-  if (!region) return;
-  const owners = region.owners, parcels = region.parcels;
-  if (oid < 0 || oid >= owners.length) return;
+function renderKanban(filteredLeads) {
+  const kanban = document.getElementById("kanban");
+  if (!kanban) return;
 
-  STATE.selectedOwnerId = { regionId, oid };
-  const o = owners[oid];
-  const name = o[O.name];
-  document.getElementById('d-owner').textContent = name;
+  // Group leads by status. Leads with no status (or a status not in STATUSES) don't appear here.
+  const cols = {};
+  for (const s of STATUSES) cols[s] = [];
+  for (const lead of filteredLeads) {
+    if (lead.crm_status && cols[lead.crm_status]) cols[lead.crm_status].push(lead);
+  }
+  // Sort each column by last_touched desc (most recently worked → top), fallback to owner_name.
+  for (const s of STATUSES) {
+    cols[s].sort((a, b) => {
+      const at = a.crm_last_touched && a.crm_last_touched.toMillis ? a.crm_last_touched.toMillis() : 0;
+      const bt = b.crm_last_touched && b.crm_last_touched.toMillis ? b.crm_last_touched.toMillis() : 0;
+      if (bt !== at) return bt - at;
+      return (a.owner_name || "").localeCompare(b.owner_name || "");
+    });
+  }
 
-  const myParcels = [];
-  for (const p of parcels) if (p[P.owner_id] === oid) myParcels.push(p);
-
-  const ownerLoc = [o[O.city], o[O.state], o[O.zip]].filter(Boolean).join(', ');
-  const meta = [];
-  meta.push(regionTag(regionId));
-  meta.push(`<span><b style="color:white;">${o[O.n]}</b> parcels</span>`);
-  meta.push(`<span><b style="color:white;">${fmtAbbr(o[O.total_val])}</b> total</span>`);
-  meta.push(icpTag(o[O.icp]));
-  if (o[O.is_hoa]) meta.push('<span class="tag hoa">HOA</span>');
-  if (isGov(name)) meta.push('<span class="tag" style="background:#1f2c4d;color:#94a3b8;">GOV</span>');
-  if (o[O.absentee_pct] > 0.5) meta.push('<span class="tag absent">Absentee</span>');
-  document.getElementById('d-meta').innerHTML = meta.join(' ');
-
-  const rec = getOutreach(regionId, name) || { status: 'new', notes: '', ts: null };
-  const statusOpts = STATUSES.map(s => `<option value="${s.id}" ${s.id === rec.status ? 'selected' : ''}>${s.label}</option>`).join('');
-
-  // Contact info from CONTACTS localStorage (populated by Import Contacts tab)
-  const contacts = getContacts(regionId, name);
-  const contactHtml = contacts && (contacts.phones?.length || contacts.emails?.length) ? `
-    <div class="drawer-section">
-      <h4>Contact Info <span style="color:var(--text-dim);font-weight:400;text-transform:none;font-size:11px;">· source: ${escapeHtml(contacts.source || '—')}</span></h4>
-      <div class="contact-list">
-        ${(contacts.phones || []).map((p, pi) => `
-          <div class="contact-row">
-            <span class="v">${escapeHtml(p.value)}</span>
-            ${p.type ? `<span class="badge-tag">${escapeHtml(p.type)}</span>` : ''}
-            ${p.confidence ? `<span class="badge-tag ${p.confidence}">${p.confidence}</span>` : ''}
-            ${p.dnc ? '<span class="badge-tag dnc">DNC</span>' : ''}
-            <button class="mini" data-kind="phone" data-idx="${pi}" title="Mark as bad / remove">✕</button>
-          </div>
-        `).join('')}
-        ${(contacts.emails || []).map((e, ei) => `
-          <div class="contact-row">
-            <span class="v">${escapeHtml(e.value)}</span>
-            ${e.confidence ? `<span class="badge-tag ${e.confidence}">${e.confidence}</span>` : ''}
-            <button class="mini" data-kind="email" data-idx="${ei}" title="Mark as bad / remove">✕</button>
-          </div>
-        `).join('')}
+  kanban.innerHTML = "";
+  for (const status of STATUSES) {
+    const col = document.createElement("div");
+    col.className = "kanban-col";
+    col.dataset.status = status;
+    col.innerHTML = `
+      <div class="kanban-col__head">
+        <span class="name"><span class="dot"></span>${escapeHtml(statusLabel(status))}</span>
+        <span class="count">${cols[status].length}</span>
       </div>
-    </div>
-  ` : `
-    <div class="drawer-section">
-      <h4>Contact Info</h4>
-      <div style="color:var(--text-dim);font-size:11.5px;">No phones / emails imported for this owner yet. Use the Import Contacts tab to attach skip-trace data.</div>
-    </div>
-  `;
+      <div class="kanban-col__body"></div>
+    `;
+    const body = col.querySelector(".kanban-col__body");
 
-  const body = `
-    <div class="drawer-section">
-      <h4>Portfolio Summary</h4>
-      <div class="kv">
-        <div class="k">Total parcels</div><div class="v">${o[O.n]}</div>
-        <div class="k">Homes (w/ structure)</div><div class="v">${o[O.n_home]}</div>
-        <div class="k">Vacant residential</div><div class="v">${o[O.n_vacant_res]}</div>
-        <div class="k">Commercial / other</div><div class="v">${o[O.n_commercial]}</div>
-        <div class="k">Total appraised</div><div class="v money">${fmt$(o[O.total_val])}</div>
-        <div class="k">Of which homes</div><div class="v money">${fmt$(o[O.home_val])}</div>
-        <div class="k">Absentee parcels</div><div class="v">${Math.round(o[O.absentee_pct]*100)}%</div>
-        <div class="k">Owner mailing</div><div class="v">${escapeHtml(o[O.addr] || '—')}<br><span style="color:var(--text-dim);">${escapeHtml(ownerLoc)}</span></div>
-      </div>
-    </div>
+    // Drop-target events on the column. Cards inside the body also bubble.
+    col.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      col.classList.add("drop-target");
+    });
+    col.addEventListener("dragleave", (e) => {
+      // Only remove if leaving the column entirely, not transitioning between children.
+      if (!col.contains(e.relatedTarget)) col.classList.remove("drop-target");
+    });
+    col.addEventListener("drop", (e) => {
+      e.preventDefault();
+      col.classList.remove("drop-target");
+      const leadId = e.dataTransfer.getData("text/plain");
+      if (!leadId) return;
+      const lead = state.leads.get(leadId);
+      if (!lead) return;
+      if (lead.crm_status === status) return;  // dropped into same column → no-op
+      updateStatus(leadId, status);
+    });
 
-    ${contactHtml}
+    if (cols[status].length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "kanban-empty";
+      empty.textContent = "Drag leads here, or set status from the drawer.";
+      body.appendChild(empty);
+    } else {
+      for (const lead of cols[status]) {
+        const card = document.createElement("div");
+        card.className = "kanban-card";
+        card.draggable = true;
+        card.dataset.id = lead._id;
+        const metaPieces = [];
+        if (lead.phone) metaPieces.push(`<span class="card-phone">${formatPhone(lead.phone)}</span>`);
+        if (lead.dnc) metaPieces.push(`<span class="badge-pill badge-dnc">DNC</span>`);
+        if (lead.market) metaPieces.push(`<span class="badge-pill badge-market">${escapeHtml(formatMarket(lead.market))}</span>`);
+        card.innerHTML = `
+          <div class="card-name">${escapeHtml(lead.owner_name || "—")}</div>
+          <div class="card-addr">${escapeHtml(lead.property_address || "")}${lead.property_city ? ", " + escapeHtml(lead.property_city) : ""}</div>
+          <div class="card-meta">${metaPieces.join("")}</div>
+        `;
+        card.addEventListener("dragstart", (e) => {
+          card.classList.add("dragging");
+          e.dataTransfer.setData("text/plain", lead._id);
+          e.dataTransfer.effectAllowed = "move";
+        });
+        card.addEventListener("dragend", () => card.classList.remove("dragging"));
+        card.addEventListener("click", () => openDrawer(lead._id));
+        body.appendChild(card);
+      }
+    }
+    kanban.appendChild(col);
+  }
+}
 
-    <div class="drawer-section">
-      <h4>Outreach Tracking</h4>
-      <div class="outreach-controls">
-        <div class="row">
-          <label>Status</label>
-          <select id="d-status">${statusOpts}</select>
-        </div>
-        <div class="row">
-          <label>Notes</label>
-          <textarea id="d-notes" placeholder="Call summary, contact info, next steps…">${escapeHtml(rec.notes || '')}</textarea>
-        </div>
-        <div class="row">
-          <button class="btn primary" id="d-save">Save</button>
-          <button class="btn" id="d-clear">Clear tracking</button>
-          ${rec.ts ? `<div class="updated">Last saved ${new Date(rec.ts).toLocaleString()}</div>` : ''}
-        </div>
-      </div>
-    </div>
+function renderStats(all, filtered) {
+  document.getElementById("stat-total").textContent = all.length.toLocaleString();
+  document.getElementById("stat-filtered").textContent = filtered.length.toLocaleString();
+  const inPipeline = all.filter(l => l.crm_status && l.crm_status !== "dead" && l.crm_status !== "closed").length;
+  document.getElementById("stat-status").textContent = inPipeline.toLocaleString();
+}
 
-    <div class="drawer-section">
-      <h4>Properties (${myParcels.length})</h4>
-      <div class="parcel-list">
-        ${myParcels.slice(0, 100).map(p => {
-          const pt = ['Home','Vacant land','Commercial'][p[P.property_type]];
-          return `<div class="item" data-lat="${p[P.lat]}" data-lon="${p[P.lon]}">
-            <div class="addr">${escapeHtml(p[P.addr] || '(no address)')}</div>
-            <div class="meta">${pt} · ${escapeHtml(p[P.land_use] || '—')} · ${fmt$(p[P.total_val])} · ${fmtAcres(p[P.acres])}</div>
-          </div>`;
-        }).join('') + (myParcels.length > 100 ? `<div style="text-align:center;padding:8px;color:var(--text-dim);font-size:11px;">+ ${myParcels.length - 100} more parcels</div>` : '')}
-      </div>
-    </div>
-  `;
-  document.getElementById('drawer-body').innerHTML = body;
+function renderMarketFilter(all) {
+  // Aggregate counts by market
+  const counts = new Map();
+  for (const l of all) {
+    if (!l.market) continue;
+    counts.set(l.market, (counts.get(l.market) || 0) + 1);
+  }
+  const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  const container = document.getElementById("f-markets");
+  if (container.dataset.rendered === "1" && container.children.length === sorted.length) return;
+  container.dataset.rendered = "1";
+  container.innerHTML = "";
+  for (const [mkt, n] of sorted) {
+    const row = document.createElement("label");
+    row.className = "checkbox-row";
+    row.innerHTML = `<input type="checkbox" data-market="${mkt}" /> <span>${escapeHtml(formatMarket(mkt))}</span> <span class="count">${n}</span>`;
+    row.querySelector("input").addEventListener("change", (ev) => {
+      if (ev.target.checked) state.filters.markets.add(mkt);
+      else state.filters.markets.delete(mkt);
+      renderAll();
+    });
+    container.appendChild(row);
+  }
+}
 
-  document.getElementById('d-save').onclick = () => {
-    const status = document.getElementById('d-status').value;
-    const notes = document.getElementById('d-notes').value;
-    OUTREACH[outreachKey(regionId, name)] = { status, notes, ts: Date.now() };
-    saveOutreach();
-    renderOwnersTable();
-    renderOutreach();
-    showToast(`Saved · ${name}`);
-  };
-  document.getElementById('d-clear').onclick = () => {
-    delete OUTREACH[outreachKey(regionId, name)];
-    saveOutreach();
-    renderOwnersTable();
-    renderOutreach();
-    closeOwnerDrawer();
-    showToast(`Cleared tracking for ${name}`);
-  };
+function renderList(sortedLeads) {
+  const tbody = document.getElementById("leads-tbody");
+  tbody.innerHTML = "";
+  document.getElementById("list-empty").style.display = sortedLeads.length === 0 ? "block" : "none";
+  // Render up to 1000 rows for performance; user can filter to narrow.
+  const cap = 1000;
+  for (let i = 0; i < Math.min(cap, sortedLeads.length); i++) {
+    const lead = sortedLeads[i];
+    const tr = document.createElement("tr");
+    tr.dataset.id = lead._id;
+    if (lead._id === state.selectedId) tr.classList.add("selected");
+    tr.innerHTML = `
+      <td class="name">${escapeHtml(lead.owner_name || "—")}</td>
+      <td>${escapeHtml(lead.property_address || "")}, ${escapeHtml(lead.property_city || "")}</td>
+      <td><span class="badge-pill badge-market">${escapeHtml(formatMarket(lead.market))}</span></td>
+      <td>${escapeHtml(lead.property_type || "—")}</td>
+      <td>${lead.phone ? formatPhone(lead.phone) : "—"} ${lead.dnc ? '<span class="badge-pill badge-dnc">DNC</span>' : ''}</td>
+      <td>${escapeHtml(lead.email || "—")}</td>
+      <td>${lead.crm_status ? `<span class="badge-pill badge-status-${lead.crm_status}">${statusLabel(lead.crm_status)}</span>` : "—"}</td>
+    `;
+    tr.addEventListener("click", () => openDrawer(lead._id));
+    tbody.appendChild(tr);
+  }
+  if (sortedLeads.length > cap) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="7" style="text-align:center;color:var(--text-dim);padding:14px">Showing first ${cap} of ${sortedLeads.length} — narrow filters to see more.</td>`;
+    tbody.appendChild(tr);
+  }
+}
 
-  document.querySelectorAll('.parcel-list .item').forEach(el => {
-    el.onclick = () => {
-      const lat = parseFloat(el.dataset.lat), lon = parseFloat(el.dataset.lon);
-      switchToRegion(regionId);
-      switchTab('map');
-      map.flyTo([lat, lon], 18, { duration: 0.5 });
-    };
-  });
-  document.querySelectorAll('.contact-row button.mini').forEach(btn => {
-    btn.onclick = () => {
-      const k = contactKey(regionId, name);
-      const rec = CONTACTS[k];
-      if (!rec) return;
-      const kind = btn.dataset.kind, idx = +btn.dataset.idx;
-      if (kind === 'phone') rec.phones.splice(idx, 1);
-      else if (kind === 'email') rec.emails.splice(idx, 1);
-      if (!rec.phones.length && !rec.emails.length) delete CONTACTS[k];
-      else CONTACTS[k] = rec;
-      saveContacts();
-      openOwnerDrawer(regionId, oid);  // re-render
-      renderOwnersTable();
-    };
+// =========================================================================
+// Drawer
+// =========================================================================
+function openDrawer(leadId) {
+  const lead = state.leads.get(leadId);
+  if (!lead) return;
+  state.selectedId = leadId;
+  document.querySelectorAll("#leads-tbody tr").forEach(tr => {
+    tr.classList.toggle("selected", tr.dataset.id === leadId);
   });
 
-  document.getElementById('drawer').classList.add('open');
-  document.getElementById('drawer-backdrop').classList.add('open');
-}
-function closeOwnerDrawer() {
-  document.getElementById('drawer').classList.remove('open');
-  document.getElementById('drawer-backdrop').classList.remove('open');
-  STATE.selectedOwnerId = null;
-}
-window.openOwnerDrawer = openOwnerDrawer;
+  document.getElementById("drawer-name").textContent = lead.owner_name || "(no name)";
+  document.getElementById("drawer-sub").textContent =
+    [lead.property_address, lead.property_city, lead.property_state, lead.property_zip].filter(Boolean).join(", ");
 
-// =========================================================================
-// Dedup Review tab
-// =========================================================================
-function pendingDedupForRegion(regionId) {
-  const r = REGION_BY_ID[regionId];
-  const queue = r.dedup_queue || [];
-  return queue.filter(pair => !DEDUP_DECISIONS[dedupPairKey(regionId, pair)]);
-}
+  // Badges
+  const badges = document.getElementById("drawer-badges");
+  badges.innerHTML = "";
+  if (lead.market) badges.appendChild(makeBadge("badge-market", formatMarket(lead.market)));
+  if (lead.dnc) badges.appendChild(makeBadge("badge-dnc", "DNC"));
+  if (lead.crm_status) badges.appendChild(makeBadge(`badge-status-${lead.crm_status}`, statusLabel(lead.crm_status)));
 
-function renderDedup() {
-  const r = REGION_BY_ID[CURRENT_REGION];
-  document.getElementById('dedup-region-label').textContent = r.display_name;
-  const queue = r.dedup_queue || [];
-  const pending = pendingDedupForRegion(CURRENT_REGION);
-  const resolved = queue.length - pending.length;
-  document.getElementById('dedup-pending').textContent = pending.length;
-  document.getElementById('dedup-resolved').textContent = resolved;
-  document.getElementById('dedup-count').textContent = pending.length;
-  document.getElementById('tab-dedup-btn').style.display = queue.length > 0 ? '' : 'none';
+  // Body
+  const body = document.getElementById("drawer-body");
+  body.innerHTML = "";
 
-  const list = document.getElementById('dedup-list');
-  if (pending.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="icon">✓</div><div>No pending pairs for ${escapeHtml(r.display_name)}.</div></div>`;
-    return;
+  // Contact info section (most important)
+  const contactSec = document.createElement("div");
+  contactSec.className = "drawer-section";
+  contactSec.innerHTML = `<h4>Contact</h4>`;
+  if (lead.phone) {
+    const row = document.createElement("div");
+    row.className = "contact-row" + (lead.dnc ? " dnc-row" : "");
+    row.innerHTML = `<span class="label">Phone</span>
+      <span class="val"><a href="tel:${lead.phone}">${formatPhone(lead.phone)}</a>${lead.phone_type ? ` <span style="color:var(--text-dim)">(${lead.phone_type})</span>` : ""}${lead.dnc ? '<span class="dnc-warn">⚠ DNC</span>' : ""}</span>`;
+    contactSec.appendChild(row);
   }
+  if (lead.email) {
+    const row = document.createElement("div");
+    row.className = "contact-row";
+    row.innerHTML = `<span class="label">Email</span><span class="val"><a href="mailto:${lead.email}">${escapeHtml(lead.email)}</a></span>`;
+    contactSec.appendChild(row);
+  }
+  if (!lead.phone && !lead.email) {
+    const row = document.createElement("div");
+    row.style.color = "var(--text-dim)";
+    row.style.fontSize = "12.5px";
+    row.textContent = "No contact info on file.";
+    contactSec.appendChild(row);
+  }
+  body.appendChild(contactSec);
 
-  list.innerHTML = pending.map((pair, idx) => {
-    const a = r.owners[pair.a_oid];
-    const b = r.owners[pair.b_oid];
-    if (!a || !b) return '';
-    return `<div class="dedup-card" data-pair-idx="${idx}">
-      <div class="head">
-        <div style="font-size:12px;color:var(--text-dim);">Pair ${idx+1} of ${pending.length}</div>
-        <div style="font-size:11px;color:var(--text-dim);">score ${pair.score.toFixed(3)} · addr <code style="color:var(--text-soft);font-family:ui-monospace,monospace;">${escapeHtml(pair.addr_norm)}</code></div>
-      </div>
-      <div class="pair">
-        <div class="side">
-          <div class="label">Owner A</div>
-          <div class="nm">${escapeHtml(a[O.name])}</div>
-          <div class="mt">${escapeHtml(a[O.addr] || '—')}<br>${escapeHtml([a[O.city], a[O.state], a[O.zip]].filter(Boolean).join(', '))}</div>
-          <div class="stats">${icpTag(a[O.icp])} · ${a[O.n]} parcels · ${fmtAbbr(a[O.total_val])}</div>
-        </div>
-        <div class="side">
-          <div class="label">Owner B</div>
-          <div class="nm">${escapeHtml(b[O.name])}</div>
-          <div class="mt">${escapeHtml(b[O.addr] || '—')}<br>${escapeHtml([b[O.city], b[O.state], b[O.zip]].filter(Boolean).join(', '))}</div>
-          <div class="stats">${icpTag(b[O.icp])} · ${b[O.n]} parcels · ${fmtAbbr(b[O.total_val])}</div>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="btn" data-act="separate" data-idx="${idx}">Keep separate</button>
-        <button class="btn primary" data-act="merge" data-idx="${idx}">Confirm merge</button>
-      </div>
+  // Outreach status
+  const statusSec = document.createElement("div");
+  statusSec.className = "drawer-section";
+  statusSec.innerHTML = `<h4>Outreach</h4>`;
+  const pills = document.createElement("div");
+  pills.className = "status-pills";
+  [null, ...STATUSES].forEach(s => {
+    const b = document.createElement("button");
+    b.textContent = s == null ? "Clear" : statusLabel(s);
+    if (lead.crm_status === s) b.classList.add("active");
+    b.addEventListener("click", () => updateStatus(leadId, s));
+    pills.appendChild(b);
+  });
+  statusSec.appendChild(pills);
+  if (lead.crm_last_touched) {
+    const lt = document.createElement("div");
+    lt.className = "last-touch";
+    const ts = lead.crm_last_touched.toDate ? lead.crm_last_touched.toDate() : new Date(lead.crm_last_touched);
+    lt.textContent = `Last touched: ${formatDate(ts)}${lead.crm_touched_by ? ` by ${lead.crm_touched_by}` : ""}`;
+    statusSec.appendChild(lt);
+  }
+  body.appendChild(statusSec);
+
+  // Notes
+  const notesSec = document.createElement("div");
+  notesSec.className = "drawer-section";
+  notesSec.innerHTML = `<h4>Notes</h4>`;
+  const notes = document.createElement("textarea");
+  notes.className = "notes-input";
+  notes.placeholder = "Add notes — saved automatically when you click out.";
+  notes.value = lead.crm_notes || "";
+  notes.addEventListener("blur", () => {
+    if (notes.value !== (lead.crm_notes || "")) updateNotes(leadId, notes.value);
+  });
+  notesSec.appendChild(notes);
+  body.appendChild(notesSec);
+
+  // Property details
+  const propSec = document.createElement("div");
+  propSec.className = "drawer-section";
+  propSec.innerHTML = `<h4>Property</h4>
+    <div class="kv">
+      ${kv("Type", lead.property_type)}
+      ${kv("Year built", lead.year_built)}
+      ${kv("Land sqft", lead.land_sqft ? lead.land_sqft.toLocaleString() : null)}
+      ${kv("Living area", lead.living_area ? lead.living_area.toLocaleString() : null)}
+      ${kv("County", lead.property_county)}
+      ${kv("Absentee", lead.absentee == null ? null : (lead.absentee ? "Yes" : "No"))}
+      ${kv("Vacant", lead.vacant == null ? null : (lead.vacant ? "Yes" : "No"))}
     </div>`;
-  }).join('');
+  body.appendChild(propSec);
 
-  list.querySelectorAll('button[data-act]').forEach(btn => {
-    btn.onclick = () => {
-      const idx = +btn.dataset.idx;
-      const pair = pending[idx];
-      const k = dedupPairKey(CURRENT_REGION, pair);
-      DEDUP_DECISIONS[k] = {
-        decision: btn.dataset.act === 'merge' ? 'merge' : 'separate',
-        ts: Date.now(),
-      };
-      saveDedup();
-      renderDedup();
-      showToast(btn.dataset.act === 'merge' ? 'Merge confirmed (saved locally)' : 'Kept separate');
-    };
-  });
+  // Mailing
+  if (lead.mailing_address) {
+    const mailSec = document.createElement("div");
+    mailSec.className = "drawer-section";
+    mailSec.innerHTML = `<h4>Mailing</h4>
+      <div class="kv">
+        ${kv("Address", lead.mailing_address)}
+        ${kv("City", lead.mailing_city)}
+        ${kv("State", lead.mailing_state)}
+        ${kv("Zip", lead.mailing_zip)}
+      </div>`;
+    body.appendChild(mailSec);
+  }
+
+  // Owner details
+  const ownerSec = document.createElement("div");
+  ownerSec.className = "drawer-section";
+  ownerSec.innerHTML = `<h4>Owner</h4>
+    <div class="kv">
+      ${kv("Type", lead.owner_type)}
+      ${kv("Co-owner", [lead.co_owner_first, lead.co_owner_last].filter(Boolean).join(" "))}
+      ${kv("Parcel ID", lead.external_parcel_id)}
+      ${kv("Source", lead.source_file)}
+    </div>`;
+  body.appendChild(ownerSec);
+
+  document.getElementById("drawer").classList.add("open");
+}
+function closeDrawer() {
+  document.getElementById("drawer").classList.remove("open");
+  state.selectedId = null;
+  document.querySelectorAll("#leads-tbody tr.selected").forEach(tr => tr.classList.remove("selected"));
 }
 
 // =========================================================================
-// Import Contacts — CSV parse, vendor detect, match preview, commit
+// CRM writes (Firestore)
 // =========================================================================
-const SKIPTRACE_VENDORS = {
-  batchdata: {
-    owner_name:    ['full_name', 'owner_name', 'fullname', 'owner', 'name'],
-    mailing_addr:  ['mailing_address', 'mail_address_line_1', 'address_line_1', 'address1'],
-    mailing_city:  ['mailing_city', 'mail_city', 'city'],
-    mailing_state: ['mailing_state', 'state'],
-    mailing_zip:   ['mailing_zip', 'mail_zip', 'zip', 'postal_code'],
-    phone1:        ['phone_1', 'phone1', 'primary_phone', 'best_phone'],
-    phone1_type:   ['phone_1_type', 'phone1_type'],
-    phone1_dnc:    ['phone_1_dnc', 'phone1_dnc', 'dnc'],
-    phone2:        ['phone_2', 'phone2'],
-    phone3:        ['phone_3', 'phone3'],
-    email1:        ['email_1', 'email1', 'primary_email', 'email'],
-    email2:        ['email_2', 'email2'],
-  },
-  tracerfy: {
-    owner_name: ['owner_name', 'full_name', 'name'],
-    mailing_addr: ['mailing_address', 'address1'],
-    mailing_city: ['mailing_city'], mailing_state: ['mailing_state'], mailing_zip: ['mailing_zip'],
-    phone1: ['phone_1', 'phone1'], phone2: ['phone_2', 'phone2'],
-    email1: ['email_1', 'email1'],
-  },
-  reiskip: {
-    owner_name: ['owner_first_last', 'full_name', 'owner_name'],
-    mailing_addr: ['mailing_street', 'address'],
-    mailing_city: ['mailing_city'], mailing_state: ['mailing_state'], mailing_zip: ['mailing_zip'],
-    phone1: ['phone_number', 'mobile_1', 'phone1'], phone2: ['mobile_2', 'phone2'],
-    email1: ['email_address', 'email1'],
-  },
-  datazapp: {
-    owner_name: ['fullname', 'full_name', 'owner_name'],
-    mailing_addr: ['mailing_address', 'address'],
-    mailing_city: ['city'], mailing_state: ['state'], mailing_zip: ['zip'],
-    phone1: ['phone1', 'cell_phone', 'landline_phone'], phone2: ['phone2', 'additional_phone'],
-    email1: ['email1', 'email'],
-  },
-};
-const IMPORT_FIELDS = [
-  'owner_name', 'mailing_addr', 'mailing_city', 'mailing_state', 'mailing_zip',
-  'phone1', 'phone1_type', 'phone1_dnc',
-  'phone2', 'phone3',
-  'email1', 'email2', 'source_url',
-];
-const IMPORT_REQUIRED = new Set(['owner_name']);
-
-function normHeader(h) {
-  return (h || '').trim().toLowerCase().replace(/[\s\-.]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-}
-
-function detectVendor(headers) {
-  const norm = new Set(headers.map(normHeader));
-  let best = null, bestTotal = -1;
-  for (const [vendor, fields] of Object.entries(SKIPTRACE_VENDORS)) {
-    const owners = (fields.owner_name || []).map(normHeader);
-    if (!owners.some(a => norm.has(a))) continue;
-    let total = 0;
-    for (const aliases of Object.values(fields)) {
-      for (const a of aliases) if (norm.has(normHeader(a))) { total++; break; }
-    }
-    if (total > bestTotal) { best = vendor; bestTotal = total; }
-  }
-  return best;
-}
-
-function autoMapColumns(headers, vendor) {
-  const lookup = {};   // norm header -> original header
-  headers.forEach(h => { lookup[normHeader(h)] = h; });
-  const mapping = {};
-  for (const f of IMPORT_FIELDS) {
-    let picked = null;
-    if (vendor && SKIPTRACE_VENDORS[vendor][f]) {
-      for (const alias of SKIPTRACE_VENDORS[vendor][f]) {
-        const n = normHeader(alias);
-        if (n in lookup) { picked = lookup[n]; break; }
-      }
-    }
-    mapping[f] = picked;
-  }
-  return mapping;
-}
-
-// Minimal CSV parser — handles quoted fields with commas and CRLF/LF lines.
-function parseCSV(text) {
-  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);   // strip BOM
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i+1] === '"') { field += '"'; i++; }
-        else inQuotes = false;
-      } else {
-        field += c;
-      }
-    } else {
-      if (c === '"') {
-        inQuotes = true;
-      } else if (c === ',') {
-        row.push(field); field = '';
-      } else if (c === '\r') {
-        // ignore — \r\n handled by \n branch
-      } else if (c === '\n') {
-        row.push(field); field = '';
-        rows.push(row); row = [];
-      } else {
-        field += c;
-      }
-    }
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  // strip trailing empty rows
-  while (rows.length && rows[rows.length-1].length === 1 && rows[rows.length-1][0] === '') rows.pop();
-  if (rows.length === 0) return { headers: [], rows: [] };
-  const headers = rows[0];
-  const dataRows = rows.slice(1).map(r => {
-    const o = {};
-    for (let i = 0; i < headers.length; i++) o[headers[i]] = r[i] != null ? r[i].trim() : '';
-    return o;
-  });
-  return { headers, rows: dataRows };
-}
-
-// Working state for the in-progress import.
-const IMPORT_STATE = {
-  filename: null,
-  vendor: null,
-  region: null,
-  headers: [],
-  rows: [],          // parsed CSV rows
-  mapping: {},       // {schema_field: source_header}
-  matched: [],       // [{rowIdx, ownerName, ownerIdx, contact}]
-  unmatched: [],     // [{rowIdx, ownerName}]
-  alreadyPresent: 0, // count of rows whose contact value was already on the owner
-};
-
-function buildOwnerNameIndex(regionId) {
-  const arr = REGION_BY_ID[regionId].owners;
-  const idx = new Map();
-  for (let i = 0; i < arr.length; i++) {
-    const name = (arr[i][O.name] || '').toUpperCase().trim();
-    if (!name) continue;
-    if (!idx.has(name)) idx.set(name, i);  // first wins (sorted by n_parcels desc earlier)
-  }
-  return idx;
-}
-
-function previewMatches() {
-  IMPORT_STATE.matched = [];
-  IMPORT_STATE.unmatched = [];
-  IMPORT_STATE.alreadyPresent = 0;
-  const ownerNameIdx = buildOwnerNameIndex(IMPORT_STATE.region);
-  const mapping = IMPORT_STATE.mapping;
-  const nameCol = mapping.owner_name;
-  if (!nameCol) return;
-
-  const existing = (regionId, ownerName) => getContacts(regionId, ownerName) || { phones: [], emails: [] };
-
-  IMPORT_STATE.rows.forEach((row, rowIdx) => {
-    const rawName = (row[nameCol] || '').toUpperCase().trim();
-    if (!rawName) return;
-    const ownerIdx = ownerNameIdx.get(rawName);
-    const phones = [];
-    const emails = [];
-    for (const slot of ['phone1', 'phone2', 'phone3']) {
-      const v = (row[mapping[slot]] || '').trim();
-      if (v) {
-        phones.push({
-          value: v,
-          type:       row[mapping[slot + '_type']] || '',
-          dnc:        ['1','true','yes','y'].includes((row[mapping[slot + '_dnc']] || '').toLowerCase()),
-          confidence: slot === 'phone1' ? 'high' : (slot === 'phone2' ? 'medium' : 'low'),
-        });
-      }
-    }
-    for (const slot of ['email1', 'email2']) {
-      const v = (row[mapping[slot]] || '').trim();
-      if (v) {
-        emails.push({
-          value: v,
-          confidence: slot === 'email1' ? 'high' : 'medium',
-        });
-      }
-    }
-
-    if (ownerIdx === undefined) {
-      IMPORT_STATE.unmatched.push({ rowIdx, ownerName: rawName });
-    } else {
-      // count "already present" phones/emails
-      const present = existing(IMPORT_STATE.region, REGION_BY_ID[IMPORT_STATE.region].owners[ownerIdx][O.name]);
-      const presentPhones = new Set((present.phones || []).map(p => p.value));
-      const presentEmails = new Set((present.emails || []).map(p => p.value));
-      const newPhones = phones.filter(p => !presentPhones.has(p.value));
-      const newEmails = emails.filter(e => !presentEmails.has(e.value));
-      if (phones.length + emails.length > newPhones.length + newEmails.length) {
-        IMPORT_STATE.alreadyPresent++;
-      }
-      IMPORT_STATE.matched.push({
-        rowIdx, ownerIdx,
-        ownerName: REGION_BY_ID[IMPORT_STATE.region].owners[ownerIdx][O.name],
-        contact: { phones: newPhones, emails: newEmails },
-      });
-    }
-  });
-}
-
-function renderImportStep1() {
-  const e = document.getElementById('import-step1');
-  e.style.display = '';
-  document.getElementById('i1-filename').textContent = IMPORT_STATE.filename;
-  document.getElementById('i1-meta').textContent =
-    `${IMPORT_STATE.rows.length.toLocaleString()} rows · ${IMPORT_STATE.headers.length} columns`;
-  document.getElementById('i1-vendor').innerHTML = IMPORT_STATE.vendor
-    ? `<b style="color:#7dd3fc;">${IMPORT_STATE.vendor}</b> (auto-detected — column map pre-populated)`
-    : '<span style="color:var(--text-dim);">not auto-detected — set columns manually below</span>';
-  // region select
-  const sel = document.getElementById('i1-region');
-  sel.innerHTML = REGIONS.map(r => `<option value="${r.id}" ${r.id === IMPORT_STATE.region ? 'selected' : ''}>${escapeHtml(r.display_name)}</option>`).join('');
-  sel.onchange = () => { IMPORT_STATE.region = sel.value; renderImportStep3(); };
-}
-
-function renderImportStep2() {
-  const e = document.getElementById('import-step2');
-  e.style.display = '';
-  const wrap = document.getElementById('i2-map');
-  wrap.innerHTML = '';
-  const headerOpts = ['<option value="">(none)</option>',
-    ...IMPORT_STATE.headers.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`),
-  ].join('');
-  for (const f of IMPORT_FIELDS) {
-    const required = IMPORT_REQUIRED.has(f) ? ' <span style="color:#fca5a5;">*</span>' : '';
-    wrap.insertAdjacentHTML('beforeend', `
-      <label>${f}${required}</label>
-      <select data-field="${f}">${headerOpts}</select>
-    `);
-    const sel = wrap.querySelector(`select[data-field="${f}"]`);
-    sel.value = IMPORT_STATE.mapping[f] || '';
-    sel.onchange = () => {
-      IMPORT_STATE.mapping[f] = sel.value || null;
-      renderImportStep3();
-    };
-  }
-}
-
-function renderImportStep3() {
-  if (!IMPORT_STATE.region || !IMPORT_STATE.mapping.owner_name) {
-    document.getElementById('import-step3').style.display = 'none';
-    return;
-  }
-  previewMatches();
-  const e = document.getElementById('import-step3');
-  e.style.display = '';
-  document.getElementById('i3-matched').textContent = IMPORT_STATE.matched.length.toLocaleString();
-  document.getElementById('i3-unmatched').textContent = IMPORT_STATE.unmatched.length.toLocaleString();
-  document.getElementById('i3-already').textContent = IMPORT_STATE.alreadyPresent.toLocaleString();
-  const list = document.getElementById('i3-unmatched-list');
-  const wrap = document.getElementById('i3-unmatched-list-wrap');
-  if (IMPORT_STATE.unmatched.length === 0) {
-    wrap.style.display = 'none';
-  } else {
-    wrap.style.display = '';
-    list.innerHTML = IMPORT_STATE.unmatched.slice(0, 50).map(u =>
-      `<div class="item">${escapeHtml(u.ownerName)}</div>`
-    ).join('');
-  }
-}
-
-function commitImport() {
-  let phonesWritten = 0, emailsWritten = 0, ownersTouched = 0;
-  for (const m of IMPORT_STATE.matched) {
-    if (!m.contact.phones.length && !m.contact.emails.length) continue;
-    const k = contactKey(IMPORT_STATE.region, m.ownerName);
-    const existing = CONTACTS[k] || { phones: [], emails: [], source: IMPORT_STATE.vendor || 'manual', ts: Date.now() };
-    for (const p of m.contact.phones) {
-      if (existing.phones.length >= 3) break;
-      existing.phones.push({ ...p, source: IMPORT_STATE.vendor || 'manual', ts: Date.now() });
-      phonesWritten++;
-    }
-    for (const ee of m.contact.emails) {
-      if (existing.emails.length >= 2) break;
-      existing.emails.push({ ...ee, source: IMPORT_STATE.vendor || 'manual', ts: Date.now() });
-      emailsWritten++;
-    }
-    existing.ts = Date.now();
-    CONTACTS[k] = existing;
-    ownersTouched++;
-  }
-  saveContacts();
-  IMPORT_HISTORY.unshift({
-    filename: IMPORT_STATE.filename,
-    vendor: IMPORT_STATE.vendor,
-    region: IMPORT_STATE.region,
-    ts: Date.now(),
-    rows_total: IMPORT_STATE.rows.length,
-    rows_matched: IMPORT_STATE.matched.length,
-    rows_unmatched: IMPORT_STATE.unmatched.length,
-    phones_written: phonesWritten,
-    emails_written: emailsWritten,
-    owners_touched: ownersTouched,
-  });
-  saveImports();
-  renderImportHistory();
-  resetImportFlow();
-  renderOwnersTable();
-  showToast(`Imported · ${ownersTouched} owners updated · ${phonesWritten} phones · ${emailsWritten} emails`);
-}
-
-function resetImportFlow() {
-  IMPORT_STATE.filename = null;
-  IMPORT_STATE.vendor = null;
-  IMPORT_STATE.headers = [];
-  IMPORT_STATE.rows = [];
-  IMPORT_STATE.mapping = {};
-  IMPORT_STATE.matched = [];
-  IMPORT_STATE.unmatched = [];
-  IMPORT_STATE.alreadyPresent = 0;
-  document.getElementById('import-step1').style.display = 'none';
-  document.getElementById('import-step2').style.display = 'none';
-  document.getElementById('import-step3').style.display = 'none';
-  document.getElementById('import-file-input').value = '';
-}
-
-function renderImportHistory() {
-  const wrap = document.getElementById('import-history-list');
-  if (!IMPORT_HISTORY.length) {
-    wrap.innerHTML = '<div style="color:var(--text-dim);font-size:11.5px;">No imports yet.</div>';
-    return;
-  }
-  wrap.innerHTML = IMPORT_HISTORY.slice(0, 20).map(h => `
-    <div class="row">
-      <div>
-        <b style="color:white;">${escapeHtml(h.filename || '(unknown)')}</b>
-        <span class="meta"> · ${escapeHtml(h.vendor || 'custom')} → ${escapeHtml(REGION_SHORT[h.region] || h.region)}</span>
-      </div>
-      <div class="meta">${new Date(h.ts).toLocaleString()} · ${h.owners_touched} owners · ${h.phones_written} phones · ${h.emails_written} emails</div>
-    </div>
-  `).join('');
-}
-
-function handleImportFile(file) {
-  if (!file) return;
-  if (file.size > 100 * 1024 * 1024) {
-    alert('File too large (>100 MB). Split it into chunks or use the Python CLI for bulk imports.');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const { headers, rows } = parseCSV(reader.result);
-      if (headers.length === 0) { alert('CSV appears empty.'); return; }
-      IMPORT_STATE.filename = file.name;
-      IMPORT_STATE.headers = headers;
-      IMPORT_STATE.rows = rows;
-      IMPORT_STATE.vendor = detectVendor(headers);
-      IMPORT_STATE.region = IMPORT_STATE.region || CURRENT_REGION;
-      IMPORT_STATE.mapping = autoMapColumns(headers, IMPORT_STATE.vendor);
-      renderImportStep1();
-      renderImportStep2();
-      renderImportStep3();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to parse CSV: ' + err.message);
-    }
+function updateStatus(leadId, status) {
+  const user = window.propagenticAuth.user;
+  const payload = {
+    crm_status: status,
+    crm_last_touched: firebase.firestore.FieldValue.serverTimestamp(),
+    crm_touched_by: user ? user.email : null,
   };
-  reader.readAsText(file);
+  firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
+    .then(() => showToast(status ? `Marked ${status}` : "Status cleared"))
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
+}
+function updateNotes(leadId, notes) {
+  const user = window.propagenticAuth.user;
+  const payload = {
+    crm_notes: notes,
+    crm_last_touched: firebase.firestore.FieldValue.serverTimestamp(),
+    crm_touched_by: user ? user.email : null,
+  };
+  firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
+    .then(() => showToast("Notes saved"))
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
 }
 
 // =========================================================================
-// Region switching
+// Filter handlers
 // =========================================================================
-async function switchToRegion(regionId) {
-  if (!REGION_BY_ID[regionId]) return;
-  if (regionId === CURRENT_REGION) return;
-  await ensureRegionLoaded(regionId);
-  CURRENT_REGION = regionId;
-  OWNERS = REGION_BY_ID[regionId].owners;
-  PARCELS = REGION_BY_ID[regionId].parcels;
-  updateRegionChips();
-  updateHeaderStats();
-  updateRegionWarning();
-  if (map) {
-    const r = REGION_BY_ID[regionId];
-    map.flyTo([r.center_lat, r.center_lon], 11, { duration: 0.4 });
-  }
-  applyFilters();
-  renderDedup();
-}
+function attachFilterHandlers() {
+  document.getElementById("f-search").addEventListener("input", (e) => {
+    state.filters.search = e.target.value;
+    renderAll();
+  });
+  document.getElementById("f-status").addEventListener("change", (e) => {
+    state.filters.status = e.target.value;
+    renderAll();
+  });
+  document.getElementById("f-owner-type").addEventListener("change", (e) => {
+    state.filters.owner_type = e.target.value;
+    renderAll();
+  });
+  ["f-phone", "f-email", "f-dnc", "f-absentee"].forEach(id => {
+    const stateKey = id === "f-phone" ? "phone" : id === "f-email" ? "email" : id === "f-dnc" ? "dnc" : "absentee";
+    document.querySelectorAll(`#${id} button`).forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(`#${id} button`).forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.filters[stateKey] = btn.dataset.value;
+        renderAll();
+      });
+    });
+  });
 
-function updateRegionChips() {
-  const wrap = document.getElementById('region-chips');
-  wrap.innerHTML = REGIONS.map(r => `
-    <button class="region-chip ${r.id === CURRENT_REGION ? 'active' : ''}" data-region="${r.id}">
-      ${escapeHtml(r.display_name)} <span class="pill">${regionOwnerCount(r).toLocaleString()}</span>
-    </button>
-  `).join('');
-  wrap.querySelectorAll('button.region-chip').forEach(b => {
-    b.onclick = () => switchToRegion(b.dataset.region);
+  // Sortable columns
+  document.querySelectorAll("th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (state.sort.key === key) state.sort.dir *= -1;
+      else { state.sort.key = key; state.sort.dir = 1; }
+      renderAll();
+    });
   });
 }
 
-function updateRegionWarning() {
-  // Insert/remove the warning under the region bar based on region notes
-  const existing = document.getElementById('region-warning-msg');
-  if (existing) existing.remove();
-  const r = REGION_BY_ID[CURRENT_REGION];
-  if (r.notes) {
-    const html = `<div class="region-warning" id="region-warning-msg"><b>Note:</b> ${escapeHtml(r.notes)}</div>`;
-    document.querySelector('.region-bar').insertAdjacentHTML('afterend', html);
-  }
-}
-
-function updateHeaderStats() {
-  document.getElementById('stat-parcels').textContent = PARCELS.length.toLocaleString();
-  document.getElementById('stat-owners').textContent = OWNERS.length.toLocaleString();
-  let total = 0;
-  for (const o of OWNERS) total += o[O.total_val];
-  document.getElementById('stat-value').textContent = fmtAbbr(total);
-
-  const buckets = { 1:0, 2:0, 3:0, 4:0 };
-  for (const o of OWNERS) if (buckets[o[O.icp]] !== undefined) buckets[o[O.icp]]++;
-  document.getElementById('cnt-icp1').textContent = `${buckets[1]} owners`;
-  document.getElementById('cnt-icp2').textContent = `${buckets[2]} owners`;
-  document.getElementById('cnt-icp3').textContent = `${buckets[3]} owners`;
-  document.getElementById('cnt-icp4').textContent = `${buckets[4]} owners`;
+function resetFilters() {
+  state.filters = {
+    search: "", markets: new Set(), status: "any",
+    phone: "any", email: "any", dnc: "hide", owner_type: "any", absentee: "any",
+  };
+  document.getElementById("f-search").value = "";
+  document.getElementById("f-status").value = "any";
+  document.getElementById("f-owner-type").value = "any";
+  document.querySelectorAll('#f-markets input').forEach(c => c.checked = false);
+  [["f-phone","any"], ["f-email","any"], ["f-dnc","hide"], ["f-absentee","any"]].forEach(([id,val]) => {
+    document.querySelectorAll(`#${id} button`).forEach(b => {
+      b.classList.toggle("active", b.dataset.value === val);
+    });
+  });
+  renderAll();
 }
 
 // =========================================================================
-// UI wiring
+// Tabs
 // =========================================================================
-function switchTab(tab) {
-  STATE.tab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
-  if (tab === 'map') setTimeout(() => map.invalidateSize(), 50);
-  if (tab === 'owners') renderOwnersTable();
-  if (tab === 'outreach') renderOutreach();
-  if (tab === 'dedup') renderDedup();
-}
-
-function readFilters() {
-  STATE.filters.icp = document.querySelector('input[name="icp"]:checked').value;
-  STATE.filters.ptype = document.querySelector('input[name="ptype"]:checked').value;
-  STATE.filters.own = document.querySelector('input[name="own"]:checked').value;
-  STATE.filters.hoa_only = document.getElementById('hoa-only').checked;
-  STATE.filters.exclude_gov = document.getElementById('exclude-gov').checked;
-  STATE.filters.search = document.getElementById('search-owner').value;
-  const min = parseInt(document.getElementById('min-parcels').value, 10);
-  const max = parseInt(document.getElementById('max-parcels').value, 10);
-  STATE.filters.custom_min = isNaN(min) ? null : min;
-  STATE.filters.custom_max = isNaN(max) ? null : max;
-}
-
-function applyFilters() {
-  readFilters();
-  const visibleParcels = rebuildMap();
-  document.getElementById('stat-target').textContent = visibleParcels.toLocaleString();
-  if (STATE.tab === 'owners') renderOwnersTable();
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove('show'), 1700);
-}
-
-function buildOwnersRegionFilter() {
-  const wrap = document.getElementById('owners-region-filter');
-  wrap.innerHTML = REGIONS.map(r => `
-    <label class="${STATE.ownersRegionFilter.has(r.id) ? 'checked' : ''}">
-      <input type="checkbox" data-region="${r.id}" ${STATE.ownersRegionFilter.has(r.id) ? 'checked' : ''}>
-      ${REGION_SHORT[r.id] || r.id}
-    </label>
-  `).join('');
-  wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      if (cb.checked) STATE.ownersRegionFilter.add(cb.dataset.region);
-      else            STATE.ownersRegionFilter.delete(cb.dataset.region);
-      cb.parentElement.classList.toggle('checked', cb.checked);
-      renderOwnersTable();
+function attachTabHandlers() {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      state.activeTab = target;
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === target));
+      document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.dataset.tab === target));
+      if (target === "map" && map) setTimeout(() => map.invalidateSize(), 50);
     });
   });
 }
 
 // =========================================================================
-// Init
+// Helpers
 // =========================================================================
-async function init() {
-  initMap();
-  updateRegionChips();
-  updateRegionWarning();
-  buildOwnersRegionFilter();
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function formatPhone(p) {
+  const d = String(p).replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  if (d.length === 11) return `+${d[0]} (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+  return p;
+}
+function formatMarket(m) {
+  if (!m) return "—";
+  // 'baltimore_md' -> 'Baltimore, MD'; 'baltimore_city_md' -> 'Baltimore City, MD'
+  const parts = m.split("_");
+  const state = parts[parts.length - 1].toUpperCase();
+  const county = parts.slice(0, -1).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+  return `${county}, ${state}`;
+}
+function formatDate(d) {
+  if (!d) return "—";
+  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+function kv(k, v) {
+  if (v == null || v === "") return `<div class="k">${escapeHtml(k)}</div><div class="v muted">—</div>`;
+  return `<div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div>`;
+}
+function makeBadge(cls, label) {
+  const b = document.createElement("span");
+  b.className = "badge-pill " + cls;
+  b.textContent = label;
+  return b;
+}
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
 
-  // Lazy mode: fetch the default region before painting data-dependent UI.
-  await ensureRegionLoaded(CURRENT_REGION);
-  OWNERS = REGION_BY_ID[CURRENT_REGION].owners;
-  PARCELS = REGION_BY_ID[CURRENT_REGION].parcels;
-  updateHeaderStats();
+// =========================================================================
+// IMPORT TAB — XLSX/CSV → vendor preset → mapping → preview → commit
+// =========================================================================
 
-  document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+// Google Maps Geocoding API key (HTTP-referrer restricted to this domain after
+// the first import — see README). Embedded in client code by design.
+const GMAPS_KEY = "AIzaSyDE5Ht_txYvmgZSI4FW3Mth8vWJTNKzmeI";
 
-  document.querySelectorAll('.sidebar input').forEach(el => {
-    const ev = el.type === 'text' || el.type === 'number' ? 'input' : 'change';
-    el.addEventListener(ev, debounce(applyFilters, el.type === 'text' || el.type === 'number' ? 250 : 0));
+// Schema fields that vendor presets can map to. Used by mapping UI dropdowns.
+const SCHEMA_FIELDS = [
+  "external_parcel_id", "owner_name_raw", "first_name", "last_name",
+  "co_owner_first", "co_owner_last",
+  "property_address", "property_address2", "property_city", "property_state",
+  "property_zip", "property_county",
+  "mailing_address", "mailing_address2", "mailing_city", "mailing_state",
+  "mailing_zip",
+  "land_sqft", "owner_type", "living_area", "legal_description",
+  "absentee", "vacant", "property_type", "year_built",
+  "seller_propensity", "solar_intender", "windows_intender", "roofing_intender",
+  "phone", "phone_type", "dnc", "email",
+];
+
+// Vendor presets — header (as it appears in the XLSX) → schema field.
+const VENDOR_PRESETS = {
+  datazapp: {
+    label: "DataZapp",
+    map: {
+      "Parcel Id": "external_parcel_id",
+      "FullName": "owner_name_raw",
+      "FirstName": "first_name",
+      "LastName": "last_name",
+      "O2FIRST": "co_owner_first",
+      "O2LAST": "co_owner_last",
+      "Property ADDRESS": "property_address",
+      "Property ADDRESS2": "property_address2",
+      "Property CITY": "property_city",
+      "Property State": "property_state",
+      "Property Zip": "property_zip",
+      "Property COUNTY": "property_county",
+      "MAILING Address": "mailing_address",
+      "MAILING ADDRESS2": "mailing_address2",
+      "MAILING CITY": "mailing_city",
+      "MAILING STATE": "mailing_state",
+      "MAILING Zip": "mailing_zip",
+      "Land sqft": "land_sqft",
+      "OWNERTYPE": "owner_type",
+      "Total Living area": "living_area",
+      "Legal Description": "legal_description",
+      "Absntee Flag": "absentee",
+      "Vacant": "vacant",
+      "Propety Data Type": "property_type",
+      "YearBuilt": "year_built",
+      "Seller Propensity": "seller_propensity",
+      "Solar Intenders": "solar_intender",
+      "Windows_Intenders": "windows_intender",
+      "Roofing_Intenders": "roofing_intender",
+      "Phone": "phone",
+      "PhoneType": "phone_type",
+      "DNC": "dnc",
+      "Email": "email",
+    },
+  },
+  batchdata: {
+    label: "BatchData",
+    map: {
+      "full_name": "owner_name_raw", "fullname": "owner_name_raw",
+      "first_name": "first_name", "owner_first_name": "first_name",
+      "last_name": "last_name", "owner_last_name": "last_name",
+      "property_address": "property_address", "property_street": "property_address",
+      "property_city": "property_city",
+      "property_state": "property_state",
+      "property_zip": "property_zip", "property_zipcode": "property_zip",
+      "property_county": "property_county",
+      "mailing_address": "mailing_address", "mailing_street": "mailing_address",
+      "mailing_city": "mailing_city",
+      "mailing_state": "mailing_state",
+      "mailing_zip": "mailing_zip", "mailing_zipcode": "mailing_zip",
+      "phone_1": "phone", "phone1": "phone", "phone": "phone",
+      "phone_1_type": "phone_type", "phone1_type": "phone_type",
+      "phone_1_dnc": "dnc", "phone1_dnc": "dnc", "dnc": "dnc",
+      "email_1": "email", "email1": "email", "email": "email",
+      "year_built": "year_built", "yearbuilt": "year_built",
+      "property_type": "property_type", "land_use": "property_type",
+      "land_sqft": "land_sqft", "lot_sqft": "land_sqft",
+      "living_area": "living_area", "building_sqft": "living_area",
+      "owner_occupied": "absentee",  // inverted but absentee mapping handled later
+      "owner_type": "owner_type",
+      "vacant": "vacant",
+    },
+  },
+};
+
+// Import state (lives outside renderAll cycle).
+const importState = {
+  file: null,
+  headers: [],          // raw source headers
+  rows: [],             // array of arrays (raw cell values)
+  vendor: null,         // "datazapp" | "batchdata" | "manual"
+  mapping: {},          // header -> schema_field (or null)
+  parsedLeads: [],      // [{doc_id_partial: null, fields: {...}}] — doc IDs are computed at commit
+  previewStats: null,   // { new, update, skipped }
+  committing: false,
+};
+
+// ---- Helpers (mirrors Python's normalization for ID stability) ----
+function importCleanStr(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+function importUpperState(v) {
+  const s = importCleanStr(v); if (!s) return null;
+  return s.toUpperCase().slice(0, 2);
+}
+function importCleanZip(v) {
+  if (v == null) return null;
+  const d = String(v).replace(/[^0-9]/g, "");
+  return d ? d.slice(0, 5) : null;
+}
+function importYnToBool(v) {
+  if (v == null) return null;
+  const s = String(v).trim().toUpperCase();
+  if (["Y", "YES", "TRUE", "T", "1"].includes(s)) return true;
+  if (["N", "NO", "FALSE", "F", "0"].includes(s)) return false;
+  return null;
+}
+function importSafeInt(v) {
+  if (v == null) return null;
+  const n = parseInt(String(v).trim(), 10);
+  return isFinite(n) ? n : null;
+}
+function importCleanPhone(v) {
+  if (v == null) return null;
+  const d = String(v).replace(/[^0-9]/g, "");
+  return d.length >= 10 ? d : null;
+}
+function importUpperCounty(v) {
+  if (v == null) return null;
+  let s = String(v).trim().toUpperCase();
+  s = s.replace("-COUNTY", "").replace("-CITY", " CITY");
+  s = s.replace(/\s+/g, " ").trim();
+  return s || null;
+}
+function importNameTitlecase(s) {
+  if (!s) return null;
+  return String(s).trim().split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(" ");
+}
+
+function normalizeAddrForId(addr, city, state, zip5) {
+  const parts = [];
+  if (addr) parts.push(String(addr).toUpperCase());
+  if (city) parts.push(String(city).toUpperCase());
+  if (state) parts.push(String(state).toUpperCase());
+  if (zip5) parts.push(String(zip5));
+  let s = parts.join(" ").normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  s = s.replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return s;
+}
+async function sha256Hex(text) {
+  const buf = new TextEncoder().encode(text);
+  const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function computeDocId(state, zip5, addrNorm) {
+  const h = (await sha256Hex(addrNorm)).slice(0, 12);
+  const sp = (state || "xx").toLowerCase();
+  const zp = zip5 || "00000";
+  return `${sp}__${zp}__${h}`;
+}
+
+// ---- File parsing ----
+function attachImportHandlers() {
+  const dz = document.getElementById("dropzone");
+  const fi = document.getElementById("file-input");
+  dz.addEventListener("click", () => fi.click());
+  fi.addEventListener("change", (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+  ["dragenter", "dragover"].forEach(ev => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); e.stopPropagation(); dz.classList.add("drag-over");
+  }));
+  ["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); e.stopPropagation(); dz.classList.remove("drag-over");
+  }));
+  dz.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+  document.querySelectorAll("#vendor-pills button").forEach(b => {
+    b.addEventListener("click", () => selectVendor(b.dataset.vendor));
   });
-  document.getElementById('btn-reset').onclick = () => {
-    document.querySelector('input[name="icp"][value="all"]').checked = true;
-    document.querySelector('input[name="ptype"][value="home"]').checked = true;
-    document.querySelector('input[name="own"][value="both"]').checked = true;
-    document.getElementById('hoa-only').checked = false;
-    document.getElementById('exclude-gov').checked = false;
-    document.getElementById('search-owner').value = '';
-    document.getElementById('min-parcels').value = '';
-    document.getElementById('max-parcels').value = '';
-    applyFilters();
-  };
+}
 
-  ['density','value','markers','dark'].forEach(k => {
-    const el = document.getElementById('lyr-' + k);
-    el.addEventListener('change', () => { STATE.layers[k] = el.checked; rebuildMap(); });
+async function handleFile(file) {
+  importState.file = file;
+  document.getElementById("fi-name").textContent = file.name;
+  document.getElementById("fi-meta").textContent = `${(file.size/1024).toFixed(1)} KB`;
+  document.getElementById("file-info").style.display = "flex";
+  document.getElementById("dropzone").style.display = "none";
+
+  // Parse with SheetJS
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+  if (!aoa.length) { showToast("File appears empty"); return; }
+
+  importState.headers = (aoa[0] || []).map(h => h == null ? "" : String(h).trim());
+  importState.rows = aoa.slice(1).filter(r => r.some(c => c !== null && c !== ""));
+  if (!importState.rows.length) { showToast("No data rows found below the header"); return; }
+
+  // Move past step 1
+  enableStep("step-vendor");
+  const detected = autoDetectVendor(importState.headers);
+  selectVendor(detected);
+}
+
+function autoDetectVendor(headers) {
+  let best = "manual", bestScore = 0;
+  const headerSet = new Set(headers.map(h => h.toLowerCase()));
+  for (const [vendor, info] of Object.entries(VENDOR_PRESETS)) {
+    const keys = Object.keys(info.map).map(k => k.toLowerCase());
+    let hits = 0;
+    for (const k of keys) if (headerSet.has(k)) hits++;
+    const score = hits / keys.length;
+    if (score > bestScore) { bestScore = score; best = vendor; }
+  }
+  return bestScore >= 0.3 ? best : "manual";
+}
+
+function selectVendor(vendor) {
+  importState.vendor = vendor;
+  document.querySelectorAll("#vendor-pills button").forEach(b => {
+    b.classList.toggle("active", b.dataset.vendor === vendor);
+    const auto = b.querySelector(".auto-tag"); if (auto) auto.remove();
   });
+  const activeBtn = document.querySelector(`#vendor-pills button[data-vendor="${vendor}"]`);
+  if (activeBtn && vendor !== "manual") {
+    const tag = document.createElement("span"); tag.className = "auto-tag"; tag.textContent = "auto-detected";
+    activeBtn.appendChild(tag);
+  }
 
-  document.getElementById('owners-search').addEventListener('input', debounce(renderOwnersTable, 200));
-  document.getElementById('outreach-search').addEventListener('input', debounce(renderOutreach, 200));
+  // Apply mapping
+  importState.mapping = {};
+  const preset = VENDOR_PRESETS[vendor];
+  if (preset) {
+    // case-insensitive header match
+    const lowerPresetKeys = {};
+    for (const [k, v] of Object.entries(preset.map)) lowerPresetKeys[k.toLowerCase()] = v;
+    for (const h of importState.headers) {
+      importState.mapping[h] = lowerPresetKeys[h.toLowerCase()] || null;
+    }
+  } else {
+    for (const h of importState.headers) importState.mapping[h] = null;
+  }
 
-  document.querySelectorAll('#owners-table th.sortable').forEach(th => {
-    th.onclick = () => {
-      const k = th.dataset.key;
-      if (ownersSort.key === k) ownersSort.dir = -ownersSort.dir;
-      else { ownersSort.key = k; ownersSort.dir = (k === 'owner' || k === 'state' || k === 'region') ? 1 : -1; }
-      document.querySelectorAll('#owners-table th').forEach(t => t.classList.remove('sorted-asc','sorted-desc'));
-      th.classList.add(ownersSort.dir > 0 ? 'sorted-asc' : 'sorted-desc');
-      renderOwnersTable();
+  renderMappingTable();
+  enableStep("step-mapping");
+  rebuildPreview();
+}
+
+function renderMappingTable() {
+  const tbody = document.getElementById("mapping-tbody");
+  tbody.innerHTML = "";
+  for (const h of importState.headers) {
+    const tr = document.createElement("tr");
+    const tdSrc = document.createElement("td"); tdSrc.className = "src"; tdSrc.textContent = h || "(blank)";
+    const tdTgt = document.createElement("td"); tdTgt.className = "tgt";
+    const sel = document.createElement("select"); sel.className = "select-input";
+    sel.innerHTML = `<option value="">— ignore —</option>` +
+      SCHEMA_FIELDS.map(f => `<option value="${f}" ${importState.mapping[h] === f ? "selected" : ""}>${f}</option>`).join("");
+    sel.addEventListener("change", () => {
+      importState.mapping[h] = sel.value || null;
+      rebuildPreview();
+    });
+    tdTgt.appendChild(sel);
+    tr.appendChild(tdSrc); tr.appendChild(tdTgt);
+    tbody.appendChild(tr);
+  }
+}
+
+// ---- Preview ----
+async function rebuildPreview() {
+  try {
+    const mapping = importState.mapping;
+    const headerIdx = {};
+    importState.headers.forEach((h, i) => { headerIdx[h] = i; });
+
+    const fieldIdx = {}; // schema_field -> source column index
+    for (const [h, field] of Object.entries(mapping)) if (field) fieldIdx[field] = headerIdx[h];
+
+    let nNew = 0, nUpdate = 0, nSkipNoAddr = 0;
+    const parsedLeads = [];
+    const existingIds = state.leads;  // reference the global app state's Map
+
+    for (let r = 0; r < importState.rows.length; r++) {
+      const row = importState.rows[r];
+      const getF = field => fieldIdx[field] != null ? row[fieldIdx[field]] : null;
+      const addr = importCleanStr(getF("property_address"));
+      const city = importCleanStr(getF("property_city"));
+      const propSt = importUpperState(getF("property_state"));
+      const zip5 = importCleanZip(getF("property_zip"));
+      if (!addr) { nSkipNoAddr++; continue; }
+      const addrNorm = normalizeAddrForId(addr, city, propSt, zip5);
+      if (!addrNorm) { nSkipNoAddr++; continue; }
+      const doc_id = await computeDocId(propSt, zip5, addrNorm);
+      if (existingIds && existingIds.has && existingIds.has(doc_id)) nUpdate++;
+      else nNew++;
+      parsedLeads.push({ doc_id, row_idx: r + 2, getF });
+    }
+    importState.parsedLeads = parsedLeads;
+    importState.previewStats = { new: nNew, update: nUpdate, skipped: nSkipNoAddr, total: parsedLeads.length };
+
+    const propAddrMapped = Object.values(mapping).includes("property_address");
+    // Render
+    const box = document.getElementById("preview-stats");
+    box.innerHTML = `
+      <div class="stat-box new"><div class="v">${nNew.toLocaleString()}</div><div class="k">New leads</div></div>
+      <div class="stat-box update"><div class="v">${nUpdate.toLocaleString()}</div><div class="k">Update existing (CRM state preserved)</div></div>
+      <div class="stat-box skip"><div class="v">${nSkipNoAddr.toLocaleString()}</div><div class="k">Skipped (no address)</div></div>
+      <div class="stat-box"><div class="v">${parsedLeads.length.toLocaleString()}</div><div class="k">Total to commit</div></div>
+    `;
+    if (!propAddrMapped) {
+      box.innerHTML += `<div class="stat-box error" style="grid-column: 1 / -1"><div class="v" style="font-size:14px">⚠ Map a column to <b>property_address</b> to enable import</div><div class="k">Required to compute lead IDs and geocode pins.</div></div>`;
+    }
+    enableStep("step-preview");
+    if (parsedLeads.length > 0) enableStep("step-commit");
+    else disableStep("step-commit");
+  } catch (err) {
+    console.error("rebuildPreview failed", err);
+    const box = document.getElementById("preview-stats");
+    box.innerHTML = `<div class="stat-box error" style="grid-column: 1 / -1"><div class="v" style="font-size:14px">⚠ Preview error</div><div class="k">${escapeHtml(err.message || String(err))}</div></div>`;
+    enableStep("step-preview");
+    disableStep("step-commit");
+  }
+}
+
+function enableStep(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("disabled");
+}
+function disableStep(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add("disabled");
+}
+
+// ---- Geocode ----
+async function geocodeOne(addr, city, st, zip5) {
+  const bits = [addr, city, st, zip5].filter(Boolean).join(", ");
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(bits)}&key=${GMAPS_KEY}`;
+  try {
+    const resp = await fetch(url);
+    const body = await resp.json();
+    if (body.status === "OK" && body.results.length > 0) {
+      const loc = body.results[0].geometry.location;
+      return { lat: loc.lat, lon: loc.lng, status: body.status,
+               formatted: body.results[0].formatted_address,
+               location_type: body.results[0].geometry.location_type };
+    }
+    return { lat: null, lon: null, status: body.status || "UNKNOWN" };
+  } catch (e) {
+    return { lat: null, lon: null, status: "FETCH_ERROR" };
+  }
+}
+
+// ---- Commit ----
+async function commitImport() {
+  if (importState.committing) return;
+  if (!importState.parsedLeads.length) { showToast("Nothing to commit"); return; }
+  importState.committing = true;
+  const btn = document.getElementById("btn-commit");
+  btn.disabled = true; btn.textContent = "Committing…";
+  document.getElementById("progress-wrap").style.display = "block";
+  document.getElementById("import-result").style.display = "none";
+
+  const user = window.propagenticAuth.user;
+  const importerEmail = user ? user.email : "unknown";
+  const sourceFile = importState.file ? importState.file.name : "unknown";
+  const total = importState.parsedLeads.length;
+
+  let geocoded = 0, geocodeErrors = 0;
+  const docs = [];  // [{doc_id, payload}]
+  for (let i = 0; i < importState.parsedLeads.length; i++) {
+    const item = importState.parsedLeads[i];
+    const get = item.getF;
+    const addr = importCleanStr(get("property_address"));
+    const city = importCleanStr(get("property_city"));
+    const state = importUpperState(get("property_state"));
+    const zip5 = importCleanZip(get("property_zip"));
+    const geo = await geocodeOne(addr, city, state, zip5);
+    if (geo.status === "OK") geocoded++; else geocodeErrors++;
+
+    const first = importNameTitlecase(get("first_name"));
+    const last = importNameTitlecase(get("last_name"));
+    const fullName = importNameTitlecase(get("owner_name_raw")) || (first && last ? `${first} ${last}` : (first || last));
+
+    // BatchData uses owner_occupied (boolean) where DataZapp uses absentee (Y/N).
+    // Normalize: if vendor=batchdata and field is mapped to absentee, invert the boolean.
+    let absenteeRaw = get("absentee");
+    let absentee = importYnToBool(absenteeRaw);
+    if (importState.vendor === "batchdata" && absentee !== null) absentee = !absentee;
+
+    const county = importUpperCounty(get("property_county"));
+
+    const payload = {
+      external_parcel_id: importCleanStr(get("external_parcel_id")),
+      owner_name: fullName,
+      owner_name_raw: importCleanStr(get("owner_name_raw")),
+      first_name: first, last_name: last,
+      co_owner_first: importNameTitlecase(get("co_owner_first")),
+      co_owner_last: importNameTitlecase(get("co_owner_last")),
+      property_address: addr,
+      property_address2: importCleanStr(get("property_address2")),
+      property_city: city,
+      property_state: state,
+      property_zip: zip5,
+      property_county: county,
+      property_lat: geo.lat,
+      property_lon: geo.lon,
+      geocode_status: geo.status,
+      geocode_formatted: geo.formatted || null,
+      property_type: importCleanStr(get("property_type")),
+      year_built: importSafeInt(get("year_built")),
+      land_sqft: importSafeInt(get("land_sqft")),
+      living_area: importSafeInt(get("living_area")),
+      legal_description: importCleanStr(get("legal_description")),
+      mailing_address: importCleanStr(get("mailing_address")),
+      mailing_address2: importCleanStr(get("mailing_address2")),
+      mailing_city: importCleanStr(get("mailing_city")),
+      mailing_state: importUpperState(get("mailing_state")),
+      mailing_zip: importCleanZip(get("mailing_zip")),
+      owner_type: importCleanStr(get("owner_type")),
+      absentee: absentee,
+      vacant: importYnToBool(get("vacant")),
+      seller_propensity: importCleanStr(get("seller_propensity")),
+      solar_intender: importCleanStr(get("solar_intender")),
+      windows_intender: importCleanStr(get("windows_intender")),
+      roofing_intender: importCleanStr(get("roofing_intender")),
+      phone: importCleanPhone(get("phone")),
+      phone_type: importCleanStr(get("phone_type")),
+      dnc: importYnToBool(get("dnc")),
+      email: importCleanStr(get("email")),
+      market_state: state,
+      market_county: county,
+      market: `${(county || "unknown").toLowerCase().replace(/\s+/g, "_")}_${(state || "xx").toLowerCase()}`,
+      source_file: sourceFile,
+      source_row: item.row_idx,
+      imported_at: firebase.firestore.FieldValue.serverTimestamp(),
+      imported_by: importerEmail,
     };
-  });
+    // Strip nulls so set(merge=true) doesn't clobber existing values with null.
+    for (const k of Object.keys(payload)) if (payload[k] == null) delete payload[k];
 
-  document.getElementById('owners-tbody').addEventListener('click', e => {
-    const tr = e.target.closest('tr[data-oid]'); if (!tr) return;
-    openOwnerDrawer(tr.dataset.region, +tr.dataset.oid);
-  });
-  document.getElementById('outreach-tbody').addEventListener('click', e => {
-    const tr = e.target.closest('tr[data-oid]'); if (!tr) return;
-    const oid = +tr.dataset.oid;
-    if (oid >= 0) openOwnerDrawer(tr.dataset.region, oid);
-  });
+    docs.push({ doc_id: item.doc_id, payload });
 
-  document.getElementById('drawer-close').onclick = closeOwnerDrawer;
-  document.getElementById('drawer-backdrop').onclick = closeOwnerDrawer;
+    if ((i + 1) % 5 === 0 || i === total - 1) {
+      const pct = Math.round((i + 1) / total * 100);
+      document.getElementById("progress-fill").style.width = pct + "%";
+      document.getElementById("progress-text").textContent =
+        `Geocoding ${i + 1} / ${total} (${pct}%) · ${geocoded} OK · ${geocodeErrors} no-match`;
+    }
+  }
 
-  document.getElementById('btn-export').onclick = () => {
-    const blob = new Blob([JSON.stringify({ outreach: OUTREACH, dedup: DEDUP_DECISIONS }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `propagentic_export_${new Date().toISOString().slice(0,10)}.json`;
-    a.click(); URL.revokeObjectURL(url);
-    showToast('Exported');
-  };
-  document.getElementById('btn-import').onclick = () => document.getElementById('import-file').click();
-  document.getElementById('import-file').onchange = e => {
-    const file = e.target.files[0]; if (!file) return;
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        const data = JSON.parse(r.result);
-        // v2 format has {outreach, dedup}; older versions were flat outreach map
-        if (data.outreach || data.dedup) {
-          if (data.outreach) OUTREACH = { ...OUTREACH, ...data.outreach };
-          if (data.dedup) DEDUP_DECISIONS = { ...DEDUP_DECISIONS, ...data.dedup };
-        } else {
-          OUTREACH = { ...OUTREACH, ...data };
-        }
-        saveOutreach();
-        saveDedup();
-        renderOwnersTable(); renderOutreach(); renderDedup();
-        showToast('Imported');
-      } catch (err) { alert('Invalid JSON file'); }
-    };
-    r.readAsText(file);
-  };
-
-  document.getElementById('btn-export-csv').onclick = () => {
-    const lines = ['region,owner,parcels,homes,vacant_res,commercial,total_value,home_value,state,city,icp,is_hoa,absentee_pct,status,notes'];
-    for (const r of REGIONS) {
-      if (!STATE.ownersRegionFilter.has(r.id)) continue;
-      const savedOwners = OWNERS;
-      OWNERS = r.owners;
-      for (let i = 0; i < r.owners.length; i++) {
-        if (!ownerMatchesFilters(r.owners[i])) continue;
-        const o = r.owners[i];
-        const rec = getOutreach(r.id, o[O.name]) || {};
-        const row = [r.id, o[O.name], o[O.n], o[O.n_home], o[O.n_vacant_res], o[O.n_commercial], o[O.total_val], o[O.home_val], o[O.state], o[O.city], o[O.icp], o[O.is_hoa]?1:0, o[O.absentee_pct], rec.status || '', (rec.notes || '').replace(/[\r\n,"]/g, ' ')];
-        lines.push(row.map(v => typeof v === 'string' && /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v).join(','));
+  // Batched writes to Firestore (400 per batch to leave headroom under the 500-op limit)
+  const db = firebase.firestore();
+  document.getElementById("progress-text").textContent = `Writing ${docs.length} docs to Firestore…`;
+  let written = 0;
+  try {
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = db.batch();
+      for (const d of docs.slice(i, i + 400)) {
+        batch.set(db.collection("leads").doc(d.doc_id), d.payload, { merge: true });
       }
-      OWNERS = savedOwners;
+      await batch.commit();
+      written += Math.min(400, docs.length - i);
     }
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'owners_filtered.csv'; a.click(); URL.revokeObjectURL(url);
-    showToast('CSV exported');
-  };
-
-  document.getElementById('btn-dedup-clear').onclick = () => {
-    if (!confirm('Clear all local dedup decisions for all regions? This cannot be undone.')) return;
-    DEDUP_DECISIONS = {};
-    saveDedup();
-    renderDedup();
-    showToast('Local dedup decisions cleared');
-  };
-
-  // -- Import Contacts wiring --
-  const dz = document.getElementById('dropzone');
-  const fi = document.getElementById('import-file-input');
-  dz.onclick = () => fi.click();
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault(); dz.classList.remove('drag');
-    if (e.dataTransfer.files.length) handleImportFile(e.dataTransfer.files[0]);
-  });
-  fi.addEventListener('change', () => {
-    if (fi.files.length) handleImportFile(fi.files[0]);
-  });
-  document.getElementById('i3-commit').onclick = () => {
-    if (!IMPORT_STATE.matched.length) {
-      alert('Nothing to commit — no rows matched any owner. Check the owner_name column mapping and region selection.');
-      return;
-    }
-    commitImport();
-  };
-  document.getElementById('i3-cancel').onclick = resetImportFlow;
-  renderImportHistory();
-
-  applyFilters();
-  renderOwnersTable();
-  renderOutreach();
-  renderDedup();
+    // Audit row
+    await db.collection("import_log").add({
+      imported_at: firebase.firestore.FieldValue.serverTimestamp(),
+      imported_by: importerEmail,
+      source_file: sourceFile,
+      vendor: importState.vendor,
+      rows_in_source: importState.rows.length,
+      rows_imported: docs.length,
+      rows_skipped_no_address: importState.previewStats.skipped,
+      geocoded_ok: geocoded,
+      geocode_errors: geocodeErrors,
+      via: "browser",
+    });
+    const result = document.getElementById("import-result");
+    result.className = "import-result";
+    result.style.display = "block";
+    result.innerHTML = `<b>Import complete.</b> ${docs.length} leads upserted (${importState.previewStats.new} new, ${importState.previewStats.update} updated). ${geocoded} geocoded, ${geocodeErrors} no-match. Audit logged.`;
+    showToast(`Imported ${docs.length} leads.`);
+  } catch (err) {
+    console.error(err);
+    const result = document.getElementById("import-result");
+    result.className = "import-result error";
+    result.style.display = "block";
+    result.innerHTML = `<b>Import failed:</b> ${escapeHtml(err.message || String(err))}.<br>${written} docs may have been written before the error.`;
+    showToast("Import failed — see import tab for details.");
+  } finally {
+    importState.committing = false;
+    btn.disabled = false; btn.textContent = "Commit import";
+  }
 }
 
-function debounce(fn, ms) {
-  let t;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+function resetImport() {
+  importState.file = null; importState.headers = []; importState.rows = [];
+  importState.vendor = null; importState.mapping = {};
+  importState.parsedLeads = []; importState.previewStats = null;
+  document.getElementById("file-info").style.display = "none";
+  document.getElementById("dropzone").style.display = "block";
+  document.getElementById("file-input").value = "";
+  ["step-vendor", "step-mapping", "step-preview", "step-commit"].forEach(disableStep);
+  document.getElementById("preview-stats").innerHTML = "";
+  document.getElementById("mapping-tbody").innerHTML = "";
+  document.getElementById("import-result").style.display = "none";
+  document.getElementById("progress-wrap").style.display = "none";
 }
-
-document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>

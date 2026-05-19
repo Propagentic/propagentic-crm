@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: signed in with a verified @propagenticai.com Google Workspace account.
+    function isPropagenticUser() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email.matches('.*@propagenticai\\.com$');
+    }
+
+    // All collections in the explorer follow the same auth model: any
+    // authenticated @propagenticai.com user can read; only those users can
+    // write. There is no public read path.
+    match /{document=**} {
+      allow read, write: if isPropagenticUser();
+    }
+  }
+}
