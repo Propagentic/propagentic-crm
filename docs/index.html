@@ -9,19 +9,24 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
 :root {
-  --bg: #0b1220;
-  --panel: #111a2e;
-  --panel-2: #182547;
-  --border: #1f2c4d;
-  --text: #e2e8f0;
+  /* Surfaces — warm dark slate matching Propagentic's #1A2329 */
+  --bg: #1A2329;
+  --panel: #232E36;
+  --panel-2: #2D3B45;
+  --border: #384651;
+  /* Text */
+  --text: #f1f5f9;
   --text-dim: #94a3b8;
   --text-soft: #cbd5e1;
-  --accent: #38bdf8;
-  --accent-2: #818cf8;
+  /* Brand — Propagentic orange */
+  --accent: #FF6B35;         /* primary brand orange (vivid on dark) */
+  --accent-2: #FA6D07;       /* alt brand orange (variation) */
+  --accent-dark: #CC4921;    /* deeper orange (pressed/active states) */
+  /* Semantic */
   --green: #10b981;
   --red: #ef4444;
   --amber: #f59e0b;
-  --shadow: 0 4px 16px rgba(0,0,0,0.25);
+  --shadow: 0 4px 18px rgba(0,0,0,0.4);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.45; overflow: hidden; }
@@ -34,11 +39,34 @@ a:hover { text-decoration: underline; }
 .app { display: grid; grid-template-rows: 50px 1fr; height: 100vh; }
 .top { display: flex; align-items: center; padding: 0 18px; gap: 18px; background: var(--panel); border-bottom: 1px solid var(--border); }
 .top h1 { font-size: 15px; font-weight: 600; margin: 0; color: var(--text); }
-.top h1 .tag { color: var(--accent); font-weight: 500; font-size: 11.5px; margin-left: 6px; padding: 2px 6px; background: rgba(56, 189, 248, 0.12); border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.25); }
+.top h1 .tag { color: var(--accent); font-weight: 500; font-size: 11.5px; margin-left: 6px; padding: 2px 6px; background: rgba(255, 107, 53, 0.12); border-radius: 4px; border: 1px solid rgba(255, 107, 53, 0.25); }
 .stats { display: flex; gap: 16px; color: var(--text-dim); font-size: 12px; }
 .stats b { color: var(--text); font-weight: 600; margin-right: 3px; }
 .top .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
 .user-pill { font-size: 11.5px; color: var(--text-dim); padding: 3px 9px; border-radius: 100px; background: var(--panel-2); border: 1px solid var(--border); }
+
+/* Active-user presence stack */
+.presence-stack { display: flex; align-items: center; padding-right: 4px; }
+.presence-stack .presence-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  border: 2px solid var(--panel);
+  margin-left: -7px;
+  cursor: default;
+  transition: transform 0.12s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  position: relative;
+}
+.presence-stack .presence-avatar:first-child { margin-left: 0; }
+.presence-stack .presence-avatar:hover { transform: scale(1.12); z-index: 10; }
+.presence-stack .presence-avatar.self { border-color: var(--accent); }
+.presence-stack .presence-avatar.more { background: var(--panel-2); color: var(--text-dim); font-size: 10.5px; }
+.presence-stack .presence-avatar.self::after {
+  content: ""; position: absolute; bottom: -1px; right: -1px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); border: 2px solid var(--panel);
+}
 .btn { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }
 .btn:hover { background: #213262; }
 .btn.btn-primary { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
@@ -63,8 +91,26 @@ a:hover { text-decoration: underline; }
 .toggle-pills { display: flex; gap: 4px; }
 .toggle-pills button { flex: 1; padding: 5px 0; font-size: 11.5px; background: var(--bg); border: 1px solid var(--border); color: var(--text-dim); border-radius: 5px; }
 .toggle-pills button.active { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
-.filters-reset { font-size: 11.5px; color: var(--accent); background: transparent; border: none; padding: 0; text-align: left; cursor: pointer; }
-.filters-reset:hover { text-decoration: underline; }
+.filters-reset {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%;
+  font-size: 12px; font-weight: 500;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filters-reset:hover {
+  background: rgba(255, 107, 53, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+.filters-reset::before { content: "↺"; font-size: 13px; }
 
 /* --- Main pane (tabs + content) --- */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -91,8 +137,9 @@ a:hover { text-decoration: underline; }
 .marker-cluster { background-clip: padding-box; border-radius: 22px; }
 .marker-cluster div { background: var(--accent); color: #0a1428; font-weight: 600; }
 .marker-cluster span { line-height: 30px; }
-.lead-marker { background: var(--accent); border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
-.lead-marker.has-status { background: var(--amber); }
+/* Map pin colors: neutral = untouched, orange = in pipeline, red = DNC */
+.lead-marker { background: #94a3b8; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+.lead-marker.has-status { background: var(--accent); }
 .lead-marker.dnc { background: var(--red); }
 
 /* --- List view --- */
@@ -103,13 +150,13 @@ table.leads-table th { text-align: left; padding: 10px 12px; font-weight: 600; c
 table.leads-table th:hover { color: var(--text); }
 table.leads-table th .sort-arrow { font-size: 10px; opacity: 0.5; margin-left: 4px; }
 table.leads-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
-table.leads-table tbody tr:hover { background: rgba(56, 189, 248, 0.06); }
-table.leads-table tbody tr.selected { background: rgba(56, 189, 248, 0.12); }
+table.leads-table tbody tr:hover { background: rgba(255, 107, 53, 0.06); }
+table.leads-table tbody tr.selected { background: rgba(255, 107, 53, 0.12); }
 table.leads-table td { padding: 8px 12px; color: var(--text-soft); }
 table.leads-table td.name { font-weight: 500; color: var(--text); }
 .badge-pill { display: inline-block; padding: 1px 7px; border-radius: 100px; font-size: 10.5px; font-weight: 500; }
 .badge-status-researching { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-.badge-status-contacted { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+.badge-status-contacted { background: rgba(255, 107, 53, 0.15); color: #FF6B35; }
 .badge-status-demo_scheduled { background: rgba(129, 140, 248, 0.18); color: #a5b4fc; }
 .badge-status-paid { background: rgba(16, 185, 129, 0.18); color: #34d399; }
 .badge-dnc { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
@@ -123,7 +170,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .kanban-col__head .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .kanban-col__head .count { color: var(--text-dim); font-size: 11.5px; background: var(--bg); padding: 2px 9px; border-radius: 100px; }
 .kanban-col__body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 80px; }
-.kanban-col.drop-target { background: rgba(56, 189, 248, 0.08); border-color: var(--accent); }
+.kanban-col.drop-target { background: rgba(255, 107, 53, 0.08); border-color: var(--accent); }
 .kanban-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; cursor: grab; user-select: none; transition: border-color 0.12s; }
 .kanban-card:hover { border-color: var(--accent); }
 .kanban-card:active { cursor: grabbing; }
@@ -135,9 +182,72 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .kanban-empty { color: var(--text-dim); font-size: 11.5px; text-align: center; padding: 24px 10px; font-style: italic; }
 /* Color accents per column */
 .kanban-col[data-status="researching"] .dot { background: #fbbf24; }
-.kanban-col[data-status="contacted"]   .dot { background: #38bdf8; }
+.kanban-col[data-status="contacted"]   .dot { background: #FF6B35; }
 .kanban-col[data-status="demo_scheduled"] .dot { background: #a5b4fc; }
 .kanban-col[data-status="paid"]        .dot { background: #34d399; }
+
+/* Wide Contacted column — split into Emailed / Called / Both sub-zones */
+.kanban-col[data-status="contacted"] { min-width: 620px; flex: 3; }
+.kanban-col[data-status="contacted"] .kanban-col__body { padding: 8px; gap: 8px; min-height: 0; }
+.contacted-noactivity { border: 1px dashed var(--border); border-radius: 5px; padding: 6px 8px; background: rgba(255,255,255,0.02); flex-shrink: 0; }
+.contacted-noactivity .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.contacted-noactivity .cards { display: flex; flex-direction: column; gap: 4px; }
+.contacted-noactivity .cards .kanban-card { opacity: 0.85; padding: 6px 10px; }
+.contacted-noactivity .cards .kanban-card .card-name { font-size: 12px; }
+.contacted-noactivity .cards .kanban-card .card-addr { font-size: 11px; margin-bottom: 4px; }
+.contacted-zones { display: flex; gap: 6px; flex: 1; min-height: 0; }
+.contacted-zone { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+.contacted-zone.drop-target { background: rgba(255, 107, 53, 0.06); border-color: var(--accent); }
+.contacted-zone-head { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.contacted-zone[data-sub="emailed"] .contacted-zone-head { color: #a5b4fc; }
+.contacted-zone[data-sub="called"]  .contacted-zone-head { color: #34d399; }
+.contacted-zone[data-sub="both"]    .contacted-zone-head { color: var(--accent); }
+.contacted-zone-body { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 50px; }
+.kanban-col[data-status="do_not_contact"] .dot { background: #ef4444; }
+.kanban-col[data-status="do_not_contact"] .kanban-col__head {
+  cursor: pointer;
+  background: rgba(239, 68, 68, 0.10);
+  border-bottom-color: rgba(239, 68, 68, 0.35);
+  position: relative;
+  transition: background 0.15s;
+}
+.kanban-col[data-status="do_not_contact"] .kanban-col__head:hover { background: rgba(239, 68, 68, 0.18); }
+.kanban-col[data-status="do_not_contact"] .kanban-col__head:hover::after { background: var(--red); color: #fff; border-color: var(--red); }
+.kanban-col[data-status="do_not_contact"] .kanban-col__head::after {
+  content: "View details →";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 100px;
+  padding: 2px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: all 0.15s;
+  pointer-events: none;
+}
+.kanban-col[data-status="do_not_contact"] .kanban-col__body { padding-top: 18px; }
+.kanban-card .card-reason { font-size: 11px; color: var(--text-dim); margin-top: 6px; font-style: italic; }
+.badge-status-do_not_contact { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+
+/* DNC reason editor row (used in drawer + modal) */
+.dnc-edit { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--bg); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; }
+.dnc-edit label { font-size: 11px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.dnc-edit .other-input { display: none; }
+.dnc-edit.show-other .other-input { display: block; }
+
+/* DNC details modal-specific row */
+.dnc-row { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
+.dnc-row .dnc-row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.dnc-row .dnc-row-head .nm { font-weight: 500; font-size: 13px; }
+.dnc-row .dnc-row-head .addr { font-size: 11.5px; color: var(--text-dim); }
+.dnc-row .dnc-saved { font-size: 11px; color: var(--text-dim); opacity: 0; transition: opacity 0.2s; margin-left: 6px; }
+.dnc-row .dnc-saved.show { opacity: 1; }
 
 /* --- Drawer --- */
 .drawer { position: fixed; top: 0; right: 0; height: 100vh; width: 460px; background: var(--panel); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,0.35); transform: translateX(100%); transition: transform 0.25s ease; display: flex; flex-direction: column; z-index: 1000; }
@@ -191,8 +301,8 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .import-step p.help { font-size: 12px; color: var(--text-dim); margin: 0 0 12px 0; line-height: 1.55; }
 
 .dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; color: var(--text-dim); cursor: pointer; transition: all 0.15s; }
-.dropzone:hover { border-color: var(--accent); color: var(--text); background: rgba(56, 189, 248, 0.04); }
-.dropzone.drag-over { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.08); }
+.dropzone:hover { border-color: var(--accent); color: var(--text); background: rgba(255, 107, 53, 0.04); }
+.dropzone.drag-over { border-color: var(--accent); color: var(--accent); background: rgba(255, 107, 53, 0.08); }
 .dropzone .big { font-size: 14px; margin-bottom: 4px; color: var(--text); font-weight: 500; }
 .dropzone .small { font-size: 11.5px; }
 
@@ -234,6 +344,129 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 
 .import-result { padding: 14px 16px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #6ee7b7; font-size: 13px; line-height: 1.55; }
 .import-result.error { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+
+/* --- Add Lead modal --- */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal-overlay.hidden { display: none; }
+.modal { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.modal-close:hover { color: var(--text); }
+.modal-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+.modal-foot .err { color: #fca5a5; font-size: 12px; margin-right: auto; }
+.form-section { display: flex; flex-direction: column; gap: 8px; }
+.form-section h4 { margin: 0 0 2px 0; font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.form-row { display: flex; gap: 8px; }
+.form-row > * { flex: 1; min-width: 0; }
+.form-row .small { max-width: 70px; flex: 0 0 70px; }
+.form-row .medium { max-width: 110px; flex: 0 0 110px; }
+.form-check { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-soft); cursor: pointer; padding: 4px 0; }
+.form-check input { cursor: pointer; margin: 0; }
+
+/* --- Stats tab — "Coming soon" with blurred fake-dashboard backdrop --- */
+.stats-wrap { position: relative; overflow: hidden; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.stats-blur-layer { position: absolute; inset: 0; filter: blur(34px); opacity: 0.55; pointer-events: none; z-index: 0; }
+.fake-card { position: absolute; background: var(--panel); border-radius: 14px; padding: 22px; box-shadow: 0 12px 36px rgba(0,0,0,0.35); }
+
+/* Card layout — scatter across the canvas */
+.fake-c1 { top: 6%; left: 4%; width: 22%; height: 38%; display: flex; align-items: flex-end; gap: 8px; }
+.fake-c2 { top: 6%; left: 29%; width: 38%; height: 26%; display: flex; flex-direction: column; gap: 16px; }
+.fake-c3 { top: 6%; right: 4%; width: 22%; height: 38%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.fake-c4 { bottom: 6%; left: 4%; width: 52%; height: 44%; }
+.fake-c5 { bottom: 6%; right: 4%; width: 38%; height: 44%; display: flex; gap: 12px; align-items: stretch; }
+.fake-c6 { top: 36%; left: 29%; width: 38%; height: 18%; }
+
+/* Bar chart inside c1 */
+.fake-bars { display: flex; align-items: flex-end; gap: 10px; height: 100%; width: 100%; }
+.fake-bars span { flex: 1; background: var(--accent); border-radius: 5px 5px 0 0; height: var(--h); }
+.fake-bars span:nth-child(2n) { background: var(--accent-2); }
+.fake-bars span:nth-child(3n) { background: rgba(241, 245, 249, 0.35); }
+.fake-bars span:nth-child(5n) { background: var(--accent-dark); }
+
+/* Big-number + line chart inside c2 */
+.fake-bignum { width: 55%; height: 38px; background: var(--text); border-radius: 6px; opacity: 0.9; }
+.fake-line { flex: 1; color: var(--accent); }
+.fake-line svg { width: 100%; height: 100%; display: block; }
+
+/* Donut + legend inside c3 */
+.fake-donut {
+  width: 75%; aspect-ratio: 1; border-radius: 50%; position: relative;
+  background: conic-gradient(
+    var(--accent) 0deg 130deg,
+    var(--accent-2) 130deg 235deg,
+    rgba(241, 245, 249, 0.45) 235deg 305deg,
+    var(--accent-dark) 305deg 360deg);
+}
+.fake-donut::after { content: ""; position: absolute; inset: 22%; background: var(--panel); border-radius: 50%; }
+.fake-legend { display: flex; gap: 8px; width: 100%; justify-content: center; }
+.fake-legend span { width: 22%; height: 9px; background: rgba(241, 245, 249, 0.45); border-radius: 100px; }
+
+/* Area chart inside c4 */
+.fake-area { width: 100%; height: 100%; }
+.fake-area svg { width: 100%; height: 100%; display: block; }
+
+/* Metric tiles inside c5 */
+.fake-metric { flex: 1; background: var(--panel-2); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.fake-metric-num { width: 60%; height: 22px; background: var(--accent); border-radius: 4px; opacity: 0.8; }
+.fake-metric-num.alt { background: var(--accent-2); }
+.fake-metric-num.dim { background: rgba(241, 245, 249, 0.45); }
+.fake-metric-bar { width: 80%; height: 6px; background: rgba(241, 245, 249, 0.25); border-radius: 3px; }
+
+/* Thin trendline strip in c6 */
+.fake-c6 { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.fake-trend { width: 80%; height: 5px; background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 60%, transparent 100%); border-radius: 3px; }
+.fake-trend.alt { width: 60%; background: linear-gradient(90deg, var(--accent-dark) 0%, var(--accent) 80%, transparent 100%); }
+.fake-trend.dim { width: 90%; background: rgba(241, 245, 249, 0.35); }
+
+/* The actual "Coming soon" headline — sharp, centered on top */
+.stats-coming-soon {
+  position: relative; z-index: 1;
+  font-size: clamp(56px, 9vw, 104px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  text-shadow: 0 8px 36px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.45);
+  user-select: none;
+  text-align: center;
+  line-height: 1;
+}
+.stats-coming-soon .subtle { display: block; font-size: 0.18em; font-weight: 500; color: var(--text-dim); letter-spacing: 0.32em; margin-top: 18px; text-shadow: none; text-transform: uppercase; }
+
+/* --- Save Batch modal — per-lead rows --- */
+.sb-row { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.sb-row:last-child { border-bottom: none; }
+.sb-row .who { flex: 1; min-width: 0; }
+.sb-row .who .nm { font-weight: 500; color: var(--text); }
+.sb-row .who .where { color: var(--text-dim); font-size: 11.5px; }
+.sb-row .acts { display: flex; gap: 12px; flex-shrink: 0; }
+.sb-row .acts label { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-soft); cursor: pointer; }
+.sb-row .acts input { cursor: pointer; }
+
+/* --- Daily Work tab --- */
+.daily-wrap { padding: 18px; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; max-width: 1080px; }
+.daily-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.daily-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.daily-head .sub { color: var(--text-dim); font-size: 12px; }
+.batch-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+.batch-card.expanded { border-color: var(--accent); }
+.batch-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.batch-card-title { font-weight: 600; font-size: 14px; }
+.batch-card-meta { color: var(--text-dim); font-size: 11.5px; margin-top: 3px; display: flex; gap: 12px; flex-wrap: wrap; }
+.batch-card-meta .action-pill { background: var(--accent); color: #0a1428; padding: 1px 7px; border-radius: 100px; font-size: 10.5px; font-weight: 600; }
+.batch-card-meta .action-pill.email-pill { background: var(--accent-2); }
+.batch-card-meta .action-pill.demo-pill { background: #a5b4fc; color: #1e1b4b; }
+.batch-card-body { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: none; }
+.batch-card.expanded .batch-card-body { display: block; }
+.batch-notes { font-size: 12.5px; color: var(--text-soft); background: var(--bg); padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid var(--border); }
+.batch-leads { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.batch-lead-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 4px; font-size: 12.5px; cursor: pointer; transition: background 0.1s; }
+.batch-lead-row:hover { background: var(--panel-2); }
+.batch-lead-row .nm { font-weight: 500; color: var(--text); }
+.batch-lead-row .addr { color: var(--text-dim); font-size: 11.5px; }
+.batch-lead-row .stat { margin-left: auto; }
+.batch-empty { color: var(--text-dim); font-size: 13px; padding: 32px; text-align: center; font-style: italic; }
 
 /* --- Loading + empty --- */
 .loading-overlay { position: absolute; inset: 0; background: rgba(11, 18, 32, 0.7); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 13px; z-index: 100; }
@@ -326,13 +559,14 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 
 <div class="app">
   <header class="top">
-    <h1>Propagentic CRM <span class="tag">v2.0</span></h1>
+    <h1>Propagentic CRM <span class="tag">v2.9</span></h1>
     <div class="stats">
       <span><b id="stat-total">…</b>leads</span>
       <span><b id="stat-filtered">…</b>matching filters</span>
       <span><b id="stat-status">…</b>in pipeline</span>
     </div>
     <div class="right">
+      <div id="presence-stack" class="presence-stack" title="Active users"></div>
       <span class="user-pill" id="user-pill"></span>
       <button class="btn btn-danger" onclick="signOutUser()">Sign out</button>
     </div>
@@ -340,6 +574,8 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 
   <div class="body">
     <aside class="filters">
+      <button class="filters-reset" onclick="resetFilters()">Reset all filters</button>
+
       <div class="filter-group">
         <span class="label">Search</span>
         <input id="f-search" class="text-input" type="text" placeholder="name, address, email, phone…" />
@@ -351,15 +587,18 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
       </div>
 
       <div class="filter-group">
-        <span class="label">Status</span>
-        <select id="f-status" class="select-input">
-          <option value="any">All</option>
-          <option value="none">No status (untouched)</option>
-          <option value="researching">Researching</option>
-          <option value="contacted">Contacted</option>
-          <option value="demo_scheduled">Demo Scheduled</option>
-          <option value="paid">Paid</option>
-        </select>
+        <span class="label">Activity / Stage</span>
+        <span class="sublabel">Select any combination, or none to show all.</span>
+        <div class="checkbox-list" id="f-activity">
+          <label class="checkbox-row"><input type="checkbox" data-activity="not_contacted" /> <span>Not Contacted</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="called" /> <span>Called</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="emailed" /> <span>Emailed</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="researching" /> <span>Researching</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="contacted" /> <span>Contacted</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="demo_scheduled" /> <span>Demo Scheduled</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="paid" /> <span>Paid</span></label>
+          <label class="checkbox-row"><input type="checkbox" data-activity="do_not_contact" /> <span>Do Not Contact</span></label>
+        </div>
       </div>
 
       <div class="filter-group">
@@ -382,8 +621,8 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <span class="label">Outreach safety</span>
         <span class="sublabel">DNC (Do Not Call)</span>
         <div class="toggle-pills" id="f-dnc">
-          <button data-value="hide" class="active">Hide DNC</button>
-          <button data-value="any">All</button>
+          <button data-value="hide">Hide DNC</button>
+          <button data-value="any" class="active">All</button>
           <button data-value="only">Only DNC</button>
         </div>
       </div>
@@ -414,6 +653,8 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <button class="tab active" data-tab="map">Map <span class="badge" id="tab-count-map">0</span></button>
         <button class="tab" data-tab="list">List <span class="badge" id="tab-count-list">0</span></button>
         <button class="tab" data-tab="outreach">Outreach <span class="badge" id="tab-count-outreach">0</span></button>
+        <button class="tab" data-tab="daily">Engagement History <span class="badge" id="tab-count-daily">0</span></button>
+        <button class="tab" data-tab="stats">Stats</button>
         <button class="tab" data-tab="import">Import</button>
       </div>
       <div class="tab-content">
@@ -442,18 +683,96 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <div class="tab-pane" data-tab="outreach">
           <div class="kanban" id="kanban"></div>
         </div>
+        <div class="tab-pane" data-tab="daily">
+          <div class="daily-wrap">
+            <div class="daily-head">
+              <div>
+                <h2>Engagement History</h2>
+                <div class="sub">Record of who-called-which-leads-when. Each batch is a frozen snapshot taken at the time the user clicked "Save batch."</div>
+              </div>
+              <button class="btn btn-primary" onclick="openSaveBatchModal()">+ Save current view as batch</button>
+            </div>
+            <div id="batches-list"></div>
+          </div>
+        </div>
+        <div class="tab-pane" data-tab="stats">
+          <div class="stats-wrap">
+            <div class="stats-blur-layer" aria-hidden="true">
+              <!-- Bar chart -->
+              <div class="fake-card fake-c1">
+                <div class="fake-bars">
+                  <span style="--h:55%"></span>
+                  <span style="--h:82%"></span>
+                  <span style="--h:38%"></span>
+                  <span style="--h:92%"></span>
+                  <span style="--h:64%"></span>
+                  <span style="--h:48%"></span>
+                  <span style="--h:74%"></span>
+                </div>
+              </div>
+              <!-- Big number + line graph -->
+              <div class="fake-card fake-c2">
+                <div class="fake-bignum"></div>
+                <div class="fake-line">
+                  <svg viewBox="0 0 300 80" preserveAspectRatio="none">
+                    <path d="M0,60 Q40,15 80,32 T160,18 T240,28 L300,20" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
+              <!-- Donut chart + legend -->
+              <div class="fake-card fake-c3">
+                <div class="fake-donut"></div>
+                <div class="fake-legend"><span></span><span></span><span></span></div>
+              </div>
+              <!-- Area chart -->
+              <div class="fake-card fake-c4">
+                <div class="fake-area">
+                  <svg viewBox="0 0 400 160" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="statsAreaGrad" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.85"/>
+                        <stop offset="100%" stop-color="#FF6B35" stop-opacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M0,120 Q60,60 120,80 T240,40 T360,55 L400,45 L400,160 L0,160 Z" fill="url(#statsAreaGrad)"/>
+                    <path d="M0,120 Q60,60 120,80 T240,40 T360,55 L400,45" stroke="#FF6B35" stroke-width="5" fill="none" stroke-linecap="round"/>
+                  </svg>
+                </div>
+              </div>
+              <!-- Metric tiles -->
+              <div class="fake-card fake-c5">
+                <div class="fake-metric"><div class="fake-metric-num"></div><div class="fake-metric-bar"></div></div>
+                <div class="fake-metric"><div class="fake-metric-num alt"></div><div class="fake-metric-bar"></div></div>
+                <div class="fake-metric"><div class="fake-metric-num dim"></div><div class="fake-metric-bar"></div></div>
+              </div>
+              <!-- Thin trendlines strip -->
+              <div class="fake-card fake-c6">
+                <div class="fake-trend"></div>
+                <div class="fake-trend alt"></div>
+                <div class="fake-trend dim"></div>
+              </div>
+            </div>
+            <div class="stats-coming-soon">
+              Coming soon
+              <span class="subtle">Stats &amp; insights in development</span>
+            </div>
+          </div>
+        </div>
         <div class="tab-pane" data-tab="import">
           <div class="import-wrap">
 
             <div class="import-step" id="step-file">
-              <h3><span class="step-num">1</span>Upload lead list</h3>
-              <p class="help">Drop an XLSX or CSV file from DataZapp, BatchData, or any skip-trace source. The file is parsed in your browser — nothing is uploaded anywhere until you click Commit.</p>
-              <div id="dropzone" class="dropzone">
-                <div class="big">Drop XLSX or CSV here</div>
-                <div class="small">…or click to browse</div>
-                <input id="file-input" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
+              <h3><span class="step-num">1</span>Add leads</h3>
+              <p class="help">Drop a file (DataZapp, BatchData, any skip-trace source) to import in bulk, or use the "+ New Lead" button for one-off manual entry. Files are parsed in your browser — nothing is uploaded anywhere until you click Commit.</p>
+              <div style="display:flex; gap:12px; align-items:stretch; flex-wrap:wrap;">
+                <div id="dropzone" class="dropzone" style="flex:1; min-width:260px;">
+                  <div class="big">Drop XLSX or CSV here</div>
+                  <div class="small">…or click to browse</div>
+                  <input id="file-input" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
+                </div>
+                <button class="btn btn-primary" onclick="openAddLeadModal()" style="padding:14px 22px; font-size:14px; align-self:stretch; min-width:170px;">+ New Lead<br><span style="font-size:11px; opacity:0.75; font-weight:400">single, manual</span></button>
               </div>
-              <div id="file-info" class="file-info" style="display:none">
+              <div id="file-info" class="file-info" style="display:none; margin-top:10px">
                 <span class="name" id="fi-name">—</span>
                 <span class="meta" id="fi-meta">—</span>
                 <button onclick="resetImport()">remove</button>
@@ -516,6 +835,134 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
   <div class="drawer-body" id="drawer-body"></div>
 </div>
 
+<div id="add-lead-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Add new lead</h3>
+      <button class="modal-close" onclick="closeAddLeadModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">
+        <h4>Property *</h4>
+        <input id="al-prop-addr" class="text-input" placeholder="Street address (required)" />
+        <div class="form-row">
+          <input id="al-prop-city" class="text-input" placeholder="City" />
+          <input id="al-prop-state" class="text-input small" placeholder="ST" maxlength="2" />
+          <input id="al-prop-zip" class="text-input medium" placeholder="Zip" maxlength="10" />
+        </div>
+        <div class="form-row">
+          <input id="al-prop-county" class="text-input" placeholder="County" />
+          <input id="al-prop-year" class="text-input medium" placeholder="Year built" type="number" />
+        </div>
+        <input id="al-prop-type" class="text-input" placeholder="Property type (e.g. SINGLE-FAMILY, MULTI-FAMILY)" />
+      </div>
+
+      <div class="form-section">
+        <h4>Owner</h4>
+        <div class="form-row">
+          <input id="al-first" class="text-input" placeholder="First name" />
+          <input id="al-last" class="text-input" placeholder="Last name" />
+        </div>
+        <input id="al-co" class="text-input" placeholder="Co-owner name (optional)" />
+        <select id="al-owner-type" class="select-input">
+          <option value="">Owner type…</option>
+          <option value="Individual-Single">Individual — Single</option>
+          <option value="Individual-Joint">Individual — Joint</option>
+          <option value="LLC">LLC</option>
+          <option value="Trust">Trust</option>
+          <option value="Other">Other</option>
+        </select>
+        <label class="form-check"><input type="checkbox" id="al-absentee" checked /> Absentee owner</label>
+      </div>
+
+      <div class="form-section">
+        <h4>Contact</h4>
+        <input id="al-phone" class="text-input" placeholder="Phone (10 digits)" />
+        <input id="al-email" class="text-input" placeholder="Email" type="email" />
+        <label class="form-check"><input type="checkbox" id="al-dnc" /> Do Not Call (DNC)</label>
+      </div>
+
+      <div class="form-section">
+        <h4>Mailing address (only if different from property)</h4>
+        <input id="al-mail-addr" class="text-input" placeholder="Mailing street address" />
+        <div class="form-row">
+          <input id="al-mail-city" class="text-input" placeholder="City" />
+          <input id="al-mail-state" class="text-input small" placeholder="ST" maxlength="2" />
+          <input id="al-mail-zip" class="text-input medium" placeholder="Zip" maxlength="10" />
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <span id="al-error" class="err" style="display:none"></span>
+      <button class="btn" onclick="closeAddLeadModal()">Cancel</button>
+      <button class="btn btn-primary" id="al-save-btn" onclick="saveNewLead()">Save lead</button>
+    </div>
+  </div>
+</div>
+
+<div id="save-batch-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 720px;">
+    <div class="modal-head">
+      <h3 id="sb-modal-title">Save engagement batch</h3>
+      <button class="modal-close" onclick="closeSaveBatchModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="help" id="sb-modal-help" style="font-size:12.5px;color:var(--text-dim);margin:0 0 6px 0;line-height:1.5">
+        Captures the currently filtered view as a permanent snapshot. Leads marked Called/Emailed below will be flagged; pipeline status auto-advances to Contacted (or Demo Scheduled).
+      </p>
+      <div class="form-section">
+        <h4>Batch name</h4>
+        <input id="sb-name" class="text-input" />
+      </div>
+      <div class="form-section" id="sb-actions-section">
+        <h4>Master actions <span style="text-transform:none;font-weight:400;color:var(--text-dim);font-size:11px">(toggle to apply to all rows; you can override per row below)</span></h4>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <label class="form-check"><input type="checkbox" id="sb-called"> Called these leads</label>
+          <label class="form-check"><input type="checkbox" id="sb-emailed"> Emailed these leads</label>
+          <label class="form-check"><input type="checkbox" id="sb-demo"> Demo Scheduled</label>
+        </div>
+      </div>
+      <div class="form-section" id="sb-cap-section">
+        <h4>Cap batch size to first <input id="sb-cap" type="number" min="1" max="500" value="25" class="text-input" style="display:inline-block;width:70px;margin:0 4px;padding:3px 6px"> leads
+          <span id="sb-cap-info" style="font-weight:400;color:var(--text-dim);text-transform:none;font-size:11.5px;margin-left:6px"></span>
+        </h4>
+      </div>
+      <div class="form-section">
+        <h4>Notes (optional)</h4>
+        <textarea id="sb-notes" class="notes-input" style="min-height:50px" placeholder="e.g. 'Cold call session — hit voicemail on 18, talked to 5, none committed yet.'"></textarea>
+      </div>
+      <div class="form-section" id="sb-list-section">
+        <h4>Leads in this batch <span id="sb-list-count" style="font-weight:400;color:var(--text-dim);text-transform:none;font-size:11.5px;margin-left:6px">—</span></h4>
+        <div id="sb-list-empty" style="display:none;padding:18px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-dim);line-height:1.55"></div>
+        <div id="sb-list" style="display:none;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg)"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span id="sb-error" class="err" style="display:none"></span>
+      <button class="btn" onclick="closeSaveBatchModal()">Cancel</button>
+      <button class="btn btn-primary" id="sb-save-btn" onclick="commitBatch()">Save batch</button>
+    </div>
+  </div>
+</div>
+
+<div id="dnc-details-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 720px;">
+    <div class="modal-head">
+      <h3>Do Not Contact — details</h3>
+      <button class="modal-close" onclick="closeDncDetailsModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="dnc-details-body">
+      <!-- rendered by openDncDetailsModal() -->
+    </div>
+    <div class="modal-foot">
+      <span style="font-size:11.5px; color: var(--text-dim); margin-right:auto;" id="dnc-details-count">—</span>
+      <button class="btn" onclick="closeDncDetailsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -527,14 +974,85 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 // Propagentic CRM v2.0 — main app
 // ===========================================================================
 
-const STATUSES = ["researching", "contacted", "demo_scheduled", "paid"];
+const STATUSES = ["researching", "contacted", "demo_scheduled", "paid", "do_not_contact"];
 const STATUS_LABELS = {
   researching: "Researching",
   contacted: "Contacted",
   demo_scheduled: "Demo Scheduled",
   paid: "Paid",
+  do_not_contact: "Do Not Contact",
 };
 function statusLabel(s) { return STATUS_LABELS[s] || s; }
+
+// Reason options for Do Not Contact status (kanban + drawer)
+const DNC_REASONS = [
+  { v: "wrong_email",        l: "Wrong email" },
+  { v: "wrong_phone",        l: "Wrong phone" },
+  { v: "wrong_address",      l: "Wrong property address" },
+  { v: "wrong_name",         l: "Wrong name" },
+  { v: "has_property_mgr",   l: "Has property manager" },
+  { v: "not_interested",     l: "Not interested" },
+  { v: "other",              l: "Other (specify)" },
+];
+function dncReasonLabel(v) {
+  const r = DNC_REASONS.find(r => r.v === v);
+  return r ? r.l : (v || "—");
+}
+
+// =========================================================================
+// Sound effects — synthesized via Web Audio (no audio files needed)
+// =========================================================================
+let _audioCtx = null;
+function _getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { return null; }
+  }
+  if (_audioCtx.state === "suspended") _audioCtx.resume().catch(() => {});
+  return _audioCtx;
+}
+function playClickSound() {
+  const ctx = _getAudioCtx(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(880, now);
+  osc.frequency.exponentialRampToValueAtTime(440, now + 0.06);
+  gain.gain.setValueAtTime(0.14, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.09);
+}
+function playDingSound() {
+  const ctx = _getAudioCtx(); if (!ctx) return;
+  const now = ctx.currentTime;
+  // Two-tone ascending bell chime: C6 → G6
+  const tone = (freq, startOff, dur, vol) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, now + startOff);
+    gain.gain.linearRampToValueAtTime(vol, now + startOff + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + startOff + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now + startOff); osc.stop(now + startOff + dur + 0.05);
+  };
+  tone(1046.5, 0, 0.40, 0.13);
+  tone(1568.0, 0.07, 0.50, 0.10);
+}
+
+// Pipeline order used to decide whether a status transition is "upward" (celebratory)
+const PIPELINE_ORDER = ["researching", "contacted", "demo_scheduled", "paid"];
+function isStatusUpgrade(fromStatus, toStatus) {
+  if (!toStatus || toStatus === "do_not_contact") return false; // never celebrate DNC
+  if (!fromStatus) return true;                                  // null → anything is up
+  if (fromStatus === "do_not_contact") return true;              // coming out of DNC is up
+  const fi = PIPELINE_ORDER.indexOf(fromStatus);
+  const ti = PIPELINE_ORDER.indexOf(toStatus);
+  return ti > fi;
+}
 
 // Mutable app state
 const state = {
@@ -542,10 +1060,10 @@ const state = {
   filters: {
     search: "",
     markets: new Set(),      // selected market keys; empty = all
-    status: "any",
+    activity: new Set(),     // multi-select: not_contacted | called | emailed | <status keys>; empty = all
     phone: "any",
     email: "any",
-    dnc: "hide",
+    dnc: "any",
     owner_type: "any",
     absentee: "any",
   },
@@ -564,10 +1082,107 @@ window.onAuthReady = function(user) {
   document.getElementById("user-pill").textContent = user.email;
   initMap();
   subscribeToLeads();
+  subscribeToBatches();
   attachFilterHandlers();
   attachTabHandlers();
   attachImportHandlers();
+  startPresence();
 };
+
+// =========================================================================
+// Multi-user presence — live "who else is here right now" indicator
+// =========================================================================
+state.activeUsers = new Map();
+
+function userColor(email) {
+  let hash = 0;
+  const s = email || "";
+  for (let i = 0; i < s.length; i++) hash = ((hash << 5) - hash) + s.charCodeAt(i);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 55%, 52%)`;
+}
+
+let _presenceHeartbeat = null;
+function startPresence() {
+  const user = window.propagenticAuth.user;
+  if (!user || !user.uid) return;
+  const db = firebase.firestore();
+  const docRef = db.collection("presence").doc(user.uid);
+
+  function beat() {
+    docRef.set({
+      email: user.email,
+      uid: user.uid,
+      last_seen: firebase.firestore.FieldValue.serverTimestamp(),
+      color: userColor(user.email),
+    }, { merge: true }).catch(err => console.warn("presence write failed", err));
+  }
+  beat();
+  if (_presenceHeartbeat) clearInterval(_presenceHeartbeat);
+  _presenceHeartbeat = setInterval(beat, 30000);
+
+  // Best-effort cleanup on tab close
+  window.addEventListener("beforeunload", () => {
+    try { docRef.delete(); } catch (e) {}
+  });
+
+  // Subscribe to all presences
+  db.collection("presence").onSnapshot((snap) => {
+    state.activeUsers.clear();
+    const now = Date.now();
+    snap.forEach((doc) => {
+      const d = doc.data();
+      const ts = d.last_seen && d.last_seen.toMillis ? d.last_seen.toMillis() : 0;
+      if (now - ts < 90000) {
+        state.activeUsers.set(doc.id, Object.assign({}, d, { _id: doc.id }));
+      }
+    });
+    renderPresence();
+  }, (err) => console.warn("presence subscribe failed", err));
+
+  // Re-render every 30s so stale users drop off on schedule even if no
+  // new snapshot has arrived
+  setInterval(renderPresence, 30000);
+}
+
+function renderPresence() {
+  const el = document.getElementById("presence-stack");
+  if (!el) return;
+  const me = window.propagenticAuth.user;
+  if (!me) return;
+  const now = Date.now();
+  const all = Array.from(state.activeUsers.values()).filter(u => {
+    const ts = u.last_seen && u.last_seen.toMillis ? u.last_seen.toMillis() : 0;
+    return (now - ts) < 90000;
+  });
+  // Self first, others second
+  const others = all.filter(u => u.uid !== me.uid);
+  el.innerHTML = "";
+
+  const myAvatar = document.createElement("div");
+  myAvatar.className = "presence-avatar self";
+  myAvatar.style.background = userColor(me.email);
+  myAvatar.title = `${me.email} (you)`;
+  myAvatar.textContent = (me.email || "?")[0].toUpperCase();
+  el.appendChild(myAvatar);
+
+  const visible = others.slice(0, 5);
+  for (const u of visible) {
+    const a = document.createElement("div");
+    a.className = "presence-avatar";
+    a.style.background = u.color || userColor(u.email);
+    a.title = u.email;
+    a.textContent = (u.email || "?")[0].toUpperCase();
+    el.appendChild(a);
+  }
+  if (others.length > 5) {
+    const more = document.createElement("div");
+    more.className = "presence-avatar more";
+    more.title = others.slice(5).map(u => u.email).join("\n");
+    more.textContent = `+${others.length - 5}`;
+    el.appendChild(more);
+  }
+}
 
 // =========================================================================
 // Map
@@ -612,9 +1227,23 @@ function rebuildMapMarkers(filteredLeads) {
   }
 }
 function makePopupHtml(lead) {
+  const statusText = lead.crm_status
+    ? `<span class="badge-pill badge-status-${lead.crm_status}">${escapeHtml(statusLabel(lead.crm_status))}</span>`
+    : `<span style="color:var(--text-dim)">Not Contacted</span>`;
   return `<h4>${escapeHtml(lead.owner_name || "(no name)")}</h4>
     <div class="pop-meta">${escapeHtml(lead.property_address || "")}, ${escapeHtml(lead.property_city || "")}</div>
     <div class="pop-meta">${escapeHtml(formatMarket(lead.market))}</div>
+    <div class="pop-meta" style="margin-top:5px"><span style="color:var(--text-dim)">Phone:</span> ${lead.phone ? formatPhone(lead.phone) : "—"}${lead.dnc ? ' <span class="badge-pill badge-dnc">DNC</span>' : ""}</div>
+    <div class="pop-meta"><span style="color:var(--text-dim)">Email:</span> ${escapeHtml(lead.email || "—")}</div>
+    <div class="pop-meta"><span style="color:var(--text-dim)">Status:</span> ${statusText}</div>
+    <div class="pop-meta" style="display:flex;gap:14px;margin-top:6px;font-size:12px">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" ${lead.crm_called ? "checked" : ""} onchange="updateActivityFlag('${lead._id}', 'called', this.checked)"> Called
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" ${lead.crm_emailed ? "checked" : ""} onchange="updateActivityFlag('${lead._id}', 'emailed', this.checked)"> Emailed
+      </label>
+    </div>
     <button onclick="openDrawer('${lead._id}')">View details</button>`;
 }
 
@@ -644,9 +1273,9 @@ function subscribeToLeads() {
 // =========================================================================
 // Filtering
 // =========================================================================
-function applyFilters(leads) {
-  const f = state.filters;
-  const q = f.search.trim().toLowerCase();
+function applyFilters(leads, overrides) {
+  const f = Object.assign({}, state.filters, overrides || {});
+  const q = (f.search || "").trim().toLowerCase();
   const out = [];
   for (const lead of leads) {
     if (q) {
@@ -656,9 +1285,17 @@ function applyFilters(leads) {
       ].filter(Boolean).join(" ").toLowerCase();
       if (!blob.includes(q)) continue;
     }
-    if (f.markets.size > 0 && !f.markets.has(lead.market)) continue;
-    if (f.status === "none" && lead.crm_status) continue;
-    if (STATUSES.includes(f.status) && lead.crm_status !== f.status) continue;
+    if (f.markets && f.markets.size > 0 && !f.markets.has(lead.market)) continue;
+    if (f.activity && f.activity.size > 0) {
+      let match = false;
+      for (const a of f.activity) {
+        if (a === "not_contacted" && !lead.crm_called && !lead.crm_emailed) { match = true; break; }
+        if (a === "called" && lead.crm_called === true) { match = true; break; }
+        if (a === "emailed" && lead.crm_emailed === true) { match = true; break; }
+        if (STATUSES.includes(a) && lead.crm_status === a) { match = true; break; }
+      }
+      if (!match) continue;
+    }
     if (f.phone === "yes" && !lead.phone) continue;
     if (f.phone === "no" && lead.phone) continue;
     if (f.email === "yes" && !lead.email) continue;
@@ -691,16 +1328,19 @@ function renderAll() {
   const all = Array.from(state.leads.values());
   const filtered = applyFilters(all);
   const sorted = applySort(filtered);
+  // Kanban ignores the DNC filter — once a lead is in the pipeline, you're
+  // past the cold-call protection point. DNC badge on the card keeps it visible.
+  const filteredForKanban = applyFilters(all, { dnc: "any" })
+    .filter(l => l.crm_status && STATUSES.includes(l.crm_status));
 
-  renderStats(all, filtered);
+  renderStats(all, filtered, filteredForKanban);
   renderMarketFilter(all);
   rebuildMapMarkers(filtered);
   renderList(sorted);
-  renderKanban(filtered);
+  renderKanban(filteredForKanban);
   document.getElementById("tab-count-map").textContent = filtered.length.toLocaleString();
   document.getElementById("tab-count-list").textContent = filtered.length.toLocaleString();
-  const inPipeline = filtered.filter(l => l.crm_status && STATUSES.includes(l.crm_status)).length;
-  document.getElementById("tab-count-outreach").textContent = inPipeline.toLocaleString();
+  document.getElementById("tab-count-outreach").textContent = filteredForKanban.length.toLocaleString();
 }
 
 // =========================================================================
@@ -740,6 +1380,16 @@ function renderKanban(filteredLeads) {
     `;
     const body = col.querySelector(".kanban-col__body");
 
+    // For the Do Not Contact column, the header is clickable → opens a
+    // dedicated review modal where reasons + notes can be edited in bulk.
+    if (status === "do_not_contact") {
+      col.querySelector(".kanban-col__head").addEventListener("click", (e) => {
+        // Don't trigger the modal when a drag is in progress
+        if (e.target.closest(".kanban-card")) return;
+        openDncDetailsModal();
+      });
+    }
+
     // Drop-target events on the column. Cards inside the body also bubble.
     col.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -758,48 +1408,148 @@ function renderKanban(filteredLeads) {
       const lead = state.leads.get(leadId);
       if (!lead) return;
       if (lead.crm_status === status) return;  // dropped into same column → no-op
+      if (isStatusUpgrade(lead.crm_status, status)) playDingSound();
+      else playClickSound();
       updateStatus(leadId, status);
     });
 
-    if (cols[status].length === 0) {
+    if (status === "contacted") {
+      // Wide column with sub-zones (Emailed | Called | Both) + No-activity strip on top.
+      const contactedLeads = cols[status];
+      const groups = { none: [], emailed: [], called: [], both: [] };
+      for (const l of contactedLeads) {
+        const c = !!l.crm_called, e = !!l.crm_emailed;
+        if (c && e) groups.both.push(l);
+        else if (c) groups.called.push(l);
+        else if (e) groups.emailed.push(l);
+        else groups.none.push(l);
+      }
+      // No-activity strip
+      if (groups.none.length > 0) {
+        const strip = document.createElement("div");
+        strip.className = "contacted-noactivity";
+        strip.innerHTML = `<div class="label">No activity yet · ${groups.none.length}</div><div class="cards"></div>`;
+        const stripCards = strip.querySelector(".cards");
+        for (const lead of groups.none) stripCards.appendChild(makeKanbanCard(lead, status));
+        body.appendChild(strip);
+      }
+      // Three sub-zones
+      const zonesWrap = document.createElement("div");
+      zonesWrap.className = "contacted-zones";
+      for (const sub of ["emailed", "called", "both"]) {
+        const z = document.createElement("div");
+        z.className = "contacted-zone";
+        z.dataset.sub = sub;
+        z.innerHTML = `
+          <div class="contacted-zone-head">${sub === "both" ? "Both" : (sub.charAt(0).toUpperCase() + sub.slice(1))} · ${groups[sub].length}</div>
+          <div class="contacted-zone-body"></div>
+        `;
+        const zBody = z.querySelector(".contacted-zone-body");
+        if (groups[sub].length === 0) {
+          const e = document.createElement("div");
+          e.style.cssText = "color:var(--text-dim);font-size:11px;text-align:center;padding:16px 4px;font-style:italic";
+          e.textContent = sub === "both" ? "Drop here to mark both" : `Drop here to mark ${sub}`;
+          zBody.appendChild(e);
+        } else {
+          for (const lead of groups[sub]) zBody.appendChild(makeKanbanCard(lead, status));
+        }
+        // Drop on a sub-zone → set activity flags accordingly
+        z.addEventListener("dragover", (ev) => {
+          ev.preventDefault(); ev.stopPropagation();
+          ev.dataTransfer.dropEffect = "move";
+          z.classList.add("drop-target");
+        });
+        z.addEventListener("dragleave", (ev) => {
+          if (!z.contains(ev.relatedTarget)) z.classList.remove("drop-target");
+        });
+        z.addEventListener("drop", (ev) => {
+          ev.preventDefault(); ev.stopPropagation();
+          z.classList.remove("drop-target");
+          const leadId = ev.dataTransfer.getData("text/plain");
+          if (!leadId) return;
+          const droppedLead = state.leads.get(leadId);
+          if (droppedLead && droppedLead.crm_status !== "contacted") playDingSound();
+          else playClickSound();
+          applyContactedSubZone(leadId, sub);
+        });
+        zonesWrap.appendChild(z);
+      }
+      body.appendChild(zonesWrap);
+    } else if (cols[status].length === 0) {
       const empty = document.createElement("div");
       empty.className = "kanban-empty";
-      empty.textContent = "Drag leads here, or set status from the drawer.";
+      empty.textContent = status === "do_not_contact"
+        ? "Drag leads here when contact info is bad or they don't want to be contacted."
+        : "Drag leads here, or set status from the drawer.";
       body.appendChild(empty);
     } else {
       for (const lead of cols[status]) {
-        const card = document.createElement("div");
-        card.className = "kanban-card";
-        card.draggable = true;
-        card.dataset.id = lead._id;
-        const metaPieces = [];
-        if (lead.phone) metaPieces.push(`<span class="card-phone">${formatPhone(lead.phone)}</span>`);
-        if (lead.dnc) metaPieces.push(`<span class="badge-pill badge-dnc">DNC</span>`);
-        if (lead.market) metaPieces.push(`<span class="badge-pill badge-market">${escapeHtml(formatMarket(lead.market))}</span>`);
-        card.innerHTML = `
-          <div class="card-name">${escapeHtml(lead.owner_name || "—")}</div>
-          <div class="card-addr">${escapeHtml(lead.property_address || "")}${lead.property_city ? ", " + escapeHtml(lead.property_city) : ""}</div>
-          <div class="card-meta">${metaPieces.join("")}</div>
-        `;
-        card.addEventListener("dragstart", (e) => {
-          card.classList.add("dragging");
-          e.dataTransfer.setData("text/plain", lead._id);
-          e.dataTransfer.effectAllowed = "move";
-        });
-        card.addEventListener("dragend", () => card.classList.remove("dragging"));
-        card.addEventListener("click", () => openDrawer(lead._id));
-        body.appendChild(card);
+        body.appendChild(makeKanbanCard(lead, status));
       }
     }
     kanban.appendChild(col);
   }
 }
 
-function renderStats(all, filtered) {
+function makeKanbanCard(lead, status) {
+  const card = document.createElement("div");
+  card.className = "kanban-card";
+  card.draggable = true;
+  card.dataset.id = lead._id;
+  const metaPieces = [];
+  if (lead.phone) metaPieces.push(`<span class="card-phone">${formatPhone(lead.phone)}</span>`);
+  if (lead.dnc) metaPieces.push(`<span class="badge-pill badge-dnc">DNC</span>`);
+  if (lead.market) metaPieces.push(`<span class="badge-pill badge-market">${escapeHtml(formatMarket(lead.market))}</span>`);
+  const reasonLine = (status === "do_not_contact")
+    ? `<div class="card-reason">Reason: ${lead.crm_dnc_reason ? escapeHtml(dncReasonLabel(lead.crm_dnc_reason)) + (lead.crm_dnc_reason === "other" && lead.crm_dnc_reason_text ? " — " + escapeHtml(lead.crm_dnc_reason_text) : "") : "<i style=\"color:var(--red);opacity:0.7\">not set — click card to fill</i>"}</div>`
+    : "";
+  card.innerHTML = `
+    <div class="card-name">${escapeHtml(lead.owner_name || "—")}</div>
+    <div class="card-addr">${escapeHtml(lead.property_address || "")}${lead.property_city ? ", " + escapeHtml(lead.property_city) : ""}</div>
+    <div class="card-meta">${metaPieces.join("")}</div>
+    ${reasonLine}
+  `;
+  card.addEventListener("dragstart", (e) => {
+    card.classList.add("dragging");
+    e.dataTransfer.setData("text/plain", lead._id);
+    e.dataTransfer.effectAllowed = "move";
+  });
+  card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  card.addEventListener("click", (ev) => { ev.stopPropagation(); openDrawer(lead._id); });
+  return card;
+}
+
+// When a lead is dropped onto a Contacted sub-zone, set its status to Contacted
+// AND set the activity flags appropriately (emailed only, called only, or both).
+function applyContactedSubZone(leadId, sub) {
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const payload = {
+    crm_status: "contacted",
+    crm_last_touched: now,
+    crm_touched_by: user ? user.email : null,
+  };
+  if (sub === "called" || sub === "both") {
+    payload.crm_called = true; payload.crm_called_at = now; payload.crm_called_by = user ? user.email : null;
+  } else if (sub === "emailed") {
+    payload.crm_called = false;
+  }
+  if (sub === "emailed" || sub === "both") {
+    payload.crm_emailed = true; payload.crm_emailed_at = now; payload.crm_emailed_by = user ? user.email : null;
+  } else if (sub === "called") {
+    payload.crm_emailed = false;
+  }
+  firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
+    .then(() => showToast(`Moved to Contacted · ${sub}`))
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
+}
+
+function renderStats(all, filtered, pipelineLeads) {
   document.getElementById("stat-total").textContent = all.length.toLocaleString();
   document.getElementById("stat-filtered").textContent = filtered.length.toLocaleString();
-  const inPipeline = all.filter(l => l.crm_status && l.crm_status !== "dead" && l.crm_status !== "closed").length;
-  document.getElementById("stat-status").textContent = inPipeline.toLocaleString();
+  // Pipeline counter mirrors the outreach kanban exactly (DNC included, other
+  // filters respected) so the header number always equals what's on the kanban.
+  document.getElementById("stat-status").textContent = (pipelineLeads || []).length.toLocaleString();
 }
 
 function renderMarketFilter(all) {
@@ -909,6 +1659,29 @@ function openDrawer(leadId) {
   }
   body.appendChild(contactSec);
 
+  // Activity (Called / Emailed) — quick toggles, independent of pipeline stage
+  const actSec = document.createElement("div");
+  actSec.className = "drawer-section";
+  actSec.innerHTML = `<h4>Activity</h4>`;
+  const actRow = document.createElement("div");
+  actRow.style.cssText = "display:flex;gap:14px;flex-wrap:wrap;padding:4px 0;";
+  const calledChecked = !!lead.crm_called;
+  const emailedChecked = !!lead.crm_emailed;
+  actRow.innerHTML = `
+    <label class="form-check" style="font-size:13px">
+      <input type="checkbox" id="drawer-called" ${calledChecked ? "checked" : ""}> Called
+      ${lead.crm_called_at ? `<span style="font-size:10.5px;color:var(--text-dim);margin-left:4px">${formatDate(lead.crm_called_at.toDate ? lead.crm_called_at.toDate() : new Date(lead.crm_called_at))}${lead.crm_called_by ? ` · ${escapeHtml(lead.crm_called_by.split("@")[0])}` : ""}</span>` : ""}
+    </label>
+    <label class="form-check" style="font-size:13px">
+      <input type="checkbox" id="drawer-emailed" ${emailedChecked ? "checked" : ""}> Emailed
+      ${lead.crm_emailed_at ? `<span style="font-size:10.5px;color:var(--text-dim);margin-left:4px">${formatDate(lead.crm_emailed_at.toDate ? lead.crm_emailed_at.toDate() : new Date(lead.crm_emailed_at))}${lead.crm_emailed_by ? ` · ${escapeHtml(lead.crm_emailed_by.split("@")[0])}` : ""}</span>` : ""}
+    </label>
+  `;
+  actSec.appendChild(actRow);
+  actRow.querySelector("#drawer-called").addEventListener("change", (e) => updateActivityFlag(leadId, "called", e.target.checked));
+  actRow.querySelector("#drawer-emailed").addEventListener("change", (e) => updateActivityFlag(leadId, "emailed", e.target.checked));
+  body.appendChild(actSec);
+
   // Outreach status
   const statusSec = document.createElement("div");
   statusSec.className = "drawer-section";
@@ -930,18 +1703,100 @@ function openDrawer(leadId) {
     lt.textContent = `Last touched: ${formatDate(ts)}${lead.crm_touched_by ? ` by ${lead.crm_touched_by}` : ""}`;
     statusSec.appendChild(lt);
   }
+  // Do Not Contact reason editor — only when current status is do_not_contact.
+  if (lead.crm_status === "do_not_contact") {
+    const dncEdit = document.createElement("div");
+    dncEdit.className = "dnc-edit" + (lead.crm_dnc_reason === "other" ? " show-other" : "");
+    dncEdit.style.marginTop = "10px";
+    dncEdit.innerHTML = `
+      <label>Reason</label>
+      <select class="select-input" id="drawer-dnc-reason">
+        <option value="">— select a reason —</option>
+        ${DNC_REASONS.map(r => `<option value="${r.v}" ${lead.crm_dnc_reason === r.v ? "selected" : ""}>${escapeHtml(r.l)}</option>`).join("")}
+      </select>
+      <input class="text-input other-input" id="drawer-dnc-reason-text" placeholder="Specify…" value="${escapeHtml(lead.crm_dnc_reason_text || "")}" />
+      <label style="margin-top:4px">Notes on why</label>
+      <textarea class="notes-input" id="drawer-dnc-notes" placeholder="Brief explanation, e.g. 'tenant said owner moved overseas'…">${escapeHtml(lead.crm_dnc_notes || "")}</textarea>
+      <span id="drawer-dnc-saved" style="font-size:11px;color:var(--text-dim);opacity:0;transition:opacity 0.2s;align-self:flex-end">saved</span>
+    `;
+    statusSec.appendChild(dncEdit);
+
+    const reasonSel = dncEdit.querySelector("#drawer-dnc-reason");
+    const otherInp = dncEdit.querySelector("#drawer-dnc-reason-text");
+    const notesArea = dncEdit.querySelector("#drawer-dnc-notes");
+    const savedIndicator = dncEdit.querySelector("#drawer-dnc-saved");
+    function flashSaved() {
+      if (!savedIndicator) return;
+      savedIndicator.style.opacity = "1";
+      setTimeout(() => { savedIndicator.style.opacity = "0"; }, 1200);
+    }
+    reasonSel.addEventListener("change", () => {
+      const val = reasonSel.value || null;
+      dncEdit.classList.toggle("show-other", val === "other");
+      updateDncFields(leadId, { crm_dnc_reason: val,
+                                 crm_dnc_reason_text: val === "other" ? (otherInp.value || null) : null });
+      flashSaved();
+    });
+    let otherTimer;
+    otherInp.addEventListener("input", () => {
+      clearTimeout(otherTimer);
+      otherTimer = setTimeout(() => {
+        updateDncFields(leadId, { crm_dnc_reason_text: otherInp.value || null });
+        flashSaved();
+      }, 1200);
+    });
+    otherInp.addEventListener("blur", () => {
+      clearTimeout(otherTimer);
+      updateDncFields(leadId, { crm_dnc_reason_text: otherInp.value || null });
+    });
+    let dncNotesTimer;
+    let lastDncNotes = lead.crm_dnc_notes || "";
+    notesArea.addEventListener("input", () => {
+      clearTimeout(dncNotesTimer);
+      dncNotesTimer = setTimeout(() => {
+        if (notesArea.value === lastDncNotes) return;
+        lastDncNotes = notesArea.value;
+        updateDncFields(leadId, { crm_dnc_notes: notesArea.value });
+        flashSaved();
+      }, 1500);
+    });
+    notesArea.addEventListener("blur", () => {
+      clearTimeout(dncNotesTimer);
+      if (notesArea.value === lastDncNotes) return;
+      lastDncNotes = notesArea.value;
+      updateDncFields(leadId, { crm_dnc_notes: notesArea.value });
+      flashSaved();
+    });
+  }
   body.appendChild(statusSec);
 
-  // Notes
+  // Notes — debounced autosave while typing + immediate save on blur
   const notesSec = document.createElement("div");
   notesSec.className = "drawer-section";
-  notesSec.innerHTML = `<h4>Notes</h4>`;
+  const notesHeader = document.createElement("div");
+  notesHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
+  notesHeader.innerHTML = `<h4>Notes</h4><span id="notes-saved-indicator" style="font-size:11px;color:var(--text-dim);opacity:0;transition:opacity 0.2s">saved</span>`;
+  notesSec.appendChild(notesHeader);
   const notes = document.createElement("textarea");
   notes.className = "notes-input";
-  notes.placeholder = "Add notes — saved automatically when you click out.";
+  notes.placeholder = "Add notes — auto-saved as you type.";
   notes.value = lead.crm_notes || "";
+  let notesTimer;
+  let lastSavedValue = lead.crm_notes || "";
+  function persistNotesIfChanged() {
+    if (notes.value === lastSavedValue) return;
+    lastSavedValue = notes.value;
+    updateNotes(leadId, notes.value, /*silent=*/true);
+    const ind = document.getElementById("notes-saved-indicator");
+    if (ind) { ind.style.opacity = "1"; setTimeout(() => { ind.style.opacity = "0"; }, 1200); }
+  }
+  notes.addEventListener("input", () => {
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(persistNotesIfChanged, 1500);
+  });
   notes.addEventListener("blur", () => {
-    if (notes.value !== (lead.crm_notes || "")) updateNotes(leadId, notes.value);
+    clearTimeout(notesTimer);
+    persistNotesIfChanged();
   });
   notesSec.appendChild(notes);
   body.appendChild(notesSec);
@@ -1009,7 +1864,37 @@ function updateStatus(leadId, status) {
     .then(() => showToast(status ? `Marked ${status}` : "Status cleared"))
     .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
 }
-function updateNotes(leadId, notes) {
+function updateActivityFlag(leadId, action, checked) {
+  // action is "called" or "emailed"
+  if (checked) playDingSound(); else playClickSound();
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const payload = { crm_last_touched: now, crm_touched_by: user ? user.email : null };
+  if (action === "called") {
+    payload.crm_called = !!checked;
+    payload.crm_called_at = checked ? now : null;
+    payload.crm_called_by = checked && user ? user.email : null;
+  } else if (action === "emailed") {
+    payload.crm_emailed = !!checked;
+    payload.crm_emailed_at = checked ? now : null;
+    payload.crm_emailed_by = checked && user ? user.email : null;
+  }
+  firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
+    .then(() => showToast(checked ? `Marked ${action}` : `Cleared ${action}`))
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
+}
+
+function updateDncFields(leadId, patch) {
+  const user = window.propagenticAuth.user;
+  const payload = Object.assign({
+    crm_last_touched: firebase.firestore.FieldValue.serverTimestamp(),
+    crm_touched_by: user ? user.email : null,
+  }, patch);
+  firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
+}
+
+function updateNotes(leadId, notes, silent) {
   const user = window.propagenticAuth.user;
   const payload = {
     crm_notes: notes,
@@ -1017,7 +1902,7 @@ function updateNotes(leadId, notes) {
     crm_touched_by: user ? user.email : null,
   };
   firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
-    .then(() => showToast("Notes saved"))
+    .then(() => { if (!silent) showToast("Notes saved"); })
     .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
 }
 
@@ -1029,9 +1914,13 @@ function attachFilterHandlers() {
     state.filters.search = e.target.value;
     renderAll();
   });
-  document.getElementById("f-status").addEventListener("change", (e) => {
-    state.filters.status = e.target.value;
-    renderAll();
+  document.querySelectorAll('#f-activity input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener("change", () => {
+      const v = cb.dataset.activity;
+      if (cb.checked) state.filters.activity.add(v);
+      else state.filters.activity.delete(v);
+      renderAll();
+    });
   });
   document.getElementById("f-owner-type").addEventListener("change", (e) => {
     state.filters.owner_type = e.target.value;
@@ -1062,14 +1951,14 @@ function attachFilterHandlers() {
 
 function resetFilters() {
   state.filters = {
-    search: "", markets: new Set(), status: "any",
-    phone: "any", email: "any", dnc: "hide", owner_type: "any", absentee: "any",
+    search: "", markets: new Set(), activity: new Set(),
+    phone: "any", email: "any", dnc: "any", owner_type: "any", absentee: "any",
   };
   document.getElementById("f-search").value = "";
-  document.getElementById("f-status").value = "any";
   document.getElementById("f-owner-type").value = "any";
   document.querySelectorAll('#f-markets input').forEach(c => c.checked = false);
-  [["f-phone","any"], ["f-email","any"], ["f-dnc","hide"], ["f-absentee","any"]].forEach(([id,val]) => {
+  document.querySelectorAll('#f-activity input').forEach(c => c.checked = false);
+  [["f-phone","any"], ["f-email","any"], ["f-dnc","any"], ["f-absentee","any"]].forEach(([id,val]) => {
     document.querySelectorAll(`#${id} button`).forEach(b => {
       b.classList.toggle("active", b.dataset.value === val);
     });
@@ -1636,6 +2525,618 @@ async function commitImport() {
   } finally {
     importState.committing = false;
     btn.disabled = false; btn.textContent = "Commit import";
+  }
+}
+
+// =========================================================================
+// DAILY WORK — batches collection + save flow
+// =========================================================================
+state.batches = new Map(); // batch_id -> batch doc
+
+function subscribeToBatches() {
+  firebase.firestore().collection("batches").orderBy("created_at", "desc").onSnapshot((snap) => {
+    snap.docChanges().forEach((ch) => {
+      if (ch.type === "removed") state.batches.delete(ch.doc.id);
+      else {
+        const d = ch.doc.data(); d._id = ch.doc.id;
+        state.batches.set(ch.doc.id, d);
+      }
+    });
+    renderBatches();
+    document.getElementById("tab-count-daily").textContent = state.batches.size.toLocaleString();
+  }, (err) => console.error("batches snapshot error", err));
+}
+
+function renderBatches() {
+  const container = document.getElementById("batches-list");
+  if (!container) return;
+  const arr = Array.from(state.batches.values()).sort((a, b) => {
+    const at = a.created_at && a.created_at.toMillis ? a.created_at.toMillis() : 0;
+    const bt = b.created_at && b.created_at.toMillis ? b.created_at.toMillis() : 0;
+    return bt - at;
+  });
+  container.innerHTML = "";
+  if (arr.length === 0) {
+    const e = document.createElement("div");
+    e.className = "batch-empty";
+    e.textContent = "No batches yet. Filter to a group of leads on the Map or List tab, then click \"Save batch\" up top to record your work.";
+    container.appendChild(e);
+    return;
+  }
+  for (const batch of arr) {
+    const card = document.createElement("div");
+    card.className = "batch-card";
+    const ts = batch.created_at && batch.created_at.toDate ? batch.created_at.toDate() : null;
+    const actions = batch.actions || {};
+    const actionPills = [];
+    if (actions.called) actionPills.push(`<span class="action-pill">Called</span>`);
+    if (actions.emailed) actionPills.push(`<span class="action-pill email-pill">Emailed</span>`);
+    if (actions.demo_scheduled) actionPills.push(`<span class="action-pill demo-pill">Demo Scheduled</span>`);
+    card.innerHTML = `
+      <div class="batch-card-head">
+        <div style="flex:1;min-width:0">
+          <div class="batch-card-title">${escapeHtml(batch.name || "(unnamed batch)")}</div>
+          <div class="batch-card-meta">
+            <span>${(batch.lead_ids || []).length} lead${(batch.lead_ids || []).length === 1 ? "" : "s"}</span>
+            <span>by ${escapeHtml((batch.owner_email || "").split("@")[0] || "—")}</span>
+            ${ts ? `<span>${escapeHtml(formatDate(ts))}</span>` : ""}
+            ${actionPills.join("")}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn" data-edit>Edit</button>
+          <button class="btn btn-danger" data-delete>Delete</button>
+          <button class="btn" data-toggle>Expand</button>
+        </div>
+      </div>
+      <div class="batch-card-body">
+        ${batch.notes ? `<div class="batch-notes">${escapeHtml(batch.notes)}</div>` : ""}
+        <div class="batch-leads" data-leads></div>
+      </div>
+    `;
+    container.appendChild(card);
+
+    const toggleBtn = card.querySelector("[data-toggle]");
+    const editBtn = card.querySelector("[data-edit]");
+    const delBtn = card.querySelector("[data-delete]");
+    const head = card.querySelector(".batch-card-head");
+    const leadsEl = card.querySelector("[data-leads]");
+    let expanded = false;
+    function toggle() {
+      expanded = !expanded;
+      card.classList.toggle("expanded", expanded);
+      toggleBtn.textContent = expanded ? "Collapse" : "Expand";
+      if (expanded && leadsEl.children.length === 0) {
+        for (const lid of (batch.lead_ids || [])) {
+          const lead = state.leads.get(lid);
+          const row = document.createElement("div");
+          row.className = "batch-lead-row";
+          if (lead) {
+            row.innerHTML = `
+              <span class="nm">${escapeHtml(lead.owner_name || "—")}</span>
+              <span class="addr">· ${escapeHtml(lead.property_address || "")}${lead.property_city ? ", " + escapeHtml(lead.property_city) : ""}</span>
+              <span class="stat">${lead.crm_status ? `<span class="badge-pill badge-status-${lead.crm_status}">${escapeHtml(statusLabel(lead.crm_status))}</span>` : ""}</span>
+            `;
+            row.addEventListener("click", () => openDrawer(lid));
+          } else {
+            row.innerHTML = `<span class="nm" style="opacity:0.6">${escapeHtml(lid)}</span> <span class="addr">(lead no longer in dataset)</span>`;
+          }
+          leadsEl.appendChild(row);
+        }
+      }
+    }
+    head.addEventListener("click", (e) => {
+      if (e.target.closest("[data-edit]") || e.target.closest("[data-delete]") || e.target.closest("[data-toggle]")) return;
+      toggle();
+    });
+    toggleBtn.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
+    editBtn.addEventListener("click", (e) => { e.stopPropagation(); openSaveBatchModal(batch._id); });
+    delBtn.addEventListener("click", (e) => { e.stopPropagation(); deleteBatch(batch._id); });
+  }
+}
+
+// Status hierarchy for auto-bump logic — never downgrade from a higher stage
+const STATUS_ORDER = { researching: 1, contacted: 2, demo_scheduled: 3, paid: 4 };
+function shouldBumpStatus(currentStatus, targetStatus) {
+  if (currentStatus === "do_not_contact") return false; // hands off DNC leads
+  const c = STATUS_ORDER[currentStatus] || 0;
+  const t = STATUS_ORDER[targetStatus] || 0;
+  return t > c;
+}
+
+// Per-row activity state: key=lead_id, value={called, emailed}
+state._sbRowState = new Map();
+state._sbLeadIds = [];          // ordered list of all candidate lead IDs
+state._sbEditingBatchId = null; // null when creating new
+
+function openSaveBatchModal(editBatchId) {
+  if (!window.propagenticAuth.user) { showToast("Sign in required."); return; }
+  state._sbEditingBatchId = editBatchId || null;
+  const user = window.propagenticAuth.user;
+
+  let leadIds, prefill;
+  if (editBatchId) {
+    const batch = state.batches.get(editBatchId);
+    if (!batch) { showToast("Batch not found."); return; }
+    leadIds = batch.lead_ids || [];
+    prefill = {
+      name: batch.name || "",
+      notes: batch.notes || "",
+      actions: batch.actions || {},
+      perLead: batch.per_lead_actions || {},  // {leadId: {called, emailed}}
+    };
+    document.getElementById("sb-modal-title").textContent = "Edit batch";
+    document.getElementById("sb-modal-help").textContent = "Lead list is frozen — only name, notes, and per-row Called/Emailed are editable. To change the lead set, delete and re-save.";
+    document.getElementById("sb-actions-section").style.display = "none";
+    document.getElementById("sb-cap-section").style.display = "none";
+    document.getElementById("sb-save-btn").textContent = "Save changes";
+  } else {
+    // Creating new — use the currently filtered view
+    const filtered = applyFilters(Array.from(state.leads.values()));
+    if (filtered.length === 0) { showToast("Current filters return zero leads — nothing to save."); return; }
+    leadIds = filtered.map(l => l._id);
+    const userShort = (user.email.split("@")[0] || "").replace(/\./g, " ");
+    const userTitled = userShort.split(" ").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" ");
+    const today = new Date();
+    const dateStr = today.toLocaleString(undefined, { month: "short", day: "numeric" });
+    prefill = { name: `${userTitled} ${dateStr}`, notes: "", actions: {}, perLead: {} };
+    document.getElementById("sb-modal-title").textContent = "Save engagement batch";
+    document.getElementById("sb-modal-help").textContent = "Captures the currently filtered view as a permanent snapshot. Leads marked Called/Emailed below will be flagged; pipeline status auto-advances to Contacted (or Demo Scheduled).";
+    document.getElementById("sb-actions-section").style.display = "";
+    document.getElementById("sb-cap-section").style.display = "";
+    document.getElementById("sb-save-btn").textContent = "Save batch";
+  }
+
+  state._sbLeadIds = leadIds;
+  document.getElementById("sb-name").value = prefill.name;
+  document.getElementById("sb-notes").value = prefill.notes;
+  document.getElementById("sb-called").checked = !!prefill.actions.called;
+  document.getElementById("sb-emailed").checked = !!prefill.actions.emailed;
+  document.getElementById("sb-demo").checked = !!prefill.actions.demo_scheduled;
+  document.getElementById("sb-cap").value = editBatchId ? leadIds.length : Math.min(25, leadIds.length);
+  const err = document.getElementById("sb-error"); err.style.display = "none";
+
+  // Initialize per-row state. For edit: read from prefill. For new: defaults from master toggles (none yet, so all false).
+  state._sbRowState = new Map();
+  for (const lid of leadIds) {
+    const row = prefill.perLead[lid] || {};
+    state._sbRowState.set(lid, {
+      called: editBatchId ? !!row.called : false,
+      emailed: editBatchId ? !!row.emailed : false,
+      demo_scheduled: editBatchId ? !!row.demo_scheduled : false,
+    });
+  }
+
+  // Master toggles control all rows
+  function makeMasterHandler(action) {
+    return (e) => {
+      if (e.target.checked) playDingSound(); else playClickSound();
+      for (const lid of getActiveBatchIds()) {
+        const rs = state._sbRowState.get(lid) || {};
+        rs[action] = e.target.checked;
+        state._sbRowState.set(lid, rs);
+      }
+      renderSbList();
+    };
+  }
+  document.getElementById("sb-called").onchange = makeMasterHandler("called");
+  document.getElementById("sb-emailed").onchange = makeMasterHandler("emailed");
+  document.getElementById("sb-demo").onchange = makeMasterHandler("demo_scheduled");
+  document.getElementById("sb-cap").onchange = () => renderSbList();
+  document.getElementById("sb-cap").oninput = () => renderSbList();
+
+  renderSbList();
+  document.getElementById("save-batch-modal").classList.remove("hidden");
+}
+
+function getActiveBatchIds() {
+  // For new batches, respect the cap. For edits, all frozen IDs.
+  if (state._sbEditingBatchId) return state._sbLeadIds.slice();
+  const capInput = document.getElementById("sb-cap");
+  const cap = Math.max(1, parseInt(capInput.value, 10) || 25);
+  return state._sbLeadIds.slice(0, cap);
+}
+
+function renderSbList() {
+  const allIds = state._sbLeadIds;
+  const isEdit = !!state._sbEditingBatchId;
+  const activeIds = getActiveBatchIds();
+  const totalEl = document.getElementById("sb-list-count");
+  totalEl.textContent = isEdit
+    ? `${allIds.length} lead${allIds.length === 1 ? "" : "s"} (frozen)`
+    : `Will save first ${activeIds.length} of ${allIds.length} filtered lead${allIds.length === 1 ? "" : "s"}`;
+  const capInfo = document.getElementById("sb-cap-info");
+  if (capInfo) capInfo.textContent = `(${allIds.length} match current filters)`;
+
+  const listEl = document.getElementById("sb-list");
+  const emptyEl = document.getElementById("sb-list-empty");
+
+  if (!isEdit && allIds.length > 100 && activeIds.length > 100) {
+    listEl.style.display = "none";
+    emptyEl.style.display = "block";
+    emptyEl.innerHTML = `<b>${allIds.length} leads</b> match your current filters — too many to show per-row checkboxes here. Either narrow your sidebar filters, or lower the cap above to 100 or less.`;
+    return;
+  }
+
+  emptyEl.style.display = "none";
+  listEl.style.display = "block";
+  listEl.innerHTML = "";
+
+  for (const lid of activeIds) {
+    const lead = state.leads.get(lid);
+    if (!lead) continue;
+    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false };
+    const row = document.createElement("div");
+    row.className = "sb-row";
+    const cityState = [lead.property_city, lead.property_state].filter(Boolean).join(", ");
+    const firstLast = [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() || lead.owner_name || "—";
+    row.innerHTML = `
+      <div class="who">
+        <div class="nm">${escapeHtml(firstLast)}</div>
+        <div class="where">${escapeHtml(cityState || "—")}</div>
+      </div>
+      <div class="acts">
+        <label><input type="checkbox" data-lid="${lid}" data-action="called" ${rs.called ? "checked" : ""}>Called</label>
+        <label><input type="checkbox" data-lid="${lid}" data-action="emailed" ${rs.emailed ? "checked" : ""}>Emailed</label>
+        <label><input type="checkbox" data-lid="${lid}" data-action="demo_scheduled" ${rs.demo_scheduled ? "checked" : ""}>Demo Scheduled</label>
+      </div>
+    `;
+    listEl.appendChild(row);
+  }
+
+  // Attach per-row change handlers
+  listEl.querySelectorAll('input[type="checkbox"][data-lid]').forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) playDingSound(); else playClickSound();
+      const lid = cb.dataset.lid;
+      const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false };
+      rs[cb.dataset.action] = cb.checked;
+      state._sbRowState.set(lid, rs);
+    });
+  });
+}
+
+function closeSaveBatchModal() {
+  document.getElementById("save-batch-modal").classList.add("hidden");
+  state._sbLeadIds = []; state._sbRowState = new Map(); state._sbEditingBatchId = null;
+}
+
+async function commitBatch() {
+  const errEl = document.getElementById("sb-error");
+  const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = "inline"; };
+  errEl.style.display = "none";
+
+  const name = (document.getElementById("sb-name").value || "").trim();
+  if (!name) return showErr("Batch name is required.");
+  const notes = (document.getElementById("sb-notes").value || "").trim();
+  const masterCalled  = document.getElementById("sb-called").checked;
+  const masterEmailed = document.getElementById("sb-emailed").checked;
+  const demoScheduled = document.getElementById("sb-demo").checked;
+  const isEdit = !!state._sbEditingBatchId;
+
+  const ids = isEdit ? state._sbLeadIds : getActiveBatchIds();
+  if (ids.length === 0) return showErr("No leads to save.");
+
+  // Build per-lead actions map for storage on the batch doc
+  const perLeadActions = {};
+  for (const lid of ids) {
+    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false };
+    perLeadActions[lid] = {
+      called: !!rs.called,
+      emailed: !!rs.emailed,
+      demo_scheduled: !!rs.demo_scheduled,
+    };
+  }
+
+  // For new batches: require at least one action somewhere
+  if (!isEdit) {
+    const anyAction = Object.values(perLeadActions).some(a => a.called || a.emailed || a.demo_scheduled);
+    if (!anyAction) return showErr("Pick at least one action on at least one row (Called, Emailed, or Demo Scheduled).");
+  }
+
+  const btn = document.getElementById("sb-save-btn");
+  btn.disabled = true; btn.textContent = isEdit ? "Saving…" : "Saving…";
+
+  const db = firebase.firestore();
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+
+  try {
+    // Aggregate "actions" reflect what actually happened across all rows.
+    const anyCalled  = Object.values(perLeadActions).some(a => a.called);
+    const anyEmailed = Object.values(perLeadActions).some(a => a.emailed);
+    const anyDemo    = Object.values(perLeadActions).some(a => a.demo_scheduled);
+
+    let batchRef;
+    if (isEdit) {
+      batchRef = db.collection("batches").doc(state._sbEditingBatchId);
+      await batchRef.set({
+        name, notes: notes || null,
+        per_lead_actions: perLeadActions,
+        actions: { called: anyCalled, emailed: anyEmailed, demo_scheduled: anyDemo },
+        last_edited_at: now,
+        last_edited_by: user ? user.email : null,
+      }, { merge: true });
+    } else {
+      const newRef = await db.collection("batches").add({
+        name,
+        owner_email: user ? user.email : null,
+        created_at: now,
+        lead_ids: ids,
+        actions: { called: anyCalled, emailed: anyEmailed, demo_scheduled: anyDemo },
+        per_lead_actions: perLeadActions,
+        notes: notes || null,
+      });
+      batchRef = newRef;
+    }
+
+    // Apply activity flag + status changes to each lead
+    let i = 0;
+    while (i < ids.length) {
+      const wb = db.batch();
+      for (const lid of ids.slice(i, i + 400)) {
+        const lead = state.leads.get(lid) || {};
+        const rs = perLeadActions[lid] || { called: false, emailed: false, demo_scheduled: false };
+        const payload = { crm_last_touched: now, crm_touched_by: user ? user.email : null };
+
+        // Activity flags — set true if checked; on edit, set false if unchecked
+        if (rs.called) {
+          payload.crm_called = true;
+          payload.crm_called_at = now;
+          payload.crm_called_by = user ? user.email : null;
+        } else if (isEdit) {
+          payload.crm_called = false;
+        }
+        if (rs.emailed) {
+          payload.crm_emailed = true;
+          payload.crm_emailed_at = now;
+          payload.crm_emailed_by = user ? user.email : null;
+        } else if (isEdit) {
+          payload.crm_emailed = false;
+        }
+
+        // Auto-status bump — only for new batches (edits don't re-trigger this to avoid surprises).
+        // Per-row demo_scheduled drives the bump per lead.
+        if (!isEdit) {
+          if (rs.demo_scheduled && shouldBumpStatus(lead.crm_status, "demo_scheduled")) {
+            payload.crm_status = "demo_scheduled";
+          } else if ((rs.called || rs.emailed) && shouldBumpStatus(lead.crm_status, "contacted")) {
+            payload.crm_status = "contacted";
+          }
+        }
+
+        wb.set(db.collection("leads").doc(lid), payload, { merge: true });
+      }
+      await wb.commit();
+      i += 400;
+    }
+
+    showToast(isEdit ? "Batch updated." : `Saved batch (${ids.length} leads).`);
+    closeSaveBatchModal();
+  } catch (e) {
+    console.error(e);
+    showErr("Save failed: " + (e.message || String(e)));
+  } finally {
+    btn.disabled = false; btn.textContent = isEdit ? "Save changes" : "Save batch";
+  }
+}
+
+async function deleteBatch(batchId) {
+  const batch = state.batches.get(batchId);
+  if (!batch) return;
+  const confirmText = `Delete batch "${batch.name}"? This removes the record of work (the leads themselves and their CRM state are NOT affected). This can't be undone.`;
+  if (!confirm(confirmText)) return;
+  try {
+    await firebase.firestore().collection("batches").doc(batchId).delete();
+    showToast("Batch deleted.");
+  } catch (e) {
+    console.error(e);
+    showToast("Delete failed: " + (e.message || String(e)));
+  }
+}
+
+// =========================================================================
+// DNC DETAILS modal — bulk review of all "Do Not Contact" leads
+// =========================================================================
+function openDncDetailsModal() {
+  const body = document.getElementById("dnc-details-body");
+  const all = Array.from(state.leads.values()).filter(l => l.crm_status === "do_not_contact");
+  // Most recently touched first
+  all.sort((a, b) => {
+    const at = a.crm_last_touched && a.crm_last_touched.toMillis ? a.crm_last_touched.toMillis() : 0;
+    const bt = b.crm_last_touched && b.crm_last_touched.toMillis ? b.crm_last_touched.toMillis() : 0;
+    return bt - at;
+  });
+  document.getElementById("dnc-details-count").textContent = `${all.length} lead${all.length === 1 ? "" : "s"} in this column`;
+  body.innerHTML = "";
+
+  if (all.length === 0) {
+    const empty = document.createElement("div");
+    empty.style.cssText = "padding: 32px; color: var(--text-dim); text-align: center; font-size: 13px;";
+    empty.textContent = "No leads currently marked Do Not Contact.";
+    body.appendChild(empty);
+  } else {
+    for (const lead of all) {
+      const row = document.createElement("div");
+      row.className = "dnc-row";
+      const reasonId = `dnc-r-${lead._id}`;
+      const otherId  = `dnc-o-${lead._id}`;
+      const notesId  = `dnc-n-${lead._id}`;
+      const savedId  = `dnc-s-${lead._id}`;
+      row.innerHTML = `
+        <div class="dnc-row-head">
+          <div>
+            <span class="nm">${escapeHtml(lead.owner_name || "—")}</span>
+            <span class="addr"> · ${escapeHtml(lead.property_address || "")}${lead.property_city ? ", " + escapeHtml(lead.property_city) : ""}</span>
+          </div>
+          <button class="btn" onclick="openDrawer('${lead._id}'); closeDncDetailsModal();" style="font-size:11.5px;padding:3px 10px">Open</button>
+        </div>
+        <div class="dnc-edit${lead.crm_dnc_reason === "other" ? " show-other" : ""}" data-row-edit>
+          <label>Reason</label>
+          <select class="select-input" id="${reasonId}">
+            <option value="">— select a reason —</option>
+            ${DNC_REASONS.map(r => `<option value="${r.v}" ${lead.crm_dnc_reason === r.v ? "selected" : ""}>${escapeHtml(r.l)}</option>`).join("")}
+          </select>
+          <input class="text-input other-input" id="${otherId}" placeholder="Specify…" value="${escapeHtml(lead.crm_dnc_reason_text || "")}" />
+          <label style="margin-top:4px">Notes on why</label>
+          <textarea class="notes-input" id="${notesId}" style="min-height:50px" placeholder="Brief explanation…">${escapeHtml(lead.crm_dnc_notes || "")}</textarea>
+          <span class="dnc-saved" id="${savedId}">saved</span>
+        </div>
+      `;
+      body.appendChild(row);
+
+      const editBlock = row.querySelector("[data-row-edit]");
+      const reasonSel = row.querySelector(`#${reasonId}`);
+      const otherInp  = row.querySelector(`#${otherId}`);
+      const notesArea = row.querySelector(`#${notesId}`);
+      const savedInd  = row.querySelector(`#${savedId}`);
+      function flash() { savedInd.classList.add("show"); setTimeout(() => savedInd.classList.remove("show"), 1200); }
+
+      reasonSel.addEventListener("change", () => {
+        const val = reasonSel.value || null;
+        editBlock.classList.toggle("show-other", val === "other");
+        updateDncFields(lead._id, {
+          crm_dnc_reason: val,
+          crm_dnc_reason_text: val === "other" ? (otherInp.value || null) : null,
+        });
+        flash();
+      });
+      let ot, nt;
+      otherInp.addEventListener("input", () => {
+        clearTimeout(ot);
+        ot = setTimeout(() => { updateDncFields(lead._id, { crm_dnc_reason_text: otherInp.value || null }); flash(); }, 1200);
+      });
+      let lastNotes = lead.crm_dnc_notes || "";
+      notesArea.addEventListener("input", () => {
+        clearTimeout(nt);
+        nt = setTimeout(() => {
+          if (notesArea.value === lastNotes) return;
+          lastNotes = notesArea.value;
+          updateDncFields(lead._id, { crm_dnc_notes: notesArea.value });
+          flash();
+        }, 1500);
+      });
+    }
+  }
+  document.getElementById("dnc-details-modal").classList.remove("hidden");
+}
+function closeDncDetailsModal() {
+  document.getElementById("dnc-details-modal").classList.add("hidden");
+}
+
+// =========================================================================
+// ADD LEAD modal — manual single-lead entry
+// =========================================================================
+function openAddLeadModal() {
+  // Clear any previous values
+  [
+    "al-prop-addr","al-prop-city","al-prop-state","al-prop-zip","al-prop-county",
+    "al-prop-year","al-prop-type","al-first","al-last","al-co",
+    "al-phone","al-email","al-mail-addr","al-mail-city","al-mail-state","al-mail-zip"
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  document.getElementById("al-owner-type").value = "";
+  document.getElementById("al-absentee").checked = true;
+  document.getElementById("al-dnc").checked = false;
+  const err = document.getElementById("al-error"); err.style.display = "none"; err.textContent = "";
+  document.getElementById("add-lead-modal").classList.remove("hidden");
+  setTimeout(() => document.getElementById("al-prop-addr").focus(), 50);
+}
+function closeAddLeadModal() {
+  document.getElementById("add-lead-modal").classList.add("hidden");
+}
+
+async function saveNewLead() {
+  const errEl = document.getElementById("al-error");
+  const saveBtn = document.getElementById("al-save-btn");
+  const v = (id) => (document.getElementById(id).value || "").trim();
+  const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = "inline"; };
+
+  const addr = v("al-prop-addr");
+  const propStateRaw = v("al-prop-state");
+  if (!addr) return showErr("Property street address is required.");
+  if (!propStateRaw) return showErr("Property state is required.");
+
+  const city  = v("al-prop-city");
+  const propSt = importUpperState(propStateRaw);
+  const zip5  = importCleanZip(v("al-prop-zip"));
+  const county = importUpperCounty(v("al-prop-county"));
+
+  errEl.style.display = "none";
+  saveBtn.disabled = true; saveBtn.textContent = "Geocoding…";
+
+  // Build doc ID
+  const addrNorm = normalizeAddrForId(addr, city, propSt, zip5);
+  if (!addrNorm) { saveBtn.disabled = false; saveBtn.textContent = "Save lead"; return showErr("Couldn't normalize address."); }
+  const doc_id = await computeDocId(propSt, zip5, addrNorm);
+
+  // Warn if it would overwrite (won't lose CRM state but worth flagging)
+  const exists = state.leads.has(doc_id);
+  if (exists) {
+    const ok = confirm("A lead with this property address already exists. Click OK to update it (existing outreach status/notes will be preserved), or Cancel to abort.");
+    if (!ok) { saveBtn.disabled = false; saveBtn.textContent = "Save lead"; return; }
+  }
+
+  // Geocode
+  const geo = await geocodeOne(addr, city, propSt, zip5);
+  saveBtn.textContent = "Saving…";
+
+  const first = importNameTitlecase(v("al-first"));
+  const last  = importNameTitlecase(v("al-last"));
+  const fullName = (first && last) ? `${first} ${last}` : (first || last || null);
+
+  const user = window.propagenticAuth.user;
+  const payload = {
+    owner_name: fullName,
+    first_name: first, last_name: last,
+    co_owner_first: null, co_owner_last: null,
+    owner_name_raw: importCleanStr(v("al-co")) ? `${fullName || ""} & ${v("al-co")}` : (fullName ? fullName.toUpperCase() : null),
+
+    property_address: addr,
+    property_city: city || null,
+    property_state: propSt,
+    property_zip: zip5,
+    property_county: county,
+    property_lat: geo.lat,
+    property_lon: geo.lon,
+    geocode_status: geo.status,
+    geocode_formatted: geo.formatted || null,
+    property_type: importCleanStr(v("al-prop-type")),
+    year_built: importSafeInt(v("al-prop-year")),
+
+    mailing_address: importCleanStr(v("al-mail-addr")) || addr,
+    mailing_city: importCleanStr(v("al-mail-city")) || city || null,
+    mailing_state: importUpperState(v("al-mail-state")) || propSt,
+    mailing_zip: importCleanZip(v("al-mail-zip")) || zip5,
+
+    owner_type: v("al-owner-type") || null,
+    absentee: document.getElementById("al-absentee").checked,
+    phone: importCleanPhone(v("al-phone")),
+    email: importCleanStr(v("al-email")),
+    dnc: document.getElementById("al-dnc").checked,
+
+    market_state: propSt,
+    market_county: county,
+    market: `${(county || "unknown").toLowerCase().replace(/\s+/g, "_")}_${(propSt || "xx").toLowerCase()}`,
+
+    source_file: "manual_entry",
+    source_row: null,
+    imported_at: firebase.firestore.FieldValue.serverTimestamp(),
+    imported_by: user ? user.email : null,
+  };
+  // Strip nulls so set(merge=true) doesn't overwrite existing values with null on re-add
+  for (const k of Object.keys(payload)) if (payload[k] == null) delete payload[k];
+
+  try {
+    await firebase.firestore().collection("leads").doc(doc_id).set(payload, { merge: true });
+    closeAddLeadModal();
+    showToast(exists ? "Lead updated" : "Lead added");
+    // Open the new/updated lead in the drawer so the user can verify
+    setTimeout(() => openDrawer(doc_id), 200);
+  } catch (e) {
+    console.error(e);
+    showErr("Save failed: " + (e.message || String(e)));
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = "Save lead";
   }
 }
 
