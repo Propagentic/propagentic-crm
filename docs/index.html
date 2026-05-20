@@ -233,6 +233,21 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 }
 .kanban-col[data-status="do_not_contact"] .kanban-col__body { padding-top: 18px; }
 .kanban-card .card-reason { font-size: 11px; color: var(--text-dim); margin-top: 6px; font-style: italic; }
+.kanban-card .card-name .follow-up-flag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+.badge-follow-up { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
 .badge-status-do_not_contact { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
 
 /* DNC reason editor row (used in drawer + modal) */
@@ -440,7 +455,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .sb-row .who { flex: 1; min-width: 0; }
 .sb-row .who .nm { font-weight: 500; color: var(--text); }
 .sb-row .who .where { color: var(--text-dim); font-size: 11.5px; }
-.sb-row .acts { display: flex; gap: 12px; flex-shrink: 0; }
+.sb-row .acts { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
 .sb-row .acts label { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-soft); cursor: pointer; }
 .sb-row .acts input { cursor: pointer; }
 
@@ -457,6 +472,8 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .batch-card-meta .action-pill { background: var(--accent); color: #0a1428; padding: 1px 7px; border-radius: 100px; font-size: 10.5px; font-weight: 600; }
 .batch-card-meta .action-pill.email-pill { background: var(--accent-2); }
 .batch-card-meta .action-pill.demo-pill { background: #a5b4fc; color: #1e1b4b; }
+.batch-card-meta .action-pill.followup-pill { background: #fbbf24; color: #1e1e1e; }
+.batch-card-meta .action-pill.dnc-pill { background: var(--red); color: #fff; }
 .batch-card-body { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: none; }
 .batch-card.expanded .batch-card-body { display: block; }
 .batch-notes { font-size: 12.5px; color: var(--text-soft); background: var(--bg); padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid var(--border); }
@@ -919,9 +936,11 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
       <div class="form-section" id="sb-actions-section">
         <h4>Master actions <span style="text-transform:none;font-weight:400;color:var(--text-dim);font-size:11px">(toggle to apply to all rows; you can override per row below)</span></h4>
         <div style="display:flex;gap:14px;flex-wrap:wrap">
-          <label class="form-check"><input type="checkbox" id="sb-called"> Called these leads</label>
-          <label class="form-check"><input type="checkbox" id="sb-emailed"> Emailed these leads</label>
+          <label class="form-check"><input type="checkbox" id="sb-called"> Called</label>
+          <label class="form-check"><input type="checkbox" id="sb-emailed"> Emailed</label>
           <label class="form-check"><input type="checkbox" id="sb-demo"> Demo Scheduled</label>
+          <label class="form-check"><input type="checkbox" id="sb-followup"> Follow Up</label>
+          <label class="form-check"><input type="checkbox" id="sb-dnc"> Do Not Contact</label>
         </div>
       </div>
       <div class="form-section" id="sb-cap-section">
@@ -1503,8 +1522,9 @@ function makeKanbanCard(lead, status) {
   const reasonLine = (status === "do_not_contact")
     ? `<div class="card-reason">Reason: ${lead.crm_dnc_reason ? escapeHtml(dncReasonLabel(lead.crm_dnc_reason)) + (lead.crm_dnc_reason === "other" && lead.crm_dnc_reason_text ? " — " + escapeHtml(lead.crm_dnc_reason_text) : "") : "<i style=\"color:var(--red);opacity:0.7\">not set — click card to fill</i>"}</div>`
     : "";
+  const followUpFlag = lead.crm_follow_up_needed ? `<span class="follow-up-flag" title="Follow up needed">⚑ Follow up</span>` : "";
   card.innerHTML = `
-    <div class="card-name">${escapeHtml(lead.owner_name || "—")}</div>
+    <div class="card-name">${escapeHtml(lead.owner_name || "—")}${followUpFlag}</div>
     <div class="card-addr">${escapeHtml(lead.property_address || "")}${lead.property_city ? ", " + escapeHtml(lead.property_city) : ""}</div>
     <div class="card-meta">${metaPieces.join("")}</div>
     ${reasonLine}
@@ -1628,6 +1648,7 @@ function openDrawer(leadId) {
   if (lead.market) badges.appendChild(makeBadge("badge-market", formatMarket(lead.market)));
   if (lead.dnc) badges.appendChild(makeBadge("badge-dnc", "DNC"));
   if (lead.crm_status) badges.appendChild(makeBadge(`badge-status-${lead.crm_status}`, statusLabel(lead.crm_status)));
+  if (lead.crm_follow_up_needed) badges.appendChild(makeBadge("badge-follow-up", "⚑ Follow up"));
 
   // Body
   const body = document.getElementById("drawer-body");
@@ -2572,6 +2593,8 @@ function renderBatches() {
     if (actions.called) actionPills.push(`<span class="action-pill">Called</span>`);
     if (actions.emailed) actionPills.push(`<span class="action-pill email-pill">Emailed</span>`);
     if (actions.demo_scheduled) actionPills.push(`<span class="action-pill demo-pill">Demo Scheduled</span>`);
+    if (actions.follow_up_needed) actionPills.push(`<span class="action-pill followup-pill">⚑ Follow Up</span>`);
+    if (actions.do_not_contact) actionPills.push(`<span class="action-pill dnc-pill">Do Not Contact</span>`);
     card.innerHTML = `
       <div class="batch-card-head">
         <div style="flex:1;min-width:0">
@@ -2704,8 +2727,15 @@ function openSaveBatchModal(editBatchId) {
       called: editBatchId ? !!row.called : false,
       emailed: editBatchId ? !!row.emailed : false,
       demo_scheduled: editBatchId ? !!row.demo_scheduled : false,
+      follow_up_needed: editBatchId ? !!row.follow_up_needed : false,
+      do_not_contact: editBatchId ? !!row.do_not_contact : false,
     });
   }
+
+  // Reset master toggles
+  ["sb-called","sb-emailed","sb-demo","sb-followup","sb-dnc"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = false;
+  });
 
   // Master toggles control all rows
   function makeMasterHandler(action) {
@@ -2722,6 +2752,8 @@ function openSaveBatchModal(editBatchId) {
   document.getElementById("sb-called").onchange = makeMasterHandler("called");
   document.getElementById("sb-emailed").onchange = makeMasterHandler("emailed");
   document.getElementById("sb-demo").onchange = makeMasterHandler("demo_scheduled");
+  document.getElementById("sb-followup").onchange = makeMasterHandler("follow_up_needed");
+  document.getElementById("sb-dnc").onchange = makeMasterHandler("do_not_contact");
   document.getElementById("sb-cap").onchange = () => renderSbList();
   document.getElementById("sb-cap").oninput = () => renderSbList();
 
@@ -2779,6 +2811,8 @@ function renderSbList() {
         <label><input type="checkbox" data-lid="${lid}" data-action="called" ${rs.called ? "checked" : ""}>Called</label>
         <label><input type="checkbox" data-lid="${lid}" data-action="emailed" ${rs.emailed ? "checked" : ""}>Emailed</label>
         <label><input type="checkbox" data-lid="${lid}" data-action="demo_scheduled" ${rs.demo_scheduled ? "checked" : ""}>Demo Scheduled</label>
+        <label><input type="checkbox" data-lid="${lid}" data-action="follow_up_needed" ${rs.follow_up_needed ? "checked" : ""}>Follow Up</label>
+        <label><input type="checkbox" data-lid="${lid}" data-action="do_not_contact" ${rs.do_not_contact ? "checked" : ""}>Do Not Contact</label>
       </div>
     `;
     listEl.appendChild(row);
@@ -2789,7 +2823,7 @@ function renderSbList() {
     cb.addEventListener("change", () => {
       if (cb.checked) playDingSound(); else playClickSound();
       const lid = cb.dataset.lid;
-      const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false };
+      const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
       rs[cb.dataset.action] = cb.checked;
       state._sbRowState.set(lid, rs);
     });
@@ -2820,18 +2854,20 @@ async function commitBatch() {
   // Build per-lead actions map for storage on the batch doc
   const perLeadActions = {};
   for (const lid of ids) {
-    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false };
+    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
     perLeadActions[lid] = {
       called: !!rs.called,
       emailed: !!rs.emailed,
       demo_scheduled: !!rs.demo_scheduled,
+      follow_up_needed: !!rs.follow_up_needed,
+      do_not_contact: !!rs.do_not_contact,
     };
   }
 
   // For new batches: require at least one action somewhere
   if (!isEdit) {
-    const anyAction = Object.values(perLeadActions).some(a => a.called || a.emailed || a.demo_scheduled);
-    if (!anyAction) return showErr("Pick at least one action on at least one row (Called, Emailed, or Demo Scheduled).");
+    const anyAction = Object.values(perLeadActions).some(a => a.called || a.emailed || a.demo_scheduled || a.follow_up_needed || a.do_not_contact);
+    if (!anyAction) return showErr("Pick at least one action on at least one row.");
   }
 
   const btn = document.getElementById("sb-save-btn");
@@ -2846,6 +2882,8 @@ async function commitBatch() {
     const anyCalled  = Object.values(perLeadActions).some(a => a.called);
     const anyEmailed = Object.values(perLeadActions).some(a => a.emailed);
     const anyDemo    = Object.values(perLeadActions).some(a => a.demo_scheduled);
+    const anyFollowUp = Object.values(perLeadActions).some(a => a.follow_up_needed);
+    const anyDnc     = Object.values(perLeadActions).some(a => a.do_not_contact);
 
     let batchRef;
     if (isEdit) {
@@ -2853,7 +2891,7 @@ async function commitBatch() {
       await batchRef.set({
         name, notes: notes || null,
         per_lead_actions: perLeadActions,
-        actions: { called: anyCalled, emailed: anyEmailed, demo_scheduled: anyDemo },
+        actions: { called: anyCalled, emailed: anyEmailed, demo_scheduled: anyDemo, follow_up_needed: anyFollowUp, do_not_contact: anyDnc },
         last_edited_at: now,
         last_edited_by: user ? user.email : null,
       }, { merge: true });
@@ -2863,7 +2901,7 @@ async function commitBatch() {
         owner_email: user ? user.email : null,
         created_at: now,
         lead_ids: ids,
-        actions: { called: anyCalled, emailed: anyEmailed, demo_scheduled: anyDemo },
+        actions: { called: anyCalled, emailed: anyEmailed, demo_scheduled: anyDemo, follow_up_needed: anyFollowUp, do_not_contact: anyDnc },
         per_lead_actions: perLeadActions,
         notes: notes || null,
       });
@@ -2876,7 +2914,7 @@ async function commitBatch() {
       const wb = db.batch();
       for (const lid of ids.slice(i, i + 400)) {
         const lead = state.leads.get(lid) || {};
-        const rs = perLeadActions[lid] || { called: false, emailed: false, demo_scheduled: false };
+        const rs = perLeadActions[lid] || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
         const payload = { crm_last_touched: now, crm_touched_by: user ? user.email : null };
 
         // Activity flags — set true if checked; on edit, set false if unchecked
@@ -2895,10 +2933,22 @@ async function commitBatch() {
           payload.crm_emailed = false;
         }
 
-        // Auto-status bump — only for new batches (edits don't re-trigger this to avoid surprises).
-        // Per-row demo_scheduled drives the bump per lead.
+        // Follow Up Needed — independent flag, doesn't change status
+        if (rs.follow_up_needed) {
+          payload.crm_follow_up_needed = true;
+          payload.crm_follow_up_at = now;
+          payload.crm_follow_up_by = user ? user.email : null;
+        } else if (isEdit) {
+          payload.crm_follow_up_needed = false;
+        }
+
+        // Auto-status changes — only for new batches (edits don't re-trigger this).
+        // Do Not Contact ALWAYS overrides (no shouldBumpStatus check).
+        // Otherwise: Demo Scheduled > Contacted (no downgrade).
         if (!isEdit) {
-          if (rs.demo_scheduled && shouldBumpStatus(lead.crm_status, "demo_scheduled")) {
+          if (rs.do_not_contact) {
+            payload.crm_status = "do_not_contact";
+          } else if (rs.demo_scheduled && shouldBumpStatus(lead.crm_status, "demo_scheduled")) {
             payload.crm_status = "demo_scheduled";
           } else if ((rs.called || rs.emailed) && shouldBumpStatus(lead.crm_status, "contacted")) {
             payload.crm_status = "contacted";
