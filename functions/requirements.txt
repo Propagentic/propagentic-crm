@@ -1,0 +1,4 @@
+firebase-functions==0.4.2
+firebase-admin==7.4.0
+google-api-python-client==2.158.0
+google-auth==2.53.0
