@@ -1765,53 +1765,53 @@ function openDrawer(leadId) {
   actRow.querySelector("#drawer-emailed").addEventListener("change", (e) => updateActivityFlag(leadId, "emailed", e.target.checked));
   body.appendChild(actSec);
 
-  // Owner — explicit assignment via dropdown. Falls back to imported_by for the
-  // initial visual (the color dot), but the dropdown itself shows "Unassigned"
-  // until someone deliberately picks an owner.
-  const ownerSec = document.createElement("div");
-  ownerSec.className = "drawer-section";
-  ownerSec.innerHTML = `<h4>Owner</h4>`;
-  const ownerRow = document.createElement("div");
-  ownerRow.style.cssText = "display:flex;align-items:center;gap:10px;padding:2px 0;";
-  const currentOwner = getOwnerUser(lead.crm_owner) || (lead.crm_owner ? null : getOwnerUser(lead.imported_by));
-  const dot = document.createElement("span");
-  dot.style.cssText = `width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${currentOwner ? currentOwner.color : "transparent"};border:${currentOwner ? "none" : "1px dashed var(--text-dim)"};`;
-  dot.title = currentOwner ? currentOwner.displayName : "Unassigned";
-  ownerRow.appendChild(dot);
-  const sel = document.createElement("select");
-  sel.id = "drawer-owner";
-  sel.className = "select-input";
-  sel.style.cssText = "flex:1;background:var(--panel-2);color:var(--text);border:1px solid var(--border);padding:7px 9px;border-radius:5px;font:inherit;";
-  // Build options from crm_users (sorted by displayName)
-  const users = Array.from(state.crmUsers.values())
-    .filter((u, i, arr) => arr.findIndex(x => x.email === u.email) === i) // dedupe by primary email (aliases reuse same user obj)
+  // Owner assignment — explicit dropdown writing crm_owner on the lead doc.
+  // Renamed from `ownerSec` to avoid collision with the property-ownership
+  // section further down the same function (line ~2001). Falls back to
+  // imported_by for the initial color dot when crm_owner is empty.
+  const assignedOwnerSec = document.createElement("div");
+  assignedOwnerSec.className = "drawer-section";
+  assignedOwnerSec.innerHTML = `<h4>Owner</h4>`;
+  const assignedOwnerRow = document.createElement("div");
+  assignedOwnerRow.style.cssText = "display:flex;align-items:center;gap:10px;padding:2px 0;";
+  const currentAssignedOwner = getOwnerUser(lead.crm_owner) || (lead.crm_owner ? null : getOwnerUser(lead.imported_by));
+  const assignedOwnerDot = document.createElement("span");
+  assignedOwnerDot.style.cssText = `width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${currentAssignedOwner ? currentAssignedOwner.color : "transparent"};border:${currentAssignedOwner ? "none" : "1px dashed var(--text-dim)"};`;
+  assignedOwnerDot.title = currentAssignedOwner ? currentAssignedOwner.displayName : "Unassigned";
+  assignedOwnerRow.appendChild(assignedOwnerDot);
+  const assignedOwnerSelect = document.createElement("select");
+  assignedOwnerSelect.id = "drawer-owner";
+  assignedOwnerSelect.className = "select-input";
+  assignedOwnerSelect.style.cssText = "flex:1;background:var(--panel-2);color:var(--text);border:1px solid var(--border);padding:7px 9px;border-radius:5px;font:inherit;";
+  // Build options from crm_users (sorted by displayName, deduped by primary email since aliases reuse the same user object)
+  const assignedOwnerUsers = Array.from(state.crmUsers.values())
+    .filter((u, i, arr) => arr.findIndex(x => x.email === u.email) === i)
     .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
-  const unassignedOpt = document.createElement("option");
-  unassignedOpt.value = "";
-  unassignedOpt.textContent = "— Unassigned —";
-  if (!lead.crm_owner) unassignedOpt.selected = true;
-  sel.appendChild(unassignedOpt);
-  users.forEach(u => {
+  const assignedOwnerUnassignedOpt = document.createElement("option");
+  assignedOwnerUnassignedOpt.value = "";
+  assignedOwnerUnassignedOpt.textContent = "— Unassigned —";
+  if (!lead.crm_owner) assignedOwnerUnassignedOpt.selected = true;
+  assignedOwnerSelect.appendChild(assignedOwnerUnassignedOpt);
+  assignedOwnerUsers.forEach(u => {
     const opt = document.createElement("option");
     opt.value = u.email;
     opt.textContent = u.displayName;
     if (lead.crm_owner && lead.crm_owner.toLowerCase() === u.email.toLowerCase()) opt.selected = true;
-    // Also match if crm_owner is one of this user's aliases
     if (lead.crm_owner && (u.aliases || []).some(a => a.toLowerCase() === lead.crm_owner.toLowerCase())) opt.selected = true;
-    sel.appendChild(opt);
+    assignedOwnerSelect.appendChild(opt);
   });
-  sel.addEventListener("change", (e) => setOwner(leadId, e.target.value || null));
-  ownerRow.appendChild(sel);
-  ownerSec.appendChild(ownerRow);
-  // Tiny last-touched footnote (still useful for context, just less prominent)
+  assignedOwnerSelect.addEventListener("change", (e) => setOwner(leadId, e.target.value || null));
+  assignedOwnerRow.appendChild(assignedOwnerSelect);
+  assignedOwnerSec.appendChild(assignedOwnerRow);
+  // Tiny last-touched footnote (kept for context, no longer the primary signal)
   if (lead.crm_last_touched) {
     const ts = lead.crm_last_touched.toDate ? lead.crm_last_touched.toDate() : new Date(lead.crm_last_touched);
     const note = document.createElement("div");
     note.style.cssText = "font-size:11px;color:var(--text-dim);margin-top:6px;";
     note.textContent = `Last touched ${formatDate(ts)}${lead.crm_touched_by ? ` · ${lead.crm_touched_by.split("@")[0]}` : ""}`;
-    ownerSec.appendChild(note);
+    assignedOwnerSec.appendChild(note);
   }
-  body.appendChild(ownerSec);
+  body.appendChild(assignedOwnerSec);
 
   // Outreach status
   const statusSec = document.createElement("div");
