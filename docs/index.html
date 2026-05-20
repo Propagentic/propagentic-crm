@@ -1097,6 +1097,7 @@ function isStatusUpgrade(fromStatus, toStatus) {
 // Mutable app state
 const state = {
   leads: new Map(),          // doc_id -> lead doc
+  crmUsers: new Map(),       // lowercased email (primary or alias) -> {email, displayName, color, initials, role}
   filters: {
     search: "",
     markets: new Set(),      // selected market keys; empty = all
@@ -1123,6 +1124,7 @@ window.onAuthReady = function(user) {
   initMap();
   subscribeToLeads();
   subscribeToBatches();
+  subscribeToCrmUsers();
   attachFilterHandlers();
   attachTabHandlers();
   attachImportHandlers();
@@ -1308,6 +1310,36 @@ function subscribeToLeads() {
     console.error("leads snapshot error", err);
     showToast("Failed to load leads: " + err.message);
   });
+}
+
+// =========================================================================
+// crm_users — team color/attribution registry (seeded via Admin SDK).
+// Builds an email -> user map keyed by both primary email and aliases, so
+// `lead.imported_by` can be resolved regardless of which work/school address
+// the lead was added under.
+// =========================================================================
+function subscribeToCrmUsers() {
+  const db = firebase.firestore();
+  db.collection("crm_users").onSnapshot((snap) => {
+    snap.docChanges().forEach((ch) => {
+      const u = ch.doc.data();
+      const keys = [u.email].concat(u.aliases || []).filter(Boolean).map(e => e.toLowerCase());
+      if (ch.type === "removed" || u.active === false) {
+        keys.forEach(k => state.crmUsers.delete(k));
+      } else {
+        keys.forEach(k => state.crmUsers.set(k, u));
+      }
+    });
+    // Re-render so existing rows pick up the colors once users load.
+    if (typeof renderAll === "function") renderAll();
+  }, (err) => {
+    console.warn("crm_users snapshot error (colors will be unavailable)", err);
+  });
+}
+
+function getOwnerUser(email) {
+  if (!email) return null;
+  return state.crmUsers.get(email.toLowerCase()) || null;
 }
 
 // =========================================================================
@@ -1629,8 +1661,13 @@ function renderList(sortedLeads) {
     const tr = document.createElement("tr");
     tr.dataset.id = lead._id;
     if (lead._id === state.selectedId) tr.classList.add("selected");
+    // Color-code by who added this lead (imported_by) via the crm_users registry.
+    // Falls back to no border if owner is unknown — non-layout-affecting box-shadow.
+    const owner = getOwnerUser(lead.imported_by);
+    const nameTdStyle = owner ? `style="box-shadow: inset 4px 0 0 ${owner.color}"` : '';
+    const nameTdTitle = owner ? `title="Added by ${escapeHtml(owner.displayName)}"` : '';
     tr.innerHTML = `
-      <td class="name">${escapeHtml(lead.owner_name || "—")}</td>
+      <td class="name" ${nameTdStyle} ${nameTdTitle}>${escapeHtml(lead.owner_name || "—")}</td>
       <td>${escapeHtml(lead.property_address || "")}, ${escapeHtml(lead.property_city || "")}</td>
       <td><span class="badge-pill badge-market">${escapeHtml(formatMarket(lead.market))}</span></td>
       <td>${escapeHtml(lead.property_type || "—")}</td>
