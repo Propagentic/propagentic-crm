@@ -1,20 +1,24 @@
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Helper: signed in with a verified @propagenticai.com Google Workspace account.
-    function isPropagenticUser() {
-      return request.auth != null
-          && request.auth.token.email_verified == true
-          && request.auth.token.email.matches('.*@propagenticai\\.com$');
-    }
-
-    // All collections in the explorer follow the same auth model: any
-    // authenticated @propagenticai.com user can read; only those users can
-    // write. There is no public read path.
-    match /{document=**} {
-      allow read, write: if isPropagenticUser();
-    }
-  }
-}
+// DEPRECATED — DO NOT DEPLOY FROM THIS REPO.
+//
+// The live Firestore rules for the `propagentic-crm` project are owned by
+// the propagentic-web repo:
+//
+//   Propagentic-web / branch live-main / crm.firestore.rules
+//
+// Deploy with (run from the propagentic-web repo, NOT this one):
+//
+//   firebase deploy --only firestore:rules \
+//     --project propagentic-crm \
+//     --config firebase.crm.json
+//
+// This file is intentionally an INVALID rules stub. If `firebase deploy`
+// from this repo accidentally targets `firestore:rules`, it will fail to
+// compile (no `service cloud.firestore { ... }` block) rather than
+// silently clobber the live rule set.
+//
+// Why this matters: a previous stub here granted blanket read+write to
+// any `@propagenticai.com` account. Deploying it would have (1) locked
+// out non-`@propagenticai.com` allowlisted accounts (weinba23@wfu.edu,
+// brantleyryan03@gmail.com), (2) made the bulk-ingested catalogs
+// (regions/owners/parcels) client-writable, and (3) widened the Kanban
+// collections from super_admin-only to @propagenticai.com-wide.
