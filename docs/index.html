@@ -450,13 +450,18 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .stats-coming-soon .subtle { display: block; font-size: 0.18em; font-weight: 500; color: var(--text-dim); letter-spacing: 0.32em; margin-top: 18px; text-shadow: none; text-transform: uppercase; }
 
 /* --- Save Batch modal — per-lead rows --- */
-.sb-row { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.sb-row { display: flex; align-items: flex-start; gap: 14px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
 .sb-row:last-child { border-bottom: none; }
-.sb-row .who { flex: 1; min-width: 0; }
-.sb-row .who .nm { font-weight: 500; color: var(--text); }
+.sb-row .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sb-row .who .nm { font-weight: 600; color: var(--text); font-size: 13px; }
 .sb-row .who .where { color: var(--text-dim); font-size: 11.5px; }
-.sb-row .acts { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
-.sb-row .acts label { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-soft); cursor: pointer; }
+.sb-row .who .contact-info { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 11.5px; }
+.sb-row .who .contact-info .ci-row { display: flex; align-items: center; gap: 6px; color: var(--text-soft); }
+.sb-row .who .contact-info .ci-icon { color: var(--text-dim); width: 12px; flex-shrink: 0; text-align: center; }
+.sb-row .who .contact-info .ci-row.empty { color: var(--text-dim); font-style: italic; }
+.sb-row .who .contact-info .ci-dnc { font-size: 9.5px; font-weight: 700; padding: 0 5px; background: rgba(239, 68, 68, 0.18); color: #fca5a5; border-radius: 3px; letter-spacing: 0.04em; margin-left: 4px; }
+.sb-row .acts { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; max-width: 55%; align-self: flex-start; padding-top: 2px; }
+.sb-row .acts label { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-soft); cursor: pointer; white-space: nowrap; }
 .sb-row .acts input { cursor: pointer; }
 
 /* --- Daily Work tab --- */
@@ -2797,15 +2802,25 @@ function renderSbList() {
   for (const lid of activeIds) {
     const lead = state.leads.get(lid);
     if (!lead) continue;
-    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false };
+    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
     const row = document.createElement("div");
     row.className = "sb-row";
     const cityState = [lead.property_city, lead.property_state].filter(Boolean).join(", ");
     const firstLast = [lead.first_name, lead.last_name].filter(Boolean).join(" ").trim() || lead.owner_name || "—";
+    const phoneLine = lead.phone
+      ? `<div class="ci-row"><span class="ci-icon">📞</span><span>${escapeHtml(formatPhone(lead.phone))}${lead.phone_type ? ` <span style="color:var(--text-dim)">(${escapeHtml(lead.phone_type)})</span>` : ""}</span>${lead.dnc ? '<span class="ci-dnc">DNC</span>' : ""}</div>`
+      : `<div class="ci-row empty"><span class="ci-icon">📞</span><span>No phone on file</span></div>`;
+    const emailLine = lead.email
+      ? `<div class="ci-row"><span class="ci-icon">✉</span><span>${escapeHtml(lead.email)}</span></div>`
+      : `<div class="ci-row empty"><span class="ci-icon">✉</span><span>No email on file</span></div>`;
     row.innerHTML = `
       <div class="who">
         <div class="nm">${escapeHtml(firstLast)}</div>
         <div class="where">${escapeHtml(cityState || "—")}</div>
+        <div class="contact-info">
+          ${phoneLine}
+          ${emailLine}
+        </div>
       </div>
       <div class="acts">
         <label><input type="checkbox" data-lid="${lid}" data-action="called" ${rs.called ? "checked" : ""}>Called</label>
