@@ -4,6 +4,10 @@
 .env.production
 secrets/
 *-firebase-adminsdk-*.json
+# GCP service-account JSON keys downloaded into the project root —
+# names follow `propagentic-crm-<hash>.json`. Keep all such files out of git.
+propagentic-crm-*.json
+*.serviceaccount.json
 
 # --- Local tool binaries ---
 .local-bin/

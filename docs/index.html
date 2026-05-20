@@ -67,6 +67,26 @@ a:hover { text-decoration: underline; }
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--green); border: 2px solid var(--panel);
 }
+.presence-stack .presence-avatar[data-tooltip]::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: pre;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s ease 0.05s;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.presence-stack .presence-avatar[data-tooltip]:hover::before { opacity: 1; }
 .btn { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }
 .btn:hover { background: #213262; }
 .btn.btn-primary { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
@@ -208,12 +228,30 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 /* Color accents per column */
 .kanban-col[data-status="researching"] .dot { background: #fbbf24; }
 .kanban-col[data-status="contacted"]   .dot { background: #FF6B35; }
-.kanban-col[data-status="demo_scheduled"] .dot { background: #a5b4fc; }
+.kanban-col[data-status="emailed"]     .dot { background: #a5b4fc; }
+.kanban-col[data-status="called"]      .dot { background: #34d399; }
+.kanban-col[data-status="both"]        .dot { background: #FF6B35; }
+.kanban-col[data-status="demo_scheduled"] .dot { background: #c4b5fd; }
 .kanban-col[data-status="paid"]        .dot { background: #34d399; }
 
-/* Wide Contacted column — split into Emailed / Called / Both sub-zones */
-.kanban-col[data-status="contacted"] { min-width: 620px; flex: 3; }
-.kanban-col[data-status="contacted"] .kanban-col__body { padding: 8px; gap: 8px; min-height: 0; }
+/* Wide Called column — holds the nested Didn't Pickup / Picked Up / Undefined
+   sub-structure. Took the slot the old Contacted column used. The inner
+   .called-top-row + .called-undefined render flush against the column body. */
+.kanban-col[data-status="called"] { min-width: 580px; flex: 2; }
+.kanban-col[data-status="called"] .kanban-col__body { padding: 0; gap: 0; overflow: hidden; min-height: 0; }
+/* Wide Emailed column — split vertically into Responded / In Conversation
+   on top and Waiting Response on the bottom. Each section has its own
+   2-column card grid inside. */
+.kanban-col[data-status="emailed"] { min-width: 580px; flex: 2; }
+.kanban-col[data-status="emailed"] .kanban-col__body { display: flex; flex-direction: column; padding: 0; gap: 0; overflow: hidden; min-height: 0; }
+.emailed-section { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; border-top: 1px solid var(--border); background: rgba(255,255,255,0.015); transition: background 0.15s; overflow: hidden; }
+.emailed-section:first-child { border-top: none; }
+.emailed-section.drop-target { background: rgba(255, 107, 53, 0.06); }
+.emailed-section-head { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.emailed-section[data-section="responded"] .emailed-section-head { color: #34d399; }
+.emailed-section[data-section="waiting"]   .emailed-section-head { color: #a5b4fc; }
+.emailed-section-body { flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; min-height: 0; }
+.emailed-section-empty { color: var(--text-dim); font-size: 11px; text-align: center; padding: 16px 4px; font-style: italic; grid-column: 1 / -1; }
 .contacted-noactivity { border: 1px dashed var(--border); border-radius: 5px; padding: 6px 8px; background: rgba(255,255,255,0.02); flex-shrink: 0; }
 .contacted-noactivity .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
 .contacted-noactivity .cards { display: flex; flex-direction: column; gap: 4px; }
@@ -228,6 +266,20 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .contacted-zone[data-sub="called"]  .contacted-zone-head { color: #34d399; }
 .contacted-zone[data-sub="both"]    .contacted-zone-head { color: var(--accent); }
 .contacted-zone-body { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 50px; }
+/* Called sub-zone — nested layout: two mini-zones on top + Undefined spanning below */
+.contacted-zone[data-sub="called"] .contacted-zone-body { padding: 0; gap: 0; overflow: hidden; }
+.called-top-row { display: flex; gap: 4px; padding: 4px 4px 2px 4px; flex: 2 1 0; min-height: 0; }
+.called-mini-zone { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; transition: background 0.15s, border-color 0.15s; }
+.called-mini-zone.drop-target { background: rgba(255, 107, 53, 0.08); border-color: var(--accent); }
+.called-mini-zone-head { font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; padding: 5px 6px; border-bottom: 1px solid var(--border); font-weight: 600; text-align: center; white-space: normal; line-height: 1.25; }
+.called-mini-zone[data-outcome="no_pickup"] .called-mini-zone-head { color: #fbbf24; }
+.called-mini-zone[data-outcome="picked_up"] .called-mini-zone-head { color: #34d399; }
+.called-mini-zone-body { flex: 1; overflow-y: auto; padding: 4px; display: flex; flex-direction: column; gap: 4px; min-height: 30px; }
+.called-mini-zone-empty { color: var(--text-dim); font-size: 10px; text-align: center; padding: 12px 4px; font-style: italic; line-height: 1.3; }
+.called-undefined { display: flex; flex-direction: column; flex: 1 1 0; min-height: 80px; border-top: 1px solid var(--border); background: rgba(255,255,255,0.015); transition: background 0.15s; }
+.called-undefined.drop-target { background: rgba(255, 107, 53, 0.06); }
+.called-undefined-head { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 5px 6px; border-bottom: 1px solid var(--border); font-weight: 600; text-align: center; }
+.called-undefined-body { flex: 1; overflow-y: auto; padding: 4px; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
 .kanban-col[data-status="do_not_contact"] .dot { background: #ef4444; }
 .kanban-col[data-status="do_not_contact"] .kanban-col__head {
   cursor: pointer;
@@ -288,6 +340,12 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .dnc-row .dnc-row-head .addr { font-size: 11.5px; color: var(--text-dim); }
 .dnc-row .dnc-saved { font-size: 11px; color: var(--text-dim); opacity: 0; transition: opacity 0.2s; margin-left: 6px; }
 .dnc-row .dnc-saved.show { opacity: 1; }
+.dnc-row .dnc-row-notes { font-size: 12px; color: var(--text-soft); background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #FF6B35; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px; max-height: 160px; overflow-y: auto; line-height: 1.45; }
+.dnc-row .dnc-row-notes p { margin: 0 0 6px 0; }
+.dnc-row .dnc-row-notes p:last-child { margin-bottom: 0; }
+.dnc-row .dnc-row-notes ul, .dnc-row .dnc-row-notes ol { margin: 4px 0 4px 18px; padding: 0; }
+.dnc-row .dnc-row-notes code { background: var(--panel); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+.dnc-row .dnc-row-notes-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 4px; }
 
 /* --- Drawer --- */
 .drawer { position: fixed; top: 0; right: 0; height: 100vh; width: 460px; background: var(--panel); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0,0,0,0.35); transform: translateX(100%); transition: transform 0.25s ease; display: flex; flex-direction: column; z-index: 1000; }
@@ -319,6 +377,29 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .notes-preview a { color: var(--accent); word-break: break-all; }
 .notes-preview code { background: var(--panel-2); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
 .notes-preview hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; }
+
+/* --- Email Activity panel (v2.14 — drawer section between Notes and Property) --- */
+.email-activity { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #a5b4fc; border-radius: 5px; max-height: 480px; overflow-y: auto; }
+.email-activity-empty { padding: 18px 14px; color: var(--text-dim); font-size: 12.5px; text-align: center; font-style: italic; }
+.email-activity-row { display: grid; grid-template-columns: 56px 1fr; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+.email-activity-row:hover { background: var(--panel-2); }
+.email-activity-row:last-child { border-bottom: none; }
+.email-activity-row .date { font-size: 11px; color: var(--text-dim); padding-top: 2px; }
+.email-activity-row .body { min-width: 0; }
+.email-activity-row .head { display: flex; align-items: baseline; gap: 8px; font-size: 12px; margin-bottom: 2px; }
+.email-activity-row .dir { font-weight: 700; flex-shrink: 0; }
+.email-activity-row[data-dir="inbound"]  .dir { color: #34d399; }
+.email-activity-row[data-dir="outbound"] .dir { color: #a5b4fc; }
+.email-activity-row .person { color: var(--text); font-weight: 600; }
+.email-activity-row .source { color: var(--text-dim); font-size: 10.5px; font-weight: 400; }
+.email-activity-row .subject { color: var(--text); font-weight: 500; font-size: 12.5px; margin-bottom: 3px; word-break: break-word; }
+.email-activity-row .snippet { color: var(--text-soft); font-size: 11.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.email-activity-row .meta { display: flex; gap: 8px; margin-top: 4px; font-size: 10.5px; }
+.email-activity-row .opens { color: #FF6B35; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.email-activity-row .attach { color: var(--text-dim); }
+.email-activity-row.expanded .snippet { display: block; -webkit-line-clamp: unset; }
+.email-activity-row .full-body { display: none; margin-top: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-soft); line-height: 1.5; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+.email-activity-row.expanded .full-body { display: block; }
 .notes-toggle { background: none; border: 0; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; }
 .notes-toggle:hover { color: var(--text); }
 .status-pills { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -502,6 +583,17 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .sb-row .acts { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; max-width: 55%; align-self: flex-start; padding-top: 2px; }
 .sb-row .acts label { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-soft); cursor: pointer; white-space: nowrap; }
 .sb-row .acts input { cursor: pointer; }
+/* New v2.11 per-row layout: two columns, stacked checkboxes with sub-options */
+.sb-row .acts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; flex-shrink: 0; width: 380px; align-self: flex-start; padding-top: 2px; }
+.sb-row .acts-grid .col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sb-row .acts-grid label { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; color: var(--text-soft); cursor: pointer; line-height: 1.3; }
+.sb-row .acts-grid label input { cursor: pointer; margin-top: 2px; flex-shrink: 0; }
+.sb-row .acts-grid .pickup-sub { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.sb-row .acts-grid .pickup-sub label { font-size: 11px; color: var(--text-dim); }
+.sb-row .acts-grid .dnc-reason-sub { padding-left: 20px; margin-top: 2px; display: flex; flex-direction: column; gap: 4px; }
+.sb-row .acts-grid .dnc-reason-sub select { font-size: 11px; padding: 3px 6px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; }
+.sb-row .acts-grid .dnc-reason-sub input.specify { font-size: 11px; padding: 3px 6px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; display: none; }
+.sb-row .acts-grid .dnc-reason-sub.show-other input.specify { display: block; }
 
 /* --- Daily Work tab --- */
 .daily-wrap { padding: 18px; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; max-width: 1080px; }
@@ -985,16 +1077,6 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <h4>Batch name</h4>
         <input id="sb-name" class="text-input" />
       </div>
-      <div class="form-section" id="sb-actions-section">
-        <h4>Master actions <span style="text-transform:none;font-weight:400;color:var(--text-dim);font-size:11px">(toggle to apply to all rows; you can override per row below)</span></h4>
-        <div style="display:flex;gap:14px;flex-wrap:wrap">
-          <label class="form-check"><input type="checkbox" id="sb-called"> Called</label>
-          <label class="form-check"><input type="checkbox" id="sb-emailed"> Emailed</label>
-          <label class="form-check"><input type="checkbox" id="sb-demo"> Demo Scheduled</label>
-          <label class="form-check"><input type="checkbox" id="sb-followup"> Follow Up</label>
-          <label class="form-check"><input type="checkbox" id="sb-dnc"> Do Not Contact</label>
-        </div>
-      </div>
       <div class="form-section" id="sb-cap-section">
         <h4>Cap batch size to first <input id="sb-cap" type="number" min="1" max="500" value="25" class="text-input" style="display:inline-block;width:70px;margin:0 4px;padding:3px 6px"> leads
           <span id="sb-cap-info" style="font-weight:400;color:var(--text-dim);text-transform:none;font-size:11.5px;margin-left:6px"></span>
@@ -1007,13 +1089,34 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
       <div class="form-section" id="sb-list-section">
         <h4>Leads in this batch <span id="sb-list-count" style="font-weight:400;color:var(--text-dim);text-transform:none;font-size:11.5px;margin-left:6px">—</span></h4>
         <div id="sb-list-empty" style="display:none;padding:18px 14px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-dim);line-height:1.55"></div>
-        <div id="sb-list" style="display:none;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg)"></div>
+        <div id="sb-list" style="display:none;max-height:500px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg)"></div>
       </div>
     </div>
     <div class="modal-foot">
       <span id="sb-error" class="err" style="display:none"></span>
       <button class="btn" onclick="closeSaveBatchModal()">Cancel</button>
       <button class="btn btn-primary" id="sb-save-btn" onclick="commitBatch()">Save batch</button>
+    </div>
+  </div>
+</div>
+
+<div id="dnc-warn-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 480px;">
+    <div class="modal-head">
+      <h3>Missing contact channel</h3>
+      <button class="modal-close" onclick="closeDncWarnModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;line-height:1.5;color:var(--text-soft);margin:0 0 10px 0">
+        <span id="dnc-warn-count" style="font-weight:600;color:var(--text)">—</span> are marked Do Not Contact with a reason, but neither <b>Called</b> nor <b>Emailed</b> is checked.
+      </p>
+      <p style="font-size:12.5px;line-height:1.5;color:var(--text-dim);margin:0">
+        Without one of those, the team won't know how you found out the lead was bad. Go back and check Called or Emailed on those rows, or ignore this warning to save anyway.
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeDncWarnModal()">Go back</button>
+      <button class="btn btn-danger" onclick="ignoreDncWarnAndSave()">Ignore &amp; save</button>
     </div>
   </div>
 </div>
@@ -1055,15 +1158,38 @@ const STATUS_LABELS = {
 };
 function statusLabel(s) { return STATUS_LABELS[s] || s; }
 
+// v2.12: the outreach kanban no longer mirrors crm_status 1:1. The wide
+// "Contacted" column has been unflattened — its three sub-zones (Emailed,
+// Called, Both) are now top-level columns. The Called column retains its
+// nested Didn't Pickup / Picked Up / Undefined sub-structure.
+const KANBAN_COLUMNS = ["emailed", "called", "demo_scheduled", "paid", "do_not_contact"];
+const COLUMN_LABELS = {
+  emailed: "Emailed",
+  called: "Called",
+  demo_scheduled: "Demo Scheduled",
+  paid: "Paid",
+  do_not_contact: "Do Not Contact",
+};
+// Bucket a lead into exactly one column. Later pipeline stages override
+// activity flags. Leads with BOTH called + emailed flags route to Called
+// (the more substantive contact channel) since the dedicated Both column
+// was removed in v2.13.
+function leadColumn(lead) {
+  if (lead.crm_status === "do_not_contact") return "do_not_contact";
+  if (lead.crm_status === "paid") return "paid";
+  if (lead.crm_status === "demo_scheduled") return "demo_scheduled";
+  const c = !!lead.crm_called, e = !!lead.crm_emailed;
+  if (c) return "called";
+  if (e) return "emailed";
+  return null;
+}
+
 // Reason options for Do Not Contact status (kanban + drawer)
 const DNC_REASONS = [
-  { v: "wrong_email",        l: "Wrong email" },
-  { v: "wrong_phone",        l: "Wrong phone" },
-  { v: "wrong_address",      l: "Wrong property address" },
-  { v: "wrong_name",         l: "Wrong name" },
-  { v: "has_property_mgr",   l: "Has property manager" },
-  { v: "not_interested",     l: "Not interested" },
-  { v: "other",              l: "Other (specify)" },
+  { v: "bad_info",         l: "Bad Info" },
+  { v: "has_property_mgr", l: "Has Property Manager" },
+  { v: "unspecified",      l: "Unspecified" },
+  { v: "other",            l: "Other (specify)" },
 ];
 function dncReasonLabel(v) {
   const r = DNC_REASONS.find(r => r.v === v);
@@ -1236,7 +1362,8 @@ function renderPresence() {
   const myAvatar = document.createElement("div");
   myAvatar.className = "presence-avatar self";
   myAvatar.style.background = userColor(me.email);
-  myAvatar.title = `${me.email} (you)`;
+  myAvatar.dataset.tooltip = `${me.email} (you)`;
+  myAvatar.setAttribute("aria-label", `${me.email} (you)`);
   myAvatar.textContent = (me.email || "?")[0].toUpperCase();
   el.appendChild(myAvatar);
 
@@ -1245,14 +1372,17 @@ function renderPresence() {
     const a = document.createElement("div");
     a.className = "presence-avatar";
     a.style.background = u.color || userColor(u.email);
-    a.title = u.email;
+    a.dataset.tooltip = u.email;
+    a.setAttribute("aria-label", u.email);
     a.textContent = (u.email || "?")[0].toUpperCase();
     el.appendChild(a);
   }
   if (others.length > 5) {
     const more = document.createElement("div");
     more.className = "presence-avatar more";
-    more.title = others.slice(5).map(u => u.email).join("\n");
+    const extraEmails = others.slice(5).map(u => u.email).join("\n");
+    more.dataset.tooltip = extraEmails;
+    more.setAttribute("aria-label", extraEmails);
     more.textContent = `+${others.length - 5}`;
     el.appendChild(more);
   }
@@ -1449,7 +1579,7 @@ function renderAll() {
   // Kanban ignores the DNC filter — once a lead is in the pipeline, you're
   // past the cold-call protection point. DNC badge on the card keeps it visible.
   const filteredForKanban = applyFilters(all, { dnc: "any" })
-    .filter(l => l.crm_status && STATUSES.includes(l.crm_status));
+    .filter(l => leadColumn(l) !== null);
 
   renderStats(all, filtered, filteredForKanban);
   renderMarketFilter(all);
@@ -1469,15 +1599,17 @@ function renderKanban(filteredLeads) {
   const kanban = document.getElementById("kanban");
   if (!kanban) return;
 
-  // Group leads by status. Leads with no status (or a status not in STATUSES) don't appear here.
+  // Bucket each lead into exactly one column via leadColumn(). Leads bucketed
+  // to null were filtered out upstream by renderAll.
   const cols = {};
-  for (const s of STATUSES) cols[s] = [];
+  for (const c of KANBAN_COLUMNS) cols[c] = [];
   for (const lead of filteredLeads) {
-    if (lead.crm_status && cols[lead.crm_status]) cols[lead.crm_status].push(lead);
+    const c = leadColumn(lead);
+    if (c) cols[c].push(lead);
   }
   // Sort each column by last_touched desc (most recently worked → top), fallback to owner_name.
-  for (const s of STATUSES) {
-    cols[s].sort((a, b) => {
+  for (const c of KANBAN_COLUMNS) {
+    cols[c].sort((a, b) => {
       const at = a.crm_last_touched && a.crm_last_touched.toMillis ? a.crm_last_touched.toMillis() : 0;
       const bt = b.crm_last_touched && b.crm_last_touched.toMillis ? b.crm_last_touched.toMillis() : 0;
       if (bt !== at) return bt - at;
@@ -1485,38 +1617,41 @@ function renderKanban(filteredLeads) {
     });
   }
 
+  // Columns whose ID maps directly to a real crm_status value. Emailed/Called/
+  // Both don't — they're derived from activity flags via applyContactedSubZone.
+  const STATUS_COLUMNS = new Set(["demo_scheduled", "paid", "do_not_contact"]);
+
   kanban.innerHTML = "";
-  for (const status of STATUSES) {
+  for (const colId of KANBAN_COLUMNS) {
     const col = document.createElement("div");
     col.className = "kanban-col";
-    col.dataset.status = status;
+    col.dataset.status = colId;
     col.innerHTML = `
       <div class="kanban-col__head">
-        <span class="name"><span class="dot"></span>${escapeHtml(statusLabel(status))}</span>
-        <span class="count">${cols[status].length}</span>
+        <span class="name"><span class="dot"></span>${escapeHtml(COLUMN_LABELS[colId])}</span>
+        <span class="count">${cols[colId].length}</span>
       </div>
       <div class="kanban-col__body"></div>
     `;
     const body = col.querySelector(".kanban-col__body");
 
     // For the Do Not Contact column, the header is clickable → opens a
-    // dedicated review modal where reasons + notes can be edited in bulk.
-    if (status === "do_not_contact") {
+    // dedicated review modal where reasons can be edited in bulk.
+    if (colId === "do_not_contact") {
       col.querySelector(".kanban-col__head").addEventListener("click", (e) => {
-        // Don't trigger the modal when a drag is in progress
         if (e.target.closest(".kanban-card")) return;
         openDncDetailsModal();
       });
     }
 
-    // Drop-target events on the column. Cards inside the body also bubble.
+    // Outer drop on the column. For the Called column, the inner mini-zones
+    // stopPropagation so they handle their own drops with specific outcomes.
     col.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       col.classList.add("drop-target");
     });
     col.addEventListener("dragleave", (e) => {
-      // Only remove if leaving the column entirely, not transitioning between children.
       if (!col.contains(e.relatedTarget)) col.classList.remove("drop-target");
     });
     col.addEventListener("drop", (e) => {
@@ -1526,84 +1661,177 @@ function renderKanban(filteredLeads) {
       if (!leadId) return;
       const lead = state.leads.get(leadId);
       if (!lead) return;
-      if (lead.crm_status === status) return;  // dropped into same column → no-op
-      if (isStatusUpgrade(lead.crm_status, status)) playDingSound();
-      else playClickSound();
-      updateStatus(leadId, status);
+      if (leadColumn(lead) === colId) return;  // same column → no-op
+      if (STATUS_COLUMNS.has(colId)) {
+        if (isStatusUpgrade(lead.crm_status, colId)) playDingSound();
+        else playClickSound();
+        updateStatus(leadId, colId);
+      } else {
+        // Emailed / Called / Both — route through applyContactedSubZone so
+        // crm_called / crm_emailed and crm_status="contacted" get written.
+        // Outer drop on Called defaults to "called_undefined" (no pickup outcome).
+        if (lead.crm_status !== "contacted") playDingSound();
+        else playClickSound();
+        const sub = (colId === "called")  ? "called_undefined"
+                  : (colId === "emailed") ? "emailed_waiting"
+                  : colId;
+        applyContactedSubZone(leadId, sub);
+      }
     });
 
-    if (status === "contacted") {
-      // Wide column with sub-zones (Emailed | Called | Both) + No-activity strip on top.
-      const contactedLeads = cols[status];
-      const groups = { none: [], emailed: [], called: [], both: [] };
-      for (const l of contactedLeads) {
-        const c = !!l.crm_called, e = !!l.crm_emailed;
-        if (c && e) groups.both.push(l);
-        else if (c) groups.called.push(l);
-        else if (e) groups.emailed.push(l);
-        else groups.none.push(l);
+    if (colId === "called") {
+      // Nested layout: two mini-zones on top (Didn't Pickup / Picked Up),
+      // Undefined section below spanning full width.
+      const calledByOutcome = { no_pickup: [], picked_up: [], undefined: [] };
+      for (const l of cols.called) {
+        const o = l.crm_call_outcome;
+        if (o === "no_pickup") calledByOutcome.no_pickup.push(l);
+        else if (o === "picked_up") calledByOutcome.picked_up.push(l);
+        else calledByOutcome.undefined.push(l);
       }
-      // No-activity strip
-      if (groups.none.length > 0) {
-        const strip = document.createElement("div");
-        strip.className = "contacted-noactivity";
-        strip.innerHTML = `<div class="label">No activity yet · ${groups.none.length}</div><div class="cards"></div>`;
-        const stripCards = strip.querySelector(".cards");
-        for (const lead of groups.none) stripCards.appendChild(makeKanbanCard(lead, status));
-        body.appendChild(strip);
-      }
-      // Three sub-zones
-      const zonesWrap = document.createElement("div");
-      zonesWrap.className = "contacted-zones";
-      for (const sub of ["emailed", "called", "both"]) {
-        const z = document.createElement("div");
-        z.className = "contacted-zone";
-        z.dataset.sub = sub;
-        z.innerHTML = `
-          <div class="contacted-zone-head">${sub === "both" ? "Both" : (sub.charAt(0).toUpperCase() + sub.slice(1))} · ${groups[sub].length}</div>
-          <div class="contacted-zone-body"></div>
+      const topRow = document.createElement("div");
+      topRow.className = "called-top-row";
+      const outcomeLabels = {
+        no_pickup: "Didn't Pickup:<br>Needs Follow Up",
+        picked_up: "Picked Up:<br>Needs Follow Up",
+      };
+      for (const outcome of ["no_pickup", "picked_up"]) {
+        const mz = document.createElement("div");
+        mz.className = "called-mini-zone";
+        mz.dataset.outcome = outcome;
+        const items = calledByOutcome[outcome];
+        mz.innerHTML = `
+          <div class="called-mini-zone-head">${outcomeLabels[outcome]} · ${items.length}</div>
+          <div class="called-mini-zone-body"></div>
         `;
-        const zBody = z.querySelector(".contacted-zone-body");
-        if (groups[sub].length === 0) {
-          const e = document.createElement("div");
-          e.style.cssText = "color:var(--text-dim);font-size:11px;text-align:center;padding:16px 4px;font-style:italic";
-          e.textContent = sub === "both" ? "Drop here to mark both" : `Drop here to mark ${sub}`;
-          zBody.appendChild(e);
+        const mzBody = mz.querySelector(".called-mini-zone-body");
+        if (items.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "called-mini-zone-empty";
+          empty.textContent = "Drop here";
+          mzBody.appendChild(empty);
         } else {
-          for (const lead of groups[sub]) zBody.appendChild(makeKanbanCard(lead, status));
+          for (const lead of items) mzBody.appendChild(makeKanbanCard(lead, "called"));
         }
-        // Drop on a sub-zone → set activity flags accordingly
-        z.addEventListener("dragover", (ev) => {
+        const droppedSub = outcome === "no_pickup" ? "called_no_pickup" : "called_picked_up";
+        mz.addEventListener("dragover", (ev) => {
           ev.preventDefault(); ev.stopPropagation();
           ev.dataTransfer.dropEffect = "move";
-          z.classList.add("drop-target");
+          mz.classList.add("drop-target");
         });
-        z.addEventListener("dragleave", (ev) => {
-          if (!z.contains(ev.relatedTarget)) z.classList.remove("drop-target");
+        mz.addEventListener("dragleave", (ev) => {
+          if (!mz.contains(ev.relatedTarget)) mz.classList.remove("drop-target");
         });
-        z.addEventListener("drop", (ev) => {
+        mz.addEventListener("drop", (ev) => {
           ev.preventDefault(); ev.stopPropagation();
-          z.classList.remove("drop-target");
+          mz.classList.remove("drop-target");
           const leadId = ev.dataTransfer.getData("text/plain");
           if (!leadId) return;
-          const droppedLead = state.leads.get(leadId);
-          if (droppedLead && droppedLead.crm_status !== "contacted") playDingSound();
+          const dl = state.leads.get(leadId);
+          if (dl && leadColumn(dl) !== "called") playDingSound();
           else playClickSound();
-          applyContactedSubZone(leadId, sub);
+          applyContactedSubZone(leadId, droppedSub);
         });
-        zonesWrap.appendChild(z);
+        topRow.appendChild(mz);
       }
-      body.appendChild(zonesWrap);
-    } else if (cols[status].length === 0) {
+      body.appendChild(topRow);
+      // Undefined section — spans the full width of the column.
+      const undef = document.createElement("div");
+      undef.className = "called-undefined";
+      const undefItems = calledByOutcome.undefined;
+      undef.innerHTML = `
+        <div class="called-undefined-head">Undefined · ${undefItems.length}</div>
+        <div class="called-undefined-body"></div>
+      `;
+      const undefBody = undef.querySelector(".called-undefined-body");
+      if (undefItems.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "called-mini-zone-empty";
+        empty.textContent = "Drop here for un-categorized calls";
+        undefBody.appendChild(empty);
+      } else {
+        for (const lead of undefItems) undefBody.appendChild(makeKanbanCard(lead, "called"));
+      }
+      undef.addEventListener("dragover", (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        ev.dataTransfer.dropEffect = "move";
+        undef.classList.add("drop-target");
+      });
+      undef.addEventListener("dragleave", (ev) => {
+        if (!undef.contains(ev.relatedTarget)) undef.classList.remove("drop-target");
+      });
+      undef.addEventListener("drop", (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        undef.classList.remove("drop-target");
+        const leadId = ev.dataTransfer.getData("text/plain");
+        if (!leadId) return;
+        const dl = state.leads.get(leadId);
+        if (dl && leadColumn(dl) !== "called") playDingSound();
+        else playClickSound();
+        applyContactedSubZone(leadId, "called_undefined");
+      });
+      body.appendChild(undef);
+    } else if (colId === "emailed") {
+      // Two stacked sections: Responded / In Conversation (top) and Waiting Response (bottom).
+      // Leads without crm_email_outcome land in Waiting Response.
+      const emailGroups = { responded: [], waiting: [] };
+      for (const l of cols.emailed) {
+        if (l.crm_email_outcome === "responded") emailGroups.responded.push(l);
+        else emailGroups.waiting.push(l);
+      }
+      const sectionLabels = {
+        responded: "Responded / In Conversation",
+        waiting:   "Waiting Response",
+      };
+      for (const section of ["responded", "waiting"]) {
+        const sec = document.createElement("div");
+        sec.className = "emailed-section";
+        sec.dataset.section = section;
+        const items = emailGroups[section];
+        sec.innerHTML = `
+          <div class="emailed-section-head">${sectionLabels[section]} · ${items.length}</div>
+          <div class="emailed-section-body"></div>
+        `;
+        const sBody = sec.querySelector(".emailed-section-body");
+        if (items.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "emailed-section-empty";
+          empty.textContent = "Drop here";
+          sBody.appendChild(empty);
+        } else {
+          for (const lead of items) sBody.appendChild(makeKanbanCard(lead, "emailed"));
+        }
+        const droppedSub = section === "responded" ? "emailed_responded" : "emailed_waiting";
+        sec.addEventListener("dragover", (ev) => {
+          ev.preventDefault(); ev.stopPropagation();
+          ev.dataTransfer.dropEffect = "move";
+          sec.classList.add("drop-target");
+        });
+        sec.addEventListener("dragleave", (ev) => {
+          if (!sec.contains(ev.relatedTarget)) sec.classList.remove("drop-target");
+        });
+        sec.addEventListener("drop", (ev) => {
+          ev.preventDefault(); ev.stopPropagation();
+          sec.classList.remove("drop-target");
+          const leadId = ev.dataTransfer.getData("text/plain");
+          if (!leadId) return;
+          const dl = state.leads.get(leadId);
+          if (dl && leadColumn(dl) !== "emailed") playDingSound();
+          else playClickSound();
+          applyContactedSubZone(leadId, droppedSub);
+        });
+        body.appendChild(sec);
+      }
+    } else if (cols[colId].length === 0) {
       const empty = document.createElement("div");
       empty.className = "kanban-empty";
-      empty.textContent = status === "do_not_contact"
+      empty.textContent = colId === "do_not_contact"
         ? "Drag leads here when contact info is bad or they don't want to be contacted."
         : "Drag leads here, or set status from the drawer.";
       body.appendChild(empty);
     } else {
-      for (const lead of cols[status]) {
-        body.appendChild(makeKanbanCard(lead, status));
+      for (const lead of cols[colId]) {
+        body.appendChild(makeKanbanCard(lead, colId));
       }
     }
     kanban.appendChild(col);
@@ -1649,18 +1877,54 @@ function applyContactedSubZone(leadId, sub) {
     crm_last_touched: now,
     crm_touched_by: user ? user.email : null,
   };
-  if (sub === "called" || sub === "both") {
+  // Buckets that imply Called=true.
+  const isCalledBucket = sub === "called" || sub === "both" || sub === "called_no_pickup" || sub === "called_picked_up" || sub === "called_undefined";
+  // Buckets that imply Emailed-only (no call).
+  const isEmailedOnlyBucket = sub === "emailed" || sub === "emailed_responded" || sub === "emailed_waiting";
+
+  if (isCalledBucket) {
     payload.crm_called = true; payload.crm_called_at = now; payload.crm_called_by = user ? user.email : null;
-  } else if (sub === "emailed") {
+  } else if (isEmailedOnlyBucket) {
     payload.crm_called = false;
+    payload.crm_call_outcome = null;  // leaving Called clears the call outcome
   }
-  if (sub === "emailed" || sub === "both") {
+  if (isEmailedOnlyBucket || sub === "both") {
     payload.crm_emailed = true; payload.crm_emailed_at = now; payload.crm_emailed_by = user ? user.email : null;
-  } else if (sub === "called") {
+  } else if (sub === "called" || sub === "called_no_pickup" || sub === "called_picked_up" || sub === "called_undefined") {
     payload.crm_emailed = false;
+    payload.crm_email_outcome = null;  // leaving Emailed-only clears the email response state
   }
+
+  // Sub-bucket within Called: pickup outcome + auto follow-up flag.
+  let toastSuffix = sub;
+  if (sub === "called_no_pickup") {
+    payload.crm_call_outcome = "no_pickup";
+    payload.crm_follow_up_needed = true;
+    toastSuffix = "Called · Didn't Pickup";
+  } else if (sub === "called_picked_up") {
+    payload.crm_call_outcome = "picked_up";
+    payload.crm_follow_up_needed = true;
+    toastSuffix = "Called · Picked Up";
+  } else if (sub === "called_undefined" || sub === "called") {
+    payload.crm_call_outcome = null;
+    toastSuffix = "Called · Undefined";
+  }
+
+  // Sub-bucket within Emailed: response state.
+  if (sub === "emailed_responded") {
+    payload.crm_email_outcome = "responded";
+    toastSuffix = "Emailed · Responded";
+  } else if (sub === "emailed_waiting") {
+    payload.crm_email_outcome = null;
+    toastSuffix = "Emailed · Waiting Response";
+  } else if (sub === "emailed") {
+    payload.crm_email_outcome = null;
+  } else if (sub === "both") {
+    payload.crm_email_outcome = null;  // Both means we've also called, response state no longer applies
+  }
+
   firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
-    .then(() => showToast(`Moved to Contacted · ${sub}`))
+    .then(() => showToast(`Moved to Contacted · ${toastSuffix}`))
     .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
 }
 
@@ -1946,15 +2210,12 @@ function openDrawer(leadId) {
         ${DNC_REASONS.map(r => `<option value="${r.v}" ${lead.crm_dnc_reason === r.v ? "selected" : ""}>${escapeHtml(r.l)}</option>`).join("")}
       </select>
       <input class="text-input other-input" id="drawer-dnc-reason-text" placeholder="Specify…" value="${escapeHtml(lead.crm_dnc_reason_text || "")}" />
-      <label style="margin-top:4px">Notes on why</label>
-      <textarea class="notes-input" id="drawer-dnc-notes" placeholder="Brief explanation, e.g. 'tenant said owner moved overseas'…">${escapeHtml(lead.crm_dnc_notes || "")}</textarea>
       <span id="drawer-dnc-saved" style="font-size:11px;color:var(--text-dim);opacity:0;transition:opacity 0.2s;align-self:flex-end">saved</span>
     `;
     statusSec.appendChild(dncEdit);
 
     const reasonSel = dncEdit.querySelector("#drawer-dnc-reason");
     const otherInp = dncEdit.querySelector("#drawer-dnc-reason-text");
-    const notesArea = dncEdit.querySelector("#drawer-dnc-notes");
     const savedIndicator = dncEdit.querySelector("#drawer-dnc-saved");
     function flashSaved() {
       if (!savedIndicator) return;
@@ -1979,24 +2240,6 @@ function openDrawer(leadId) {
     otherInp.addEventListener("blur", () => {
       clearTimeout(otherTimer);
       updateDncFields(leadId, { crm_dnc_reason_text: otherInp.value || null });
-    });
-    let dncNotesTimer;
-    let lastDncNotes = lead.crm_dnc_notes || "";
-    notesArea.addEventListener("input", () => {
-      clearTimeout(dncNotesTimer);
-      dncNotesTimer = setTimeout(() => {
-        if (notesArea.value === lastDncNotes) return;
-        lastDncNotes = notesArea.value;
-        updateDncFields(leadId, { crm_dnc_notes: notesArea.value });
-        flashSaved();
-      }, 1500);
-    });
-    notesArea.addEventListener("blur", () => {
-      clearTimeout(dncNotesTimer);
-      if (notesArea.value === lastDncNotes) return;
-      lastDncNotes = notesArea.value;
-      updateDncFields(leadId, { crm_dnc_notes: notesArea.value });
-      flashSaved();
     });
   }
   body.appendChild(statusSec);
@@ -2075,6 +2318,41 @@ function openDrawer(leadId) {
     persistNotesIfChanged();
   });
 
+  // Email Activity panel (v2.14) — chronological feed of every email matched
+  // to this lead, populated by the future Gmail ingest function. Sits between
+  // Notes and Property. Subscribes to emailActivity in real time; the listener
+  // is torn down on closeDrawer / re-open.
+  //
+  // emailActivity/{messageId} schema:
+  //   message_id       : string (== doc ID, Gmail message ID)
+  //   thread_id        : string (Gmail thread ID, for grouping)
+  //   from_email       : string
+  //   from_name        : string | null
+  //   to_emails        : string[]
+  //   cc_emails        : string[]
+  //   subject          : string
+  //   snippet          : string  (~150 chars)
+  //   body_text        : string  (full plaintext, optional in v1)
+  //   has_attachments  : boolean
+  //   sent_at          : Timestamp
+  //   ingested_at      : Timestamp (server)
+  //   matched_lead_ids : string[]  (Firestore IDs in leads/* — the contact-match gate output)
+  //   direction        : "inbound" | "outbound"
+  //   source_mailbox   : string  ("ben@propagenticai.com")
+  //   source_label     : string  ("Ben")
+  //   opens            : number  (Phase 4 / GMass — optional)
+  //   clicks           : number  (Phase 4 — optional)
+  const emailSec = document.createElement("div");
+  emailSec.className = "drawer-section";
+  emailSec.innerHTML = `
+    <h4>Email Activity</h4>
+    <div class="email-activity" id="email-activity-list">
+      <div class="email-activity-empty">Loading…</div>
+    </div>
+  `;
+  body.appendChild(emailSec);
+  subscribeEmailActivity(leadId);
+
   // Property details
   const propSec = document.createElement("div");
   propSec.className = "drawer-section";
@@ -2122,6 +2400,76 @@ function closeDrawer() {
   document.getElementById("drawer").classList.remove("open");
   state.selectedId = null;
   document.querySelectorAll("#leads-tbody tr.selected").forEach(tr => tr.classList.remove("selected"));
+  // Tear down the email-activity listener so we don't accumulate them.
+  if (state._emailActivityUnsub) { state._emailActivityUnsub(); state._emailActivityUnsub = null; }
+}
+
+// Subscribe to emailActivity docs matched to this lead. Re-renders on every
+// Firestore change. The first invocation while the Gmail ingest is not yet
+// deployed will simply show "No email activity yet" — collection may not
+// even exist, which is fine (queries against missing collections return empty).
+function subscribeEmailActivity(leadId) {
+  if (state._emailActivityUnsub) { state._emailActivityUnsub(); state._emailActivityUnsub = null; }
+  const listEl = document.getElementById("email-activity-list");
+  if (!listEl) return;
+  const db = firebase.firestore();
+  state._emailActivityUnsub = db.collection("emailActivity")
+    .where("matched_lead_ids", "array-contains", leadId)
+    .orderBy("sent_at", "desc")
+    .limit(100)
+    .onSnapshot((snap) => {
+      renderEmailActivity(listEl, snap.docs.map(d => Object.assign({ _id: d.id }, d.data())));
+    }, (err) => {
+      console.warn("emailActivity subscribe failed:", err);
+      // Most likely a missing composite index — surface a useful hint.
+      const hint = (err && err.code === "failed-precondition")
+        ? "Index needed. Open the console error link to auto-create it."
+        : (err && err.message) || "subscribe failed";
+      listEl.innerHTML = `<div class="email-activity-empty">${escapeHtml(hint)}</div>`;
+    });
+}
+
+function renderEmailActivity(listEl, docs) {
+  if (!docs || docs.length === 0) {
+    listEl.innerHTML = '<div class="email-activity-empty">No email activity yet — the Gmail ingest will surface conversations here once it\'s running.</div>';
+    return;
+  }
+  listEl.innerHTML = "";
+  for (const d of docs) {
+    const sentMs = d.sent_at && d.sent_at.toMillis ? d.sent_at.toMillis() : 0;
+    const dateStr = sentMs ? formatDate(new Date(sentMs)) : "—";
+    const isInbound = d.direction === "inbound";
+    const arrow = isInbound ? "←" : "→";
+    const person = isInbound
+      ? (d.from_name || d.from_email || "Lead")
+      : (d.source_label || (d.from_email ? d.from_email.split("@")[0] : "Us"));
+    const sourceDomain = (d.from_email && d.from_email.includes("@"))
+      ? d.from_email.split("@")[1]
+      : "";
+    const row = document.createElement("div");
+    row.className = "email-activity-row";
+    row.dataset.dir = d.direction || "outbound";
+    const opens = d.opens ? `<span class="opens">Opened ${d.opens}×</span>` : "";
+    const attach = d.has_attachments ? `<span class="attach">📎 attachment</span>` : "";
+    row.innerHTML = `
+      <div class="date">${escapeHtml(dateStr)}</div>
+      <div class="body">
+        <div class="head">
+          <span class="dir">${arrow}</span>
+          <span class="person">${escapeHtml(person)}</span>
+          ${sourceDomain ? `<span class="source">${escapeHtml(sourceDomain)}</span>` : ""}
+        </div>
+        <div class="subject">${escapeHtml(d.subject || "(no subject)")}</div>
+        <div class="snippet">${escapeHtml(d.snippet || "")}</div>
+        ${(opens || attach) ? `<div class="meta">${opens}${attach}</div>` : ""}
+        ${d.body_text ? `<div class="full-body">${escapeHtml(d.body_text)}</div>` : ""}
+      </div>
+    `;
+    if (d.body_text) {
+      row.addEventListener("click", () => row.classList.toggle("expanded"));
+    }
+    listEl.appendChild(row);
+  }
 }
 
 // =========================================================================
@@ -2964,7 +3312,6 @@ function openSaveBatchModal(editBatchId) {
     };
     document.getElementById("sb-modal-title").textContent = "Edit batch";
     document.getElementById("sb-modal-help").textContent = "Lead list is frozen — only name, notes, and per-row Called/Emailed are editable. To change the lead set, delete and re-save.";
-    document.getElementById("sb-actions-section").style.display = "none";
     document.getElementById("sb-cap-section").style.display = "none";
     document.getElementById("sb-save-btn").textContent = "Save changes";
   } else {
@@ -2979,7 +3326,6 @@ function openSaveBatchModal(editBatchId) {
     prefill = { name: `${userTitled} ${dateStr}`, notes: "", actions: {}, perLead: {} };
     document.getElementById("sb-modal-title").textContent = "Save engagement batch";
     document.getElementById("sb-modal-help").textContent = "Captures the currently filtered view as a permanent snapshot. Leads marked Called/Emailed below will be flagged; pipeline status auto-advances to Contacted (or Demo Scheduled).";
-    document.getElementById("sb-actions-section").style.display = "";
     document.getElementById("sb-cap-section").style.display = "";
     document.getElementById("sb-save-btn").textContent = "Save batch";
   }
@@ -2987,47 +3333,26 @@ function openSaveBatchModal(editBatchId) {
   state._sbLeadIds = leadIds;
   document.getElementById("sb-name").value = prefill.name;
   document.getElementById("sb-notes").value = prefill.notes;
-  document.getElementById("sb-called").checked = !!prefill.actions.called;
-  document.getElementById("sb-emailed").checked = !!prefill.actions.emailed;
-  document.getElementById("sb-demo").checked = !!prefill.actions.demo_scheduled;
   document.getElementById("sb-cap").value = editBatchId ? leadIds.length : Math.min(25, leadIds.length);
   const err = document.getElementById("sb-error"); err.style.display = "none";
 
-  // Initialize per-row state. For edit: read from prefill. For new: defaults from master toggles (none yet, so all false).
+  // Initialize per-row state. For edits, seed from the saved batch. For new
+  // batches, everything starts unchecked. v2.11 adds call_outcome + dnc_reason
+  // alongside the old flat flags.
   state._sbRowState = new Map();
   for (const lid of leadIds) {
     const row = prefill.perLead[lid] || {};
     state._sbRowState.set(lid, {
-      called: editBatchId ? !!row.called : false,
-      emailed: editBatchId ? !!row.emailed : false,
-      demo_scheduled: editBatchId ? !!row.demo_scheduled : false,
-      follow_up_needed: editBatchId ? !!row.follow_up_needed : false,
-      do_not_contact: editBatchId ? !!row.do_not_contact : false,
+      called:          editBatchId ? !!row.called : false,
+      call_outcome:    editBatchId ? (row.call_outcome || null) : null,
+      emailed:         editBatchId ? !!row.emailed : false,
+      demo_scheduled:  editBatchId ? !!row.demo_scheduled : false,
+      do_not_contact:  editBatchId ? !!row.do_not_contact : false,
+      dnc_reason:      editBatchId ? (row.dnc_reason || null) : null,
+      dnc_reason_text: editBatchId ? (row.dnc_reason_text || null) : null,
     });
   }
 
-  // Reset master toggles
-  ["sb-called","sb-emailed","sb-demo","sb-followup","sb-dnc"].forEach(id => {
-    const el = document.getElementById(id); if (el) el.checked = false;
-  });
-
-  // Master toggles control all rows
-  function makeMasterHandler(action) {
-    return (e) => {
-      if (e.target.checked) playDingSound(); else playClickSound();
-      for (const lid of getActiveBatchIds()) {
-        const rs = state._sbRowState.get(lid) || {};
-        rs[action] = e.target.checked;
-        state._sbRowState.set(lid, rs);
-      }
-      renderSbList();
-    };
-  }
-  document.getElementById("sb-called").onchange = makeMasterHandler("called");
-  document.getElementById("sb-emailed").onchange = makeMasterHandler("emailed");
-  document.getElementById("sb-demo").onchange = makeMasterHandler("demo_scheduled");
-  document.getElementById("sb-followup").onchange = makeMasterHandler("follow_up_needed");
-  document.getElementById("sb-dnc").onchange = makeMasterHandler("do_not_contact");
   document.getElementById("sb-cap").onchange = () => renderSbList();
   document.getElementById("sb-cap").oninput = () => renderSbList();
 
@@ -3071,7 +3396,7 @@ function renderSbList() {
   for (const lid of activeIds) {
     const lead = state.leads.get(lid);
     if (!lead) continue;
-    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
+    const rs = state._sbRowState.get(lid) || { called: false, call_outcome: null, emailed: false, demo_scheduled: false, do_not_contact: false, dnc_reason: null, dnc_reason_text: null };
     const row = document.createElement("div");
     row.className = "sb-row";
     const cityState = [lead.property_city, lead.property_state].filter(Boolean).join(", ");
@@ -3091,25 +3416,94 @@ function renderSbList() {
           ${emailLine}
         </div>
       </div>
-      <div class="acts">
-        <label><input type="checkbox" data-lid="${lid}" data-action="called" ${rs.called ? "checked" : ""}>Called</label>
-        <label><input type="checkbox" data-lid="${lid}" data-action="emailed" ${rs.emailed ? "checked" : ""}>Emailed</label>
-        <label><input type="checkbox" data-lid="${lid}" data-action="demo_scheduled" ${rs.demo_scheduled ? "checked" : ""}>Demo Scheduled</label>
-        <label><input type="checkbox" data-lid="${lid}" data-action="follow_up_needed" ${rs.follow_up_needed ? "checked" : ""}>Follow Up</label>
-        <label><input type="checkbox" data-lid="${lid}" data-action="do_not_contact" ${rs.do_not_contact ? "checked" : ""}>Do Not Contact</label>
+      <div class="acts-grid">
+        <div class="col col-left">
+          <label><input type="checkbox" data-lid="${lid}" data-field="called" ${rs.called ? "checked" : ""}>Called</label>
+          <div class="pickup-sub">
+            <label><input type="checkbox" data-lid="${lid}" data-field="pickup_no" ${rs.call_outcome === "no_pickup" ? "checked" : ""}>Didn't Pick Up: Needs Follow Up</label>
+            <label><input type="checkbox" data-lid="${lid}" data-field="pickup_yes" ${rs.call_outcome === "picked_up" ? "checked" : ""}>Picked Up: Needs Follow Up</label>
+          </div>
+          <label><input type="checkbox" data-lid="${lid}" data-field="emailed" ${rs.emailed ? "checked" : ""}>Emailed</label>
+        </div>
+        <div class="col col-right">
+          <label><input type="checkbox" data-lid="${lid}" data-field="demo_scheduled" ${rs.demo_scheduled ? "checked" : ""}>Demo Booked</label>
+          <label><input type="checkbox" data-lid="${lid}" data-field="do_not_contact" ${rs.do_not_contact ? "checked" : ""}>Do Not Contact</label>
+          <div class="dnc-reason-sub${rs.dnc_reason === "other" ? " show-other" : ""}" data-row-dnc="${lid}">
+            <select data-lid="${lid}" data-field="dnc_reason">
+              <option value="">— select a reason —</option>
+              ${DNC_REASONS.map(r => `<option value="${r.v}" ${rs.dnc_reason === r.v ? "selected" : ""}>${escapeHtml(r.l)}</option>`).join("")}
+            </select>
+            <input type="text" class="specify" data-lid="${lid}" data-field="dnc_reason_text" placeholder="Specify…" value="${escapeHtml(rs.dnc_reason_text || "")}">
+          </div>
+        </div>
       </div>
     `;
     listEl.appendChild(row);
   }
 
-  // Attach per-row change handlers
-  listEl.querySelectorAll('input[type="checkbox"][data-lid]').forEach(cb => {
-    cb.addEventListener("change", () => {
-      if (cb.checked) playDingSound(); else playClickSound();
-      const lid = cb.dataset.lid;
-      const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
-      rs[cb.dataset.action] = cb.checked;
+  function syncRowVisualState(lid) {
+    const rs = state._sbRowState.get(lid);
+    if (!rs) return;
+    listEl.querySelectorAll(`[data-lid="${lid}"]`).forEach(el => {
+      const f = el.dataset.field;
+      if (f === "called")          el.checked = !!rs.called;
+      else if (f === "pickup_no")  el.checked = rs.call_outcome === "no_pickup";
+      else if (f === "pickup_yes") el.checked = rs.call_outcome === "picked_up";
+      else if (f === "emailed")    el.checked = !!rs.emailed;
+      else if (f === "demo_scheduled") el.checked = !!rs.demo_scheduled;
+      else if (f === "do_not_contact") el.checked = !!rs.do_not_contact;
+      else if (f === "dnc_reason") el.value = rs.dnc_reason || "";
+      else if (f === "dnc_reason_text") el.value = rs.dnc_reason_text || "";
+    });
+    const wrap = listEl.querySelector(`[data-row-dnc="${lid}"]`);
+    if (wrap) wrap.classList.toggle("show-other", rs.dnc_reason === "other");
+  }
+
+  // Per-row field change handler — handles auto-propagation between fields.
+  listEl.querySelectorAll("[data-lid][data-field]").forEach(el => {
+    const event = (el.tagName === "INPUT" && el.type === "text") ? "input" : "change";
+    el.addEventListener(event, () => {
+      const lid = el.dataset.lid;
+      const field = el.dataset.field;
+      const rs = state._sbRowState.get(lid);
+      if (!rs) return;
+      const isCheckbox = el.type === "checkbox";
+      const newChecked = isCheckbox ? el.checked : null;
+
+      if (field === "called") {
+        if (newChecked) playDingSound(); else playClickSound();
+        rs.called = newChecked;
+        if (!newChecked) rs.call_outcome = null;  // unchecking Called clears sub-options
+      } else if (field === "pickup_no") {
+        if (newChecked) playDingSound(); else playClickSound();
+        if (newChecked) { rs.call_outcome = "no_pickup"; rs.called = true; }
+        else if (rs.call_outcome === "no_pickup") rs.call_outcome = null;
+      } else if (field === "pickup_yes") {
+        if (newChecked) playDingSound(); else playClickSound();
+        if (newChecked) { rs.call_outcome = "picked_up"; rs.called = true; }
+        else if (rs.call_outcome === "picked_up") rs.call_outcome = null;
+      } else if (field === "emailed") {
+        if (newChecked) playDingSound(); else playClickSound();
+        rs.emailed = newChecked;
+      } else if (field === "demo_scheduled") {
+        if (newChecked) playDingSound(); else playClickSound();
+        rs.demo_scheduled = newChecked;
+      } else if (field === "do_not_contact") {
+        if (newChecked) playDingSound(); else playClickSound();
+        rs.do_not_contact = newChecked;
+        if (!newChecked) { rs.dnc_reason = null; rs.dnc_reason_text = null; }
+      } else if (field === "dnc_reason") {
+        const v = el.value || null;
+        if (v && rs.dnc_reason !== v) playDingSound();
+        rs.dnc_reason = v;
+        if (v) rs.do_not_contact = true;       // picking a reason auto-checks DNC
+        if (v !== "other") rs.dnc_reason_text = null;
+      } else if (field === "dnc_reason_text") {
+        rs.dnc_reason_text = el.value || null;
+      }
       state._sbRowState.set(lid, rs);
+      // Sync sibling fields (text input doesn't need re-sync, but everything else might).
+      if (field !== "dnc_reason_text") syncRowVisualState(lid);
     });
   });
 }
@@ -3119,7 +3513,7 @@ function closeSaveBatchModal() {
   state._sbLeadIds = []; state._sbRowState = new Map(); state._sbEditingBatchId = null;
 }
 
-async function commitBatch() {
+async function commitBatch(skipDncWarn) {
   const errEl = document.getElementById("sb-error");
   const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = "inline"; };
   errEl.style.display = "none";
@@ -3127,9 +3521,6 @@ async function commitBatch() {
   const name = (document.getElementById("sb-name").value || "").trim();
   if (!name) return showErr("Batch name is required.");
   const notes = (document.getElementById("sb-notes").value || "").trim();
-  const masterCalled  = document.getElementById("sb-called").checked;
-  const masterEmailed = document.getElementById("sb-emailed").checked;
-  const demoScheduled = document.getElementById("sb-demo").checked;
   const isEdit = !!state._sbEditingBatchId;
 
   const ids = isEdit ? state._sbLeadIds : getActiveBatchIds();
@@ -3138,20 +3529,34 @@ async function commitBatch() {
   // Build per-lead actions map for storage on the batch doc
   const perLeadActions = {};
   for (const lid of ids) {
-    const rs = state._sbRowState.get(lid) || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
+    const rs = state._sbRowState.get(lid) || { called: false, call_outcome: null, emailed: false, demo_scheduled: false, do_not_contact: false, dnc_reason: null, dnc_reason_text: null };
     perLeadActions[lid] = {
       called: !!rs.called,
+      call_outcome: rs.call_outcome || null,
       emailed: !!rs.emailed,
       demo_scheduled: !!rs.demo_scheduled,
-      follow_up_needed: !!rs.follow_up_needed,
+      // follow_up_needed is now derived from call_outcome — keep at batch level for legacy callers.
+      follow_up_needed: !!rs.call_outcome,
       do_not_contact: !!rs.do_not_contact,
+      dnc_reason: rs.dnc_reason || null,
+      dnc_reason_text: rs.dnc_reason_text || null,
     };
   }
 
   // For new batches: require at least one action somewhere
   if (!isEdit) {
-    const anyAction = Object.values(perLeadActions).some(a => a.called || a.emailed || a.demo_scheduled || a.follow_up_needed || a.do_not_contact);
+    const anyAction = Object.values(perLeadActions).some(a => a.called || a.emailed || a.demo_scheduled || a.do_not_contact);
     if (!anyAction) return showErr("Pick at least one action on at least one row.");
+  }
+
+  // Reminder: DNC with a reason but no Called/Emailed channel. Show modal once;
+  // user can either go back and fix, or click Ignore to fall through with skipDncWarn=true.
+  if (!skipDncWarn) {
+    const dncMissing = Object.values(perLeadActions).filter(a => a.do_not_contact && a.dnc_reason && !a.called && !a.emailed);
+    if (dncMissing.length > 0) {
+      showDncWarnModal(dncMissing.length);
+      return;
+    }
   }
 
   const btn = document.getElementById("sb-save-btn");
@@ -3198,7 +3603,7 @@ async function commitBatch() {
       const wb = db.batch();
       for (const lid of ids.slice(i, i + 400)) {
         const lead = state.leads.get(lid) || {};
-        const rs = perLeadActions[lid] || { called: false, emailed: false, demo_scheduled: false, follow_up_needed: false, do_not_contact: false };
+        const rs = perLeadActions[lid] || { called: false, call_outcome: null, emailed: false, demo_scheduled: false, do_not_contact: false, dnc_reason: null, dnc_reason_text: null };
         const payload = { crm_last_touched: now, crm_touched_by: user ? user.email : null };
 
         // Activity flags — set true if checked; on edit, set false if unchecked
@@ -3206,8 +3611,12 @@ async function commitBatch() {
           payload.crm_called = true;
           payload.crm_called_at = now;
           payload.crm_called_by = user ? user.email : null;
+          // Call outcome → routes the lead into the right sub-zone of the
+          // Called column on the outreach kanban. Null = Undefined.
+          payload.crm_call_outcome = rs.call_outcome || null;
         } else if (isEdit) {
           payload.crm_called = false;
+          payload.crm_call_outcome = null;
         }
         if (rs.emailed) {
           payload.crm_emailed = true;
@@ -3217,13 +3626,23 @@ async function commitBatch() {
           payload.crm_emailed = false;
         }
 
-        // Follow Up Needed — independent flag, doesn't change status
-        if (rs.follow_up_needed) {
+        // Follow Up Needed — derived from call_outcome (either pickup sub-zone
+        // implies "needs follow up"). Standalone follow-up checkbox is gone in v2.11.
+        if (rs.call_outcome) {
           payload.crm_follow_up_needed = true;
           payload.crm_follow_up_at = now;
           payload.crm_follow_up_by = user ? user.email : null;
         } else if (isEdit) {
           payload.crm_follow_up_needed = false;
+        }
+
+        // Do Not Contact reason — write when DNC is checked.
+        if (rs.do_not_contact) {
+          payload.crm_dnc_reason = rs.dnc_reason || null;
+          payload.crm_dnc_reason_text = (rs.dnc_reason === "other") ? (rs.dnc_reason_text || null) : null;
+        } else if (isEdit) {
+          payload.crm_dnc_reason = null;
+          payload.crm_dnc_reason_text = null;
         }
 
         // Auto-status changes — only for new batches (edits don't re-trigger this).
@@ -3253,6 +3672,20 @@ async function commitBatch() {
   } finally {
     btn.disabled = false; btn.textContent = isEdit ? "Save changes" : "Save batch";
   }
+}
+
+// DNC-without-channel reminder modal (shown from commitBatch when applicable).
+function showDncWarnModal(count) {
+  const cEl = document.getElementById("dnc-warn-count");
+  if (cEl) cEl.textContent = `${count} row${count === 1 ? "" : "s"}`;
+  document.getElementById("dnc-warn-modal").classList.remove("hidden");
+}
+function closeDncWarnModal() {
+  document.getElementById("dnc-warn-modal").classList.add("hidden");
+}
+function ignoreDncWarnAndSave() {
+  document.getElementById("dnc-warn-modal").classList.add("hidden");
+  commitBatch(true);  // skip the warn, save through
 }
 
 async function deleteBatch(batchId) {
@@ -3295,8 +3728,15 @@ function openDncDetailsModal() {
       row.className = "dnc-row";
       const reasonId = `dnc-r-${lead._id}`;
       const otherId  = `dnc-o-${lead._id}`;
-      const notesId  = `dnc-n-${lead._id}`;
       const savedId  = `dnc-s-${lead._id}`;
+      const noteRaw = (lead.crm_notes || "").trim();
+      let notesBlock = "";
+      if (noteRaw) {
+        const notesHtml = (window.marked && window.DOMPurify)
+          ? window.DOMPurify.sanitize(window.marked.parse(noteRaw, { breaks: true, gfm: true }))
+          : escapeHtml(noteRaw).replace(/\n/g, "<br>");
+        notesBlock = `<div class="dnc-row-notes-label">Notes</div><div class="dnc-row-notes">${notesHtml}</div>`;
+      }
       row.innerHTML = `
         <div class="dnc-row-head">
           <div>
@@ -3305,6 +3745,7 @@ function openDncDetailsModal() {
           </div>
           <button class="btn" onclick="openDrawer('${lead._id}'); closeDncDetailsModal();" style="font-size:11.5px;padding:3px 10px">Open</button>
         </div>
+        ${notesBlock}
         <div class="dnc-edit${lead.crm_dnc_reason === "other" ? " show-other" : ""}" data-row-edit>
           <label>Reason</label>
           <select class="select-input" id="${reasonId}">
@@ -3312,8 +3753,6 @@ function openDncDetailsModal() {
             ${DNC_REASONS.map(r => `<option value="${r.v}" ${lead.crm_dnc_reason === r.v ? "selected" : ""}>${escapeHtml(r.l)}</option>`).join("")}
           </select>
           <input class="text-input other-input" id="${otherId}" placeholder="Specify…" value="${escapeHtml(lead.crm_dnc_reason_text || "")}" />
-          <label style="margin-top:4px">Notes on why</label>
-          <textarea class="notes-input" id="${notesId}" style="min-height:50px" placeholder="Brief explanation…">${escapeHtml(lead.crm_dnc_notes || "")}</textarea>
           <span class="dnc-saved" id="${savedId}">saved</span>
         </div>
       `;
@@ -3322,7 +3761,6 @@ function openDncDetailsModal() {
       const editBlock = row.querySelector("[data-row-edit]");
       const reasonSel = row.querySelector(`#${reasonId}`);
       const otherInp  = row.querySelector(`#${otherId}`);
-      const notesArea = row.querySelector(`#${notesId}`);
       const savedInd  = row.querySelector(`#${savedId}`);
       function flash() { savedInd.classList.add("show"); setTimeout(() => savedInd.classList.remove("show"), 1200); }
 
@@ -3335,20 +3773,10 @@ function openDncDetailsModal() {
         });
         flash();
       });
-      let ot, nt;
+      let ot;
       otherInp.addEventListener("input", () => {
         clearTimeout(ot);
         ot = setTimeout(() => { updateDncFields(lead._id, { crm_dnc_reason_text: otherInp.value || null }); flash(); }, 1200);
-      });
-      let lastNotes = lead.crm_dnc_notes || "";
-      notesArea.addEventListener("input", () => {
-        clearTimeout(nt);
-        nt = setTimeout(() => {
-          if (notesArea.value === lastNotes) return;
-          lastNotes = notesArea.value;
-          updateDncFields(lead._id, { crm_dnc_notes: notesArea.value });
-          flash();
-        }, 1500);
       });
     }
   }

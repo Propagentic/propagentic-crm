@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "emailActivity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "matched_lead_ids", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "sent_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
