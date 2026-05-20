@@ -1661,11 +1661,15 @@ function renderList(sortedLeads) {
     const tr = document.createElement("tr");
     tr.dataset.id = lead._id;
     if (lead._id === state.selectedId) tr.classList.add("selected");
-    // Color-code by who added this lead (imported_by) via the crm_users registry.
-    // Falls back to no border if owner is unknown — non-layout-affecting box-shadow.
-    const owner = getOwnerUser(lead.imported_by);
+    // Color-code by who last touched this lead (crm_touched_by) — falls back to
+    // who imported it (imported_by) if the lead has never been touched. This
+    // reflects outreach attribution, not just lead provenance. Non-layout-
+    // affecting box-shadow on the name cell.
+    const ownerEmail = lead.crm_touched_by || lead.imported_by;
+    const owner = getOwnerUser(ownerEmail);
+    const ownerVerb = lead.crm_touched_by ? 'Last touched by' : 'Added by';
     const nameTdStyle = owner ? `style="box-shadow: inset 4px 0 0 ${owner.color}"` : '';
-    const nameTdTitle = owner ? `title="Added by ${escapeHtml(owner.displayName)}"` : '';
+    const nameTdTitle = owner ? `title="${ownerVerb} ${escapeHtml(owner.displayName)}"` : '';
     tr.innerHTML = `
       <td class="name" ${nameTdStyle} ${nameTdTitle}>${escapeHtml(lead.owner_name || "—")}</td>
       <td>${escapeHtml(lead.property_address || "")}, ${escapeHtml(lead.property_city || "")}</td>
