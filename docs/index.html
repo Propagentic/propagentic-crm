@@ -1661,15 +1661,15 @@ function renderList(sortedLeads) {
     const tr = document.createElement("tr");
     tr.dataset.id = lead._id;
     if (lead._id === state.selectedId) tr.classList.add("selected");
-    // Color-code by who last touched this lead (crm_touched_by) — falls back to
-    // who imported it (imported_by) if the lead has never been touched. This
-    // reflects outreach attribution, not just lead provenance. Non-layout-
+    // Color-code by the assigned owner (crm_owner) — falls back to the
+    // importer (imported_by) if the lead has no explicit owner yet. The
+    // owner is set via the dropdown in the lead drawer. Non-layout-
     // affecting box-shadow on the name cell.
-    const ownerEmail = lead.crm_touched_by || lead.imported_by;
+    const ownerEmail = lead.crm_owner || lead.imported_by;
     const owner = getOwnerUser(ownerEmail);
-    const ownerVerb = lead.crm_touched_by ? 'Last touched by' : 'Added by';
+    const ownerVerb = lead.crm_owner ? 'Owner' : 'Imported by';
     const nameTdStyle = owner ? `style="box-shadow: inset 4px 0 0 ${owner.color}"` : '';
-    const nameTdTitle = owner ? `title="${ownerVerb} ${escapeHtml(owner.displayName)}"` : '';
+    const nameTdTitle = owner ? `title="${ownerVerb}: ${escapeHtml(owner.displayName)}"` : '';
     tr.innerHTML = `
       <td class="name" ${nameTdStyle} ${nameTdTitle}>${escapeHtml(lead.owner_name || "—")}</td>
       <td>${escapeHtml(lead.property_address || "")}, ${escapeHtml(lead.property_city || "")}</td>
@@ -1765,6 +1765,54 @@ function openDrawer(leadId) {
   actRow.querySelector("#drawer-emailed").addEventListener("change", (e) => updateActivityFlag(leadId, "emailed", e.target.checked));
   body.appendChild(actSec);
 
+  // Owner — explicit assignment via dropdown. Falls back to imported_by for the
+  // initial visual (the color dot), but the dropdown itself shows "Unassigned"
+  // until someone deliberately picks an owner.
+  const ownerSec = document.createElement("div");
+  ownerSec.className = "drawer-section";
+  ownerSec.innerHTML = `<h4>Owner</h4>`;
+  const ownerRow = document.createElement("div");
+  ownerRow.style.cssText = "display:flex;align-items:center;gap:10px;padding:2px 0;";
+  const currentOwner = getOwnerUser(lead.crm_owner) || (lead.crm_owner ? null : getOwnerUser(lead.imported_by));
+  const dot = document.createElement("span");
+  dot.style.cssText = `width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${currentOwner ? currentOwner.color : "transparent"};border:${currentOwner ? "none" : "1px dashed var(--text-dim)"};`;
+  dot.title = currentOwner ? currentOwner.displayName : "Unassigned";
+  ownerRow.appendChild(dot);
+  const sel = document.createElement("select");
+  sel.id = "drawer-owner";
+  sel.className = "select-input";
+  sel.style.cssText = "flex:1;background:var(--panel-2);color:var(--text);border:1px solid var(--border);padding:7px 9px;border-radius:5px;font:inherit;";
+  // Build options from crm_users (sorted by displayName)
+  const users = Array.from(state.crmUsers.values())
+    .filter((u, i, arr) => arr.findIndex(x => x.email === u.email) === i) // dedupe by primary email (aliases reuse same user obj)
+    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+  const unassignedOpt = document.createElement("option");
+  unassignedOpt.value = "";
+  unassignedOpt.textContent = "— Unassigned —";
+  if (!lead.crm_owner) unassignedOpt.selected = true;
+  sel.appendChild(unassignedOpt);
+  users.forEach(u => {
+    const opt = document.createElement("option");
+    opt.value = u.email;
+    opt.textContent = u.displayName;
+    if (lead.crm_owner && lead.crm_owner.toLowerCase() === u.email.toLowerCase()) opt.selected = true;
+    // Also match if crm_owner is one of this user's aliases
+    if (lead.crm_owner && (u.aliases || []).some(a => a.toLowerCase() === lead.crm_owner.toLowerCase())) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", (e) => setOwner(leadId, e.target.value || null));
+  ownerRow.appendChild(sel);
+  ownerSec.appendChild(ownerRow);
+  // Tiny last-touched footnote (still useful for context, just less prominent)
+  if (lead.crm_last_touched) {
+    const ts = lead.crm_last_touched.toDate ? lead.crm_last_touched.toDate() : new Date(lead.crm_last_touched);
+    const note = document.createElement("div");
+    note.style.cssText = "font-size:11px;color:var(--text-dim);margin-top:6px;";
+    note.textContent = `Last touched ${formatDate(ts)}${lead.crm_touched_by ? ` · ${lead.crm_touched_by.split("@")[0]}` : ""}`;
+    ownerSec.appendChild(note);
+  }
+  body.appendChild(ownerSec);
+
   // Outreach status
   const statusSec = document.createElement("div");
   statusSec.className = "drawer-section";
@@ -1779,13 +1827,6 @@ function openDrawer(leadId) {
     pills.appendChild(b);
   });
   statusSec.appendChild(pills);
-  if (lead.crm_last_touched) {
-    const lt = document.createElement("div");
-    lt.className = "last-touch";
-    const ts = lead.crm_last_touched.toDate ? lead.crm_last_touched.toDate() : new Date(lead.crm_last_touched);
-    lt.textContent = `Last touched: ${formatDate(ts)}${lead.crm_touched_by ? ` by ${lead.crm_touched_by}` : ""}`;
-    statusSec.appendChild(lt);
-  }
   // Do Not Contact reason editor — only when current status is do_not_contact.
   if (lead.crm_status === "do_not_contact") {
     const dncEdit = document.createElement("div");
@@ -1990,6 +2031,26 @@ function updateStatus(leadId, status) {
     .then(() => showToast(status ? `Marked ${status}` : "Status cleared"))
     .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
 }
+function setOwner(leadId, ownerEmail) {
+  // ownerEmail is a string email OR null (to unassign).
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const payload = {
+    crm_owner: ownerEmail,
+    crm_owner_assigned_at: ownerEmail ? now : null,
+    crm_owner_assigned_by: ownerEmail && user ? user.email : null,
+    // Don't bump crm_last_touched on ownership change — that's a separate
+    // concept from outreach activity. The recordLeadTouch trigger will log
+    // the ownership change in the touches sub-collection regardless.
+  };
+  firebase.firestore().collection("leads").doc(leadId).set(payload, { merge: true })
+    .then(() => {
+      const ownerUser = ownerEmail ? getOwnerUser(ownerEmail) : null;
+      showToast(ownerEmail ? `Assigned to ${ownerUser ? ownerUser.displayName : ownerEmail.split("@")[0]}` : "Unassigned");
+    })
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
+}
+
 function updateActivityFlag(leadId, action, checked) {
   // action is "called" or "emailed"
   if (checked) playDingSound(); else playClickSound();
