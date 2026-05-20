@@ -282,6 +282,20 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .kv .v.muted { color: var(--text-dim); font-style: italic; }
 .notes-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 5px; font-size: 12.5px; resize: vertical; min-height: 80px; width: 100%; outline: none; font-family: inherit; }
 .notes-input:focus { border-color: var(--accent); }
+.notes-preview { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 5px; padding: 12px 14px; font-size: 12.5px; line-height: 1.55; color: var(--text-soft); max-height: 600px; overflow-y: auto; }
+.notes-preview h1 { font-size: 14px; font-weight: 600; margin: 0 0 4px; color: var(--text); border: 0; padding: 0; }
+.notes-preview h2 { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 14px 0 6px; border: 0; padding: 0; }
+.notes-preview h3 { font-size: 12px; font-weight: 600; color: var(--text); margin: 10px 0 4px; }
+.notes-preview p { margin: 4px 0; }
+.notes-preview em { color: var(--text-dim); font-style: italic; }
+.notes-preview strong { color: var(--text); font-weight: 600; }
+.notes-preview ul, .notes-preview ol { margin: 4px 0; padding-left: 20px; }
+.notes-preview li { margin: 2px 0; }
+.notes-preview a { color: var(--accent); word-break: break-all; }
+.notes-preview code { background: var(--panel-2); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+.notes-preview hr { border: 0; border-top: 1px solid var(--border); margin: 8px 0; }
+.notes-toggle { background: none; border: 0; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; }
+.notes-toggle:hover { color: var(--text); }
 .status-pills { display: flex; gap: 4px; flex-wrap: wrap; }
 .status-pills button { padding: 4px 10px; font-size: 11.5px; background: var(--bg); border: 1px solid var(--border); color: var(--text-dim); border-radius: 100px; cursor: pointer; transition: all 0.12s; }
 .status-pills button:hover { color: var(--text); border-color: var(--text-dim); }
@@ -504,6 +518,8 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
 <script>
 (function() {
   var firebaseConfig = {
@@ -1796,23 +1812,68 @@ function openDrawer(leadId) {
   }
   body.appendChild(statusSec);
 
-  // Notes — debounced autosave while typing + immediate save on blur
+  // Notes — rendered markdown preview + debounced autosave editor
   const notesSec = document.createElement("div");
   notesSec.className = "drawer-section";
   const notesHeader = document.createElement("div");
-  notesHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
-  notesHeader.innerHTML = `<h4>Notes</h4><span id="notes-saved-indicator" style="font-size:11px;color:var(--text-dim);opacity:0;transition:opacity 0.2s">saved</span>`;
+  notesHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
+  notesHeader.innerHTML = `<h4>Notes</h4>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button type="button" class="notes-toggle" id="notes-toggle-btn">Edit</button>
+      <span id="notes-saved-indicator" style="font-size:11px;color:var(--text-dim);opacity:0;transition:opacity 0.2s">saved</span>
+    </div>`;
   notesSec.appendChild(notesHeader);
+
+  const preview = document.createElement("div");
+  preview.className = "notes-preview";
+  preview.id = "notes-preview";
+
   const notes = document.createElement("textarea");
   notes.className = "notes-input";
+  notes.id = "notes-textarea";
   notes.placeholder = "Add notes — auto-saved as you type.";
   notes.value = lead.crm_notes || "";
+  notes.style.display = "none";
+
+  function renderNotesMarkdown(raw) {
+    if (!raw || !raw.trim()) {
+      preview.innerHTML = '<span style="color:var(--text-dim);font-style:italic;">No notes yet — click Edit to add one.</span>';
+      return;
+    }
+    if (window.marked && window.DOMPurify) {
+      const html = window.marked.parse(raw, { breaks: true, gfm: true });
+      preview.innerHTML = window.DOMPurify.sanitize(html);
+    } else {
+      preview.textContent = raw;
+      preview.style.whiteSpace = "pre-wrap";
+    }
+  }
+  renderNotesMarkdown(notes.value);
+
+  notesSec.appendChild(preview);
+  notesSec.appendChild(notes);
+  body.appendChild(notesSec);
+
+  const toggleBtn = notesHeader.querySelector("#notes-toggle-btn");
+  let editing = false;
+  function setEditing(on) {
+    editing = on;
+    preview.style.display = on ? "none" : "block";
+    notes.style.display = on ? "block" : "none";
+    toggleBtn.textContent = on ? "Preview" : "Edit";
+    if (on) { notes.focus(); }
+  }
+  toggleBtn.addEventListener("click", () => setEditing(!editing));
+  // If notes are empty, start in edit mode so the textarea is immediately usable
+  if (!notes.value.trim()) setEditing(true);
+
   let notesTimer;
   let lastSavedValue = lead.crm_notes || "";
   function persistNotesIfChanged() {
     if (notes.value === lastSavedValue) return;
     lastSavedValue = notes.value;
     updateNotes(leadId, notes.value, /*silent=*/true);
+    renderNotesMarkdown(notes.value);
     const ind = document.getElementById("notes-saved-indicator");
     if (ind) { ind.style.opacity = "1"; setTimeout(() => { ind.style.opacity = "0"; }, 1200); }
   }
@@ -1824,8 +1885,6 @@ function openDrawer(leadId) {
     clearTimeout(notesTimer);
     persistNotesIfChanged();
   });
-  notesSec.appendChild(notes);
-  body.appendChild(notesSec);
 
   // Property details
   const propSec = document.createElement("div");
