@@ -86,6 +86,31 @@ a:hover { text-decoration: underline; }
 .checkbox-row input { margin: 0; cursor: pointer; }
 .checkbox-row .count { color: var(--text-dim); margin-left: auto; font-size: 11.5px; }
 .checkbox-row:hover { color: var(--text); }
+
+/* Team filter / legend — sidebar */
+.team-list { display: flex; flex-direction: column; gap: 2px; }
+.team-row {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 5px 6px; border-radius: 5px;
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-soft); font-size: 12.5px; text-align: left; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.team-row:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.team-row.active { background: rgba(255,107,53,0.10); border-color: rgba(255,107,53,0.4); color: var(--text); }
+.team-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0; background: var(--text-dim);
+}
+.team-dot.empty { background: transparent; border: 1px dashed var(--text-dim); }
+.team-dot.all {
+  background: linear-gradient(135deg, #FC5E13 0%, #2563EB 30%, #10B981 55%, #8B5CF6 80%, #DC2626 100%);
+}
+.team-row .team-name { flex: 1; }
+.team-row .count {
+  color: var(--text-dim); font-size: 11.5px;
+  font-variant-numeric: tabular-nums; min-width: 30px; text-align: right;
+}
 .select-input, .text-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 5px; font-size: 12.5px; width: 100%; outline: none; }
 .select-input:focus, .text-input:focus { border-color: var(--accent); }
 .toggle-pills { display: flex; gap: 4px; }
@@ -683,6 +708,12 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         </div>
       </div>
 
+      <div class="filter-group">
+        <span class="label">Team</span>
+        <span class="sublabel">Click a name to show only that owner's leads.</span>
+        <div id="f-team" class="team-list"></div>
+      </div>
+
       <button class="filters-reset" onclick="resetFilters()">Reset all filters</button>
     </aside>
 
@@ -1107,6 +1138,7 @@ const state = {
     dnc: "any",
     owner_type: "any",
     absentee: "any",
+    owner: "any",          // 'any' | 'unassigned' | <email of a crm_users entry or alias>
   },
   sort: { key: "owner_name", dir: 1 },  // 1 asc, -1 desc
   activeTab: "map",
@@ -1377,6 +1409,20 @@ function applyFilters(leads, overrides) {
     if (f.owner_type !== "any" && lead.owner_type !== f.owner_type) continue;
     if (f.absentee === "yes" && lead.absentee !== true) continue;
     if (f.absentee === "no" && lead.absentee === true) continue;
+    if (f.owner && f.owner !== "any") {
+      const owner = lead.crm_owner ? lead.crm_owner.toLowerCase() : null;
+      if (f.owner === "unassigned") {
+        if (owner) continue;
+      } else {
+        // Match owner OR any alias resolving to the selected user
+        const selectedUser = state.crmUsers.get(f.owner.toLowerCase());
+        if (!owner) continue;
+        const isSame = owner === f.owner.toLowerCase() ||
+          (selectedUser && (selectedUser.email.toLowerCase() === owner ||
+            (selectedUser.aliases || []).some(a => a.toLowerCase() === owner)));
+        if (!isSame) continue;
+      }
+    }
     out.push(lead);
   }
   return out;
@@ -1407,6 +1453,7 @@ function renderAll() {
 
   renderStats(all, filtered, filteredForKanban);
   renderMarketFilter(all);
+  renderTeamFilter(all);
   rebuildMapMarkers(filtered);
   renderList(sorted);
   renderKanban(filteredForKanban);
@@ -1648,6 +1695,66 @@ function renderMarketFilter(all) {
     });
     container.appendChild(row);
   }
+}
+
+// Team filter / legend — populated from crm_users + lead counts per owner.
+// Doubles as a color legend (so you know what each colored row border means)
+// and a per-owner filter (click a name to show only their leads).
+function renderTeamFilter(all) {
+  const container = document.getElementById("f-team");
+  if (!container) return;
+
+  // Count leads per owner email (lower-cased, resolved through aliases).
+  // Bucket aliases under the user's PRIMARY email so the count is consistent.
+  const counts = new Map(); // primaryEmail -> count
+  let unassigned = 0;
+  for (const l of all) {
+    if (!l.crm_owner) { unassigned++; continue; }
+    const user = state.crmUsers.get(l.crm_owner.toLowerCase());
+    const key = user ? user.email.toLowerCase() : l.crm_owner.toLowerCase();
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+
+  // Dedupe users by primary email (aliases reuse the same user object in state.crmUsers).
+  const users = Array.from(state.crmUsers.values())
+    .filter((u, i, arr) => arr.findIndex(x => x.email === u.email) === i)
+    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+
+  container.innerHTML = "";
+
+  // "All" row — clears the owner filter
+  const allRow = document.createElement("button");
+  allRow.type = "button";
+  allRow.className = "team-row" + (state.filters.owner === "any" ? " active" : "");
+  allRow.innerHTML = `<span class="team-dot all"></span><span class="team-name">All</span><span class="count">${all.length}</span>`;
+  allRow.addEventListener("click", () => { state.filters.owner = "any"; renderAll(); });
+  container.appendChild(allRow);
+
+  // One row per team member (even when count is 0 — keeps the legend useful)
+  for (const u of users) {
+    const key = u.email.toLowerCase();
+    const n = counts.get(key) || 0;
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "team-row" + (state.filters.owner === key ? " active" : "");
+    row.innerHTML = `<span class="team-dot" style="background:${u.color}"></span><span class="team-name">${escapeHtml(u.displayName)}</span><span class="count">${n}</span>`;
+    row.addEventListener("click", () => {
+      state.filters.owner = state.filters.owner === key ? "any" : key;
+      renderAll();
+    });
+    container.appendChild(row);
+  }
+
+  // Unassigned bucket — large for most teams; useful filter to find untouched inventory
+  const unRow = document.createElement("button");
+  unRow.type = "button";
+  unRow.className = "team-row" + (state.filters.owner === "unassigned" ? " active" : "");
+  unRow.innerHTML = `<span class="team-dot empty"></span><span class="team-name">Unassigned</span><span class="count">${unassigned}</span>`;
+  unRow.addEventListener("click", () => {
+    state.filters.owner = state.filters.owner === "unassigned" ? "any" : "unassigned";
+    renderAll();
+  });
+  container.appendChild(unRow);
 }
 
 function renderList(sortedLeads) {
@@ -2140,6 +2247,7 @@ function resetFilters() {
   state.filters = {
     search: "", markets: new Set(), activity: new Set(),
     phone: "any", email: "any", dnc: "any", owner_type: "any", absentee: "any",
+    owner: "any",
   };
   document.getElementById("f-search").value = "";
   document.getElementById("f-owner-type").value = "any";
