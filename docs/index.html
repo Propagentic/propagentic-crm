@@ -381,25 +381,22 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 /* --- Email Activity panel (v2.14 — drawer section between Notes and Property) --- */
 .email-activity { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #a5b4fc; border-radius: 5px; max-height: 480px; overflow-y: auto; }
 .email-activity-empty { padding: 18px 14px; color: var(--text-dim); font-size: 12.5px; text-align: center; font-style: italic; }
-.email-activity-row { display: grid; grid-template-columns: 56px 1fr; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+.email-activity-row { padding: 10px 14px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
 .email-activity-row:hover { background: var(--panel-2); }
 .email-activity-row:last-child { border-bottom: none; }
-.email-activity-row .date { font-size: 11px; color: var(--text-dim); padding-top: 2px; }
-.email-activity-row .body { min-width: 0; }
-.email-activity-row .head { display: flex; align-items: baseline; gap: 8px; font-size: 12px; margin-bottom: 2px; }
-.email-activity-row .dir { font-weight: 700; flex-shrink: 0; }
+.email-activity-row .head { display: flex; align-items: baseline; gap: 8px; font-size: 12px; margin-bottom: 3px; flex-wrap: wrap; }
+.email-activity-row .dir { font-weight: 700; flex-shrink: 0; font-size: 14px; line-height: 1; }
 .email-activity-row[data-dir="inbound"]  .dir { color: #34d399; }
 .email-activity-row[data-dir="outbound"] .dir { color: #a5b4fc; }
 .email-activity-row .person { color: var(--text); font-weight: 600; }
 .email-activity-row .source { color: var(--text-dim); font-size: 10.5px; font-weight: 400; }
-.email-activity-row .subject { color: var(--text); font-weight: 500; font-size: 12.5px; margin-bottom: 3px; word-break: break-word; }
+.email-activity-row .date { font-size: 11px; color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
+.email-activity-row .subject { color: var(--text); font-weight: 500; font-size: 12.5px; margin-bottom: 4px; word-break: break-word; line-height: 1.35; }
 .email-activity-row .snippet { color: var(--text-soft); font-size: 11.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .email-activity-row .meta { display: flex; gap: 8px; margin-top: 4px; font-size: 10.5px; }
 .email-activity-row .opens { color: #FF6B35; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .email-activity-row .attach { color: var(--text-dim); }
-.email-activity-row.expanded .snippet { display: block; -webkit-line-clamp: unset; }
-.email-activity-row .full-body { display: none; margin-top: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-soft); line-height: 1.5; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
-.email-activity-row.expanded .full-body { display: block; }
+.email-activity-row .full-body { display: block; margin-top: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-soft); line-height: 1.5; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
 .notes-toggle { background: none; border: 0; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; }
 .notes-toggle:hover { color: var(--text); }
 .status-pills { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -2434,6 +2431,11 @@ function renderEmailActivity(listEl, docs) {
     listEl.innerHTML = '<div class="email-activity-empty">No email activity yet — the Gmail ingest will surface conversations here once it\'s running.</div>';
     return;
   }
+  // Only render full body text when the lead has actually replied (any inbound
+  // message exists). For pure outbound-only conversations we just show subject
+  // + snippet — keeps the drawer lightweight for the ~900 leads who haven't
+  // replied yet.
+  const leadHasReplied = docs.some(d => d.direction === "inbound");
   listEl.innerHTML = "";
   for (const d of docs) {
     const sentMs = d.sent_at && d.sent_at.toMillis ? d.sent_at.toMillis() : 0;
@@ -2451,23 +2453,19 @@ function renderEmailActivity(listEl, docs) {
     row.dataset.dir = d.direction || "outbound";
     const opens = d.opens ? `<span class="opens">Opened ${d.opens}×</span>` : "";
     const attach = d.has_attachments ? `<span class="attach">📎 attachment</span>` : "";
+    const showFullBody = leadHasReplied && d.body_text;
     row.innerHTML = `
-      <div class="date">${escapeHtml(dateStr)}</div>
-      <div class="body">
-        <div class="head">
-          <span class="dir">${arrow}</span>
-          <span class="person">${escapeHtml(person)}</span>
-          ${sourceDomain ? `<span class="source">${escapeHtml(sourceDomain)}</span>` : ""}
-        </div>
-        <div class="subject">${escapeHtml(d.subject || "(no subject)")}</div>
-        <div class="snippet">${escapeHtml(d.snippet || "")}</div>
-        ${(opens || attach) ? `<div class="meta">${opens}${attach}</div>` : ""}
-        ${d.body_text ? `<div class="full-body">${escapeHtml(d.body_text)}</div>` : ""}
+      <div class="head">
+        <span class="dir">${arrow}</span>
+        <span class="person">${escapeHtml(person)}</span>
+        ${sourceDomain ? `<span class="source">${escapeHtml(sourceDomain)}</span>` : ""}
+        <span class="date">${escapeHtml(dateStr)}</span>
       </div>
+      <div class="subject">${escapeHtml(d.subject || "(no subject)")}</div>
+      ${showFullBody ? "" : `<div class="snippet">${escapeHtml(d.snippet || "")}</div>`}
+      ${(opens || attach) ? `<div class="meta">${opens}${attach}</div>` : ""}
+      ${showFullBody ? `<div class="full-body">${escapeHtml(d.body_text)}</div>` : ""}
     `;
-    if (d.body_text) {
-      row.addEventListener("click", () => row.classList.toggle("expanded"));
-    }
     listEl.appendChild(row);
   }
 }
