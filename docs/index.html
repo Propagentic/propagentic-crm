@@ -2541,6 +2541,23 @@ const CRM_EXPORT_COLUMNS = [
   ["Geocode Formatted",     "geocode_formatted"],
 ];
 
+// Convert ALL-CAPS address strings to title case while keeping directional
+// abbreviations (N/S/E/W/NE/NW/SE/SW), PO, and suffixes (JR/SR/II/III/IV)
+// uppercase. "1234 PINECREST DR" -> "1234 Pinecrest Dr".
+const _ADDR_KEEP_UPPER = new Set([
+  "N","S","E","W","NE","NW","SE","SW","NNE","NNW","SSE","SSW",
+  "PO","US","USA","II","III","IV","V","VI","VII","VIII","IX","X","JR","SR",
+]);
+function _titleCaseAddress(s) {
+  if (s == null) return s;
+  return String(s).toLowerCase().replace(/\b([a-z0-9]+)\b/g, (_, w) => {
+    const upper = w.toUpperCase();
+    if (_ADDR_KEEP_UPPER.has(upper)) return upper;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  });
+}
+const _EXPORT_TITLE_CASE_FIELDS = new Set(["property_address"]);
+
 function _formatExportCell(value, field) {
   if (value === null || value === undefined) return "";
   // Datazapp encodes the absentee/vacant/dnc booleans as Y/N — preserve that
@@ -2559,6 +2576,9 @@ function _formatExportCell(value, field) {
     return value.toDate().toISOString();
   }
   if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "string" && _EXPORT_TITLE_CASE_FIELDS.has(field)) {
+    return _titleCaseAddress(value);
+  }
   return value;
 }
 
