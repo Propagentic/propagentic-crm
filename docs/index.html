@@ -718,6 +718,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
       <span><b id="stat-status">…</b>in pipeline</span>
     </div>
     <div class="right">
+      <button class="btn" id="export-leads-btn" onclick="exportLeadsXlsx()" title="Export currently filtered leads to XLSX">Export</button>
       <div id="presence-stack" class="presence-stack" title="Active users"></div>
       <span class="user-pill" id="user-pill"></span>
       <button class="btn btn-danger" onclick="signOutUser()">Sign out</button>
@@ -2468,6 +2469,141 @@ function renderEmailActivity(listEl, docs) {
     `;
     listEl.appendChild(row);
   }
+}
+
+// =========================================================================
+// Export — currently filtered leads to XLSX, Datazapp-compatible columns
+// followed by CRM-specific columns. Sheet headers preserve Datazapp's
+// original typos (Absntee Flag, Propety Data Type) so a round-trip back
+// into the existing importer is lossless.
+// =========================================================================
+const DATAZAPP_EXPORT_COLUMNS = [
+  ["Parcel Id",          "external_parcel_id"],
+  ["FullName",           "owner_name_raw"],
+  ["FirstName",          "first_name"],
+  ["LastName",           "last_name"],
+  ["O2FIRST",            "co_owner_first"],
+  ["O2LAST",             "co_owner_last"],
+  ["Property ADDRESS",   "property_address"],
+  ["Property ADDRESS2",  "property_address2"],
+  ["Property CITY",      "property_city"],
+  ["Property State",     "property_state"],
+  ["Property Zip",       "property_zip"],
+  ["Property COUNTY",    "property_county"],
+  ["MAILING Address",    "mailing_address"],
+  ["MAILING ADDRESS2",   "mailing_address2"],
+  ["MAILING CITY",       "mailing_city"],
+  ["MAILING STATE",      "mailing_state"],
+  ["MAILING Zip",        "mailing_zip"],
+  ["Land sqft",          "land_sqft"],
+  ["OWNERTYPE",          "owner_type"],
+  ["Total Living area",  "living_area"],
+  ["Legal Description",  "legal_description"],
+  ["Absntee Flag",       "absentee"],
+  ["Vacant",             "vacant"],
+  ["Propety Data Type",  "property_type"],
+  ["YearBuilt",          "year_built"],
+  ["Seller Propensity",  "seller_propensity"],
+  ["Solar Intenders",    "solar_intender"],
+  ["Windows_Intenders",  "windows_intender"],
+  ["Roofing_Intenders",  "roofing_intender"],
+  ["Phone",              "phone"],
+  ["PhoneType",          "phone_type"],
+  ["DNC",                "dnc"],
+  ["Email",              "email"],
+];
+
+const CRM_EXPORT_COLUMNS = [
+  ["Market",                "market"],
+  ["Market State",          "market_state"],
+  ["Market County",         "market_county"],
+  ["CRM Status",            "crm_status"],
+  ["CRM Called",            "crm_called"],
+  ["CRM Call Outcome",      "crm_call_outcome"],
+  ["CRM Emailed",           "crm_emailed"],
+  ["CRM Email Outcome",     "crm_email_outcome"],
+  ["CRM Follow Up Needed",  "crm_follow_up_needed"],
+  ["CRM DNC Reason",        "crm_dnc_reason"],
+  ["CRM DNC Reason Other",  "crm_dnc_reason_text"],
+  ["CRM Notes",             "crm_notes"],
+  ["CRM Owner",             "crm_owner"],
+  ["CRM Last Touched",      "crm_last_touched"],
+  ["CRM Touched By",        "crm_touched_by"],
+  ["CRM Called At",         "crm_called_at"],
+  ["CRM Called By",         "crm_called_by"],
+  ["CRM Emailed At",        "crm_emailed_at"],
+  ["CRM Emailed By",        "crm_emailed_by"],
+  ["Imported At",           "imported_at"],
+  ["Imported By",           "imported_by"],
+  ["Source File",           "source_file"],
+  ["Geocode Lat",           "property_lat"],
+  ["Geocode Lon",           "property_lon"],
+  ["Geocode Formatted",     "geocode_formatted"],
+];
+
+function _formatExportCell(value, field) {
+  if (value === null || value === undefined) return "";
+  // Datazapp encodes the absentee/vacant/dnc booleans as Y/N — preserve that
+  // so the file round-trips through the importer.
+  if (typeof value === "boolean") {
+    if (field === "absentee" || field === "vacant" || field === "dnc") {
+      return value ? "Y" : "N";
+    }
+    return value;
+  }
+  // Firestore Timestamp objects
+  if (value && typeof value.toMillis === "function") {
+    return new Date(value.toMillis()).toISOString();
+  }
+  if (value && typeof value.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+  if (Array.isArray(value)) return value.join(", ");
+  return value;
+}
+
+function exportLeadsXlsx() {
+  if (typeof XLSX === "undefined") {
+    showToast("Export library not loaded — refresh and try again.");
+    return;
+  }
+  const all = Array.from(state.leads.values());
+  const filtered = applyFilters(all);
+  if (filtered.length === 0) {
+    showToast("No leads match the current filters — nothing to export.");
+    return;
+  }
+  const btn = document.getElementById("export-leads-btn");
+  const origText = btn ? btn.textContent : "Export";
+  if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
+  // Yield to the browser so the button update paints before the (possibly
+  // multi-thousand-row) sheet generation blocks the main thread.
+  setTimeout(() => {
+    try {
+      const allCols = [...DATAZAPP_EXPORT_COLUMNS, ...CRM_EXPORT_COLUMNS];
+      const headers = allCols.map(c => c[0]);
+      const rows = filtered.map(lead => {
+        const out = {};
+        for (const [header, field] of allCols) {
+          out[header] = _formatExportCell(lead[field], field);
+        }
+        return out;
+      });
+      const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Leads");
+      const now = new Date();
+      const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}-${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+      const fname = `propagentic-leads-${stamp}.xlsx`;
+      XLSX.writeFile(wb, fname);
+      showToast(`Exported ${filtered.length.toLocaleString()} leads → ${fname}`);
+    } catch (e) {
+      console.error(e);
+      showToast("Export failed: " + (e.message || String(e)));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+    }
+  }, 30);
 }
 
 // =========================================================================
