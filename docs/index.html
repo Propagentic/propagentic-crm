@@ -106,6 +106,22 @@ a:hover { text-decoration: underline; }
 .checkbox-row input { margin: 0; cursor: pointer; }
 .checkbox-row .count { color: var(--text-dim); margin-left: auto; font-size: 11.5px; }
 .checkbox-row:hover { color: var(--text); }
+/* Activity/Stage tristate filter — Yes/No/Clear per condition, AND across rows. */
+.filter-clear-all { font-size: 10.5px; color: var(--text-dim); cursor: pointer; text-decoration: underline; display: inline-block; margin: 0 0 6px 0; user-select: none; }
+.filter-clear-all:hover { color: var(--text); }
+.activity-tristate-list { display: flex; flex-direction: column; gap: 4px; }
+.activity-tristate-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+.activity-tristate-name { flex: 1; min-width: 0; color: var(--text); font-size: 12.5px; }
+.activity-tristate-buttons { display: inline-flex; }
+.atri-btn { padding: 3px 9px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.12s; }
+.atri-btn:hover { background: var(--panel-2); color: var(--text); }
+.atri-btn.atri-yes { border-radius: 4px 0 0 4px; border-right: none; }
+.atri-btn.atri-no  { border-radius: 0 4px 4px 0; }
+.atri-btn.on { color: #fff; }
+.atri-btn.on.atri-yes { background: #10b981; border-color: #10b981; }
+.atri-btn.on.atri-no  { background: #ef4444; border-color: #ef4444; }
+.atri-clear { font-size: 10.5px; color: var(--text-dim); cursor: pointer; text-decoration: underline; padding: 2px 4px; user-select: none; }
+.atri-clear:hover { color: var(--text); }
 
 /* Team filter / legend — sidebar */
 .team-list { display: flex; flex-direction: column; gap: 2px; }
@@ -197,6 +213,11 @@ table.leads-table th .sort-arrow { font-size: 10px; opacity: 0.5; margin-left: 4
 table.leads-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
 table.leads-table tbody tr:hover { background: rgba(255, 107, 53, 0.06); }
 table.leads-table tbody tr.selected { background: rgba(255, 107, 53, 0.12); }
+table.leads-table tr.list-toolbar-row td { padding: 0; cursor: default; }
+table.leads-table tr.list-toolbar-row:hover { background: transparent; }
+.list-toolbar-add-btn { width: 100%; padding: 7px 16px; font-size: 13px; font-weight: 600; background: var(--accent); color: #0a1428; border: none; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; text-align: center; letter-spacing: 0.02em; }
+.list-toolbar-add-btn:hover { background: #ff8455; }
+.list-toolbar-add-btn:active { background: #f55a26; }
 table.leads-table td { padding: 8px 12px; color: var(--text-soft); }
 table.leads-table td.name { font-weight: 500; color: var(--text); }
 .badge-pill { display: inline-block; padding: 1px 7px; border-radius: 100px; font-size: 10.5px; font-weight: 500; }
@@ -239,19 +260,38 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
    .called-top-row + .called-undefined render flush against the column body. */
 .kanban-col[data-status="called"] { min-width: 580px; flex: 2; }
 .kanban-col[data-status="called"] .kanban-col__body { padding: 0; gap: 0; overflow: hidden; min-height: 0; }
-/* Wide Emailed column — split vertically into Responded / In Conversation
-   on top and Waiting Response on the bottom. Each section has its own
-   2-column card grid inside. */
+/* Wide Emailed column — 2×2 grid of conversation-state sub-sections.
+   Each section is one card wide. Driven by lead.crm_email_inbound_count /
+   _outbound_count / _last_direction, populated by the gmail_poll function.
+   Top: Needs Response · In Conversation
+   Bot: Awaiting First Response · Following Up
+*/
 .kanban-col[data-status="emailed"] { min-width: 580px; flex: 2; }
-.kanban-col[data-status="emailed"] .kanban-col__body { display: flex; flex-direction: column; padding: 0; gap: 0; overflow: hidden; min-height: 0; }
-.emailed-section { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; border-top: 1px solid var(--border); background: rgba(255,255,255,0.015); transition: background 0.15s; overflow: hidden; }
-.emailed-section:first-child { border-top: none; }
+.kanban-col[data-status="emailed"] .kanban-col__body { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; padding: 0; gap: 0; overflow: hidden; min-height: 0; }
+.emailed-section { display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); background: rgba(255,255,255,0.015); transition: background 0.15s; overflow: hidden; }
+.emailed-section[data-section="needs_response"], .emailed-section[data-section="awaiting_first"] { border-left: none; }
+.emailed-section[data-section="needs_response"], .emailed-section[data-section="in_conversation"] { border-top: none; }
 .emailed-section.drop-target { background: rgba(255, 107, 53, 0.06); }
-.emailed-section-head { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
-.emailed-section[data-section="responded"] .emailed-section-head { color: #34d399; }
-.emailed-section[data-section="waiting"]   .emailed-section-head { color: #a5b4fc; }
-.emailed-section-body { flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; min-height: 0; }
-.emailed-section-empty { color: var(--text-dim); font-size: 11px; text-align: center; padding: 16px 4px; font-style: italic; grid-column: 1 / -1; }
+.emailed-section-head { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; flex-direction: column; gap: 5px; }
+.emailed-section-head-row1 { display: flex; align-items: center; gap: 6px; }
+.emailed-section-head-row2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.emailed-section[data-section="needs_response"]   .emailed-section-head { color: #fca5a5; }
+.emailed-section[data-section="in_conversation"]  .emailed-section-head { color: #34d399; }
+.emailed-section[data-section="awaiting_first"]   .emailed-section-head { color: #a5b4fc; }
+.emailed-section[data-section="following_up"]     .emailed-section-head { color: #fbbf24; }
+.emailed-section-head .name { flex: 1; min-width: 0; }
+.emailed-section-head .count { color: var(--text-dim); font-weight: 500; }
+.emailed-section-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-dim); text-transform: none; letter-spacing: 0; font-weight: 600; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; user-select: none; transition: all 0.12s; }
+.emailed-section-toggle::before { content: "○"; font-size: 11px; line-height: 1; opacity: 0.6; }
+.emailed-section-toggle:hover { background: var(--panel-2); color: var(--text); border-color: var(--text-dim); }
+.emailed-section-toggle.on { background: var(--accent); color: #0a1428; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 1px 4px rgba(255,107,53,0.4); padding: 3px 10px; }
+.emailed-section-toggle.on::before { content: "●"; opacity: 1; }
+.emailed-section-export-btn { margin-left: auto; font-size: 9.5px; padding: 3px 10px; background: var(--accent); color: #0a1428; font-weight: 700; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer; transition: background 0.12s; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.emailed-section-export-btn:hover { background: #ff8455; }
+.emailed-section-export-btn:active { background: #f55a26; }
+.emailed-section-export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.emailed-section-body { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.emailed-section-empty { color: var(--text-dim); font-size: 10.5px; text-align: center; padding: 14px 4px; font-style: italic; line-height: 1.3; }
 .contacted-noactivity { border: 1px dashed var(--border); border-radius: 5px; padding: 6px 8px; background: rgba(255,255,255,0.02); flex-shrink: 0; }
 .contacted-noactivity .label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
 .contacted-noactivity .cards { display: flex; flex-direction: column; gap: 4px; }
@@ -403,6 +443,30 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .status-pills button { padding: 4px 10px; font-size: 11.5px; background: var(--bg); border: 1px solid var(--border); color: var(--text-dim); border-radius: 100px; cursor: pointer; transition: all 0.12s; }
 .status-pills button:hover { color: var(--text); border-color: var(--text-dim); }
 .status-pills button.active { background: var(--accent); color: #0a1428; border-color: var(--accent); font-weight: 500; }
+/* Drawer Outreach vertical-button list (v2.19, refined v2.20 — tighter,
+   inline-width, muted active state). */
+.outreach-view-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; margin: 0 0 8px 0; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 11.5px; font-weight: 500; transition: all 0.12s; width: auto; }
+.outreach-view-btn:hover { background: #213262; border-color: var(--accent); color: var(--accent); }
+.outreach-vert { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.outreach-grid { display: flex; gap: 18px; align-items: flex-start; }
+.outreach-col { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; min-width: 0; }
+.outreach-btn { display: inline-block; padding: 3px 11px; background: var(--bg); color: var(--text-soft); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all 0.12s; font-size: 11.5px; text-align: left; line-height: 1.4; }
+.outreach-btn:hover { color: var(--text); border-color: var(--text-dim); }
+.outreach-btn.parent { font-weight: 600; color: var(--text); }
+.outreach-btn.sub { margin-left: 14px; font-size: 10.5px; padding: 2px 9px; color: var(--text-dim); }
+.outreach-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(255, 107, 53, 0.08); font-weight: 600; }
+.outreach-btn.sub.active { color: var(--accent); border-color: var(--accent); background: rgba(255, 107, 53, 0.08); font-weight: 600; }
+.outreach-btn.clear-btn { margin-top: 4px; border-color: rgba(239,68,68,0.35); color: #fca5a5; }
+.outreach-btn.clear-btn:hover { background: rgba(239,68,68,0.10); border-color: rgba(239,68,68,0.5); }
+.outreach-btn.clear-btn.active { background: rgba(239,68,68,0.14); color: #fca5a5; border-color: rgba(239,68,68,0.5); }
+.subsection-picker-list { display: flex; flex-direction: column; gap: 6px; }
+.subsection-picker-list button { width: 100%; text-align: left; padding: 10px 14px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; font-size: 13px; transition: all 0.12s; }
+.subsection-picker-list button:hover { background: var(--panel-2); border-color: var(--accent); }
+.kanban-card.flash-highlight { animation: flash-highlight 1.4s ease-in-out; }
+@keyframes flash-highlight {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+  20%, 70%  { box-shadow: 0 0 0 4px rgba(255,107,53,0.6); border-color: var(--accent); }
+}
 .contact-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; }
 .contact-row .label { color: var(--text-dim); width: 50px; flex-shrink: 0; }
 .contact-row .val { color: var(--text); flex: 1; word-break: break-all; }
@@ -741,16 +805,40 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 
       <div class="filter-group">
         <span class="label">Activity / Stage</span>
-        <span class="sublabel">Select any combination, or none to show all.</span>
-        <div class="checkbox-list" id="f-activity">
-          <label class="checkbox-row"><input type="checkbox" data-activity="not_contacted" /> <span>Not Contacted</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="called" /> <span>Called</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="emailed" /> <span>Emailed</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="researching" /> <span>Researching</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="contacted" /> <span>Contacted</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="demo_scheduled" /> <span>Demo Scheduled</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="paid" /> <span>Paid</span></label>
-          <label class="checkbox-row"><input type="checkbox" data-activity="do_not_contact" /> <span>Do Not Contact</span></label>
+        <a class="filter-clear-all" id="f-activity-clear-all" role="button" tabindex="0">Clear options</a>
+        <div class="activity-tristate-list" id="f-activity">
+          <div class="activity-tristate-row" data-cond="emailed">
+            <span class="activity-tristate-name">Emailed</span>
+            <div class="activity-tristate-buttons">
+              <button class="atri-btn atri-yes" data-val="yes" aria-label="Emailed: yes">Yes</button>
+              <button class="atri-btn atri-no"  data-val="no"  aria-label="Emailed: no">No</button>
+            </div>
+            <a class="atri-clear" role="button" tabindex="0">Clear</a>
+          </div>
+          <div class="activity-tristate-row" data-cond="called">
+            <span class="activity-tristate-name">Called</span>
+            <div class="activity-tristate-buttons">
+              <button class="atri-btn atri-yes" data-val="yes" aria-label="Called: yes">Yes</button>
+              <button class="atri-btn atri-no"  data-val="no"  aria-label="Called: no">No</button>
+            </div>
+            <a class="atri-clear" role="button" tabindex="0">Clear</a>
+          </div>
+          <div class="activity-tristate-row" data-cond="demo_scheduled">
+            <span class="activity-tristate-name">Demo Scheduled</span>
+            <div class="activity-tristate-buttons">
+              <button class="atri-btn atri-yes" data-val="yes" aria-label="Demo Scheduled: yes">Yes</button>
+              <button class="atri-btn atri-no"  data-val="no"  aria-label="Demo Scheduled: no">No</button>
+            </div>
+            <a class="atri-clear" role="button" tabindex="0">Clear</a>
+          </div>
+          <div class="activity-tristate-row" data-cond="do_not_contact">
+            <span class="activity-tristate-name">Do Not Contact</span>
+            <div class="activity-tristate-buttons">
+              <button class="atri-btn atri-yes" data-val="yes" aria-label="Do Not Contact: yes">Yes</button>
+              <button class="atri-btn atri-no"  data-val="no"  aria-label="Do Not Contact: no">No</button>
+            </div>
+            <a class="atri-clear" role="button" tabindex="0">Clear</a>
+          </div>
         </div>
       </div>
 
@@ -812,7 +900,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <button class="tab active" data-tab="map">Map <span class="badge" id="tab-count-map">0</span></button>
         <button class="tab" data-tab="list">List <span class="badge" id="tab-count-list">0</span></button>
         <button class="tab" data-tab="outreach">Outreach <span class="badge" id="tab-count-outreach">0</span></button>
-        <button class="tab" data-tab="daily">Engagement History <span class="badge" id="tab-count-daily">0</span></button>
+        <button class="tab" data-tab="daily">Call Log <span class="badge" id="tab-count-daily">0</span></button>
         <button class="tab" data-tab="stats">Stats</button>
         <button class="tab" data-tab="import">Import</button>
       </div>
@@ -832,6 +920,11 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
                   <th data-sort="phone">Phone <span class="sort-arrow">↕</span></th>
                   <th data-sort="email">Email <span class="sort-arrow">↕</span></th>
                   <th data-sort="crm_status">Status <span class="sort-arrow">↕</span></th>
+                </tr>
+                <tr class="list-toolbar-row">
+                  <td colspan="7">
+                    <button class="list-toolbar-add-btn" onclick="openAddLeadModal()">+ New Lead</button>
+                  </td>
                 </tr>
               </thead>
               <tbody id="leads-tbody"></tbody>
@@ -1098,6 +1191,72 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
   </div>
 </div>
 
+<div id="emailed-subsection-picker-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 440px;">
+    <div class="modal-head">
+      <h3>Select Emailed sub-section</h3>
+      <button class="modal-close" onclick="closeEmailedSubsectionPicker(true)" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--text-soft);margin:0 0 12px 0;line-height:1.5;">Which Emailed sub-section should this lead live in?</p>
+      <div class="subsection-picker-list">
+        <button data-sub="needs_response">Needs Response</button>
+        <button data-sub="in_conversation">In Conversation</button>
+        <button data-sub="awaiting_first">Awaiting First Response</button>
+        <button data-sub="following_up">Following Up</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);margin:10px 0 0 0;font-style:italic;">Closing without choosing defaults to <b>Awaiting First Response</b>.</p>
+    </div>
+  </div>
+</div>
+
+<div id="clear-outreach-confirm-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 460px;">
+    <div class="modal-head">
+      <h3>Clear all outreach state?</h3>
+      <button class="modal-close" onclick="closeClearOutreachConfirm()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-soft);margin:0 0 10px 0;line-height:1.5">This will clear all of:</p>
+      <ul style="margin:0 0 10px 18px;font-size:12.5px;color:var(--text-soft);line-height:1.7">
+        <li>Pipeline status (Demo Scheduled / Paid / Do Not Contact)</li>
+        <li>Called / Emailed flags</li>
+        <li>Sub-section override</li>
+        <li>Call outcome and DNC reason</li>
+      </ul>
+      <p style="font-size:12px;color:var(--text-dim);margin:0;line-height:1.5">The lead will disappear from the Outreach kanban. The previous state will be lost — this can't be undone.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeClearOutreachConfirm()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmClearOutreach()">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<div id="export-confirm-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 520px;">
+    <div class="modal-head">
+      <h3>Export to XLSX</h3>
+      <button class="modal-close" onclick="closeExportConfirmModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <h4>What's being exported</h4>
+        <ul id="export-confirm-summary" style="margin:0; padding-left:18px; font-size:12.5px; color:var(--text-soft); line-height:1.7;"></ul>
+      </div>
+      <div class="form-section">
+        <h4>Filename</h4>
+        <input type="text" id="export-confirm-filename" class="text-input" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;">
+        <span style="font-size:11px;color:var(--text-dim);margin-top:4px;display:block">The <code>.xlsx</code> extension will be added if missing.</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeExportConfirmModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmExport()">Download</button>
+    </div>
+  </div>
+</div>
+
 <div id="dnc-warn-modal" class="modal-overlay hidden">
   <div class="modal" style="max-width: 480px;">
     <div class="modal-head">
@@ -1256,7 +1415,13 @@ const state = {
   filters: {
     search: "",
     markets: new Set(),      // selected market keys; empty = all
-    activity: new Set(),     // multi-select: not_contacted | called | emailed | <status keys>; empty = all
+    activity: new Set(),     // (legacy, unused after v2.18) multi-select activity OR-set
+    activity_states: {       // v2.18: per-condition tristate filter — null | "yes" | "no". AND across rows.
+      emailed: null,
+      called: null,
+      demo_scheduled: null,
+      do_not_contact: null,
+    },
     phone: "any",
     email: "any",
     dnc: "any",
@@ -1455,6 +1620,7 @@ function makePopupHtml(lead) {
 function subscribeToLeads() {
   const db = firebase.firestore();
   db.collection("leads").onSnapshot((snap) => {
+    let openLeadChanged = false;
     snap.docChanges().forEach((ch) => {
       if (ch.type === "removed") {
         state.leads.delete(ch.doc.id);
@@ -1462,10 +1628,18 @@ function subscribeToLeads() {
         const d = ch.doc.data();
         d._id = ch.doc.id;
         state.leads.set(ch.doc.id, d);
+        if (state.selectedId && ch.doc.id === state.selectedId) openLeadChanged = true;
       }
     });
     document.getElementById("loading-overlay").classList.add("hidden");
     renderAll();
+    // If the lead currently shown in the drawer changed (e.g. drag-drop,
+    // gmail_poll override-clear, manual button click), re-render just the
+    // Outreach section in place — keeps scroll, notes edits, etc.
+    if (openLeadChanged && state._drawerOutreachSec && state.selectedId) {
+      const updated = state.leads.get(state.selectedId);
+      if (updated) renderDrawerOutreachSection(state._drawerOutreachSec, updated, state.selectedId);
+    }
   }, (err) => {
     console.error("leads snapshot error", err);
     showToast("Failed to load leads: " + err.message);
@@ -1518,16 +1692,17 @@ function applyFilters(leads, overrides) {
       if (!blob.includes(q)) continue;
     }
     if (f.markets && f.markets.size > 0 && !f.markets.has(lead.market)) continue;
-    if (f.activity && f.activity.size > 0) {
-      let match = false;
-      for (const a of f.activity) {
-        if (a === "not_contacted" && !lead.crm_called && !lead.crm_emailed) { match = true; break; }
-        if (a === "called" && lead.crm_called === true) { match = true; break; }
-        if (a === "emailed" && lead.crm_emailed === true) { match = true; break; }
-        if (STATUSES.includes(a) && lead.crm_status === a) { match = true; break; }
-      }
-      if (!match) continue;
-    }
+    // Activity / Stage tristate filter (v2.18). AND across rows: only leads
+    // matching every set Yes/No condition pass. Rows left null are ignored.
+    const ts = f.activity_states || {};
+    if (ts.emailed === "yes" && lead.crm_emailed !== true) continue;
+    if (ts.emailed === "no"  && lead.crm_emailed === true) continue;
+    if (ts.called === "yes"  && lead.crm_called  !== true) continue;
+    if (ts.called === "no"   && lead.crm_called  === true) continue;
+    if (ts.demo_scheduled === "yes" && lead.crm_status !== "demo_scheduled") continue;
+    if (ts.demo_scheduled === "no"  && lead.crm_status === "demo_scheduled") continue;
+    if (ts.do_not_contact === "yes" && lead.crm_status !== "do_not_contact") continue;
+    if (ts.do_not_contact === "no"  && lead.crm_status === "do_not_contact") continue;
     if (f.phone === "yes" && !lead.phone) continue;
     if (f.phone === "no" && lead.phone) continue;
     if (f.email === "yes" && !lead.email) continue;
@@ -1593,6 +1768,204 @@ function renderAll() {
 // =========================================================================
 // Outreach kanban — drag-and-drop pipeline view
 // =========================================================================
+// === Emailed column 2×2 sub-sections (v2.15) =============================
+// Classification + toggle filtering + render.
+const EMAILED_FOLLOWUP_2WEEKS_DAYS = 14;
+const EMAILED_FOLLOWUP_2WEEKS_3DAYS_DAYS = 17;
+const EMAILED_AWAITING_OVERDUE_DAYS = 3;
+
+// Persistent toggle state (resets on page reload — intentional, not stored).
+if (!state._emailedToggles) state._emailedToggles = {
+  awaiting_first_3plus_days: false,
+  following_up_2weeks: false,
+  following_up_2weeks_3days: false,
+};
+
+function emailedBucket(lead) {
+  // Manual drag-drop override always wins (the Cloud Function clears it once
+  // the natural computed bucket catches up to the user's intent).
+  if (lead.crm_email_bucket_override) return lead.crm_email_bucket_override;
+  const inb = lead.crm_email_inbound_count || 0;
+  const out = lead.crm_email_outbound_count || 0;
+  const lastDir = lead.crm_email_last_direction;
+  if (inb > 0 && lastDir === "inbound")  return "needs_response";
+  if (inb > 0 && lastDir === "outbound") return "in_conversation";
+  if (inb === 0 && out === 1)            return "awaiting_first";
+  if (inb === 0 && out >= 2)             return "following_up";
+  return "awaiting_first";
+}
+
+// Write a manual bucket override to a lead. Drag-drop into any of the four
+// Emailed sub-sections calls this. The Cloud Function's per-lead recompute
+// will clear the override later if (and only if) the natural bucket computed
+// from email counts ends up matching — so manual moves yield to auto once
+// the real data catches up.
+function setEmailedBucketOverride(leadId, bucket) {
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  firebase.firestore().collection("leads").doc(leadId).set({
+    crm_email_bucket_override: bucket,
+    crm_email_bucket_override_at: now,
+    crm_email_bucket_override_by: user ? user.email : null,
+    crm_emailed: true,
+    crm_called: false,
+    crm_status: "contacted",
+    crm_last_touched: now,
+    crm_touched_by: user ? user.email : null,
+  }, { merge: true })
+    .then(() => {
+      const label = ({ needs_response: "Needs Response", in_conversation: "In Conversation",
+                       awaiting_first: "Awaiting First Response", following_up: "Following Up" })[bucket] || bucket;
+      showToast(`Moved to Emailed → ${label}`);
+    })
+    .catch(err => { console.error(err); showToast("Save failed: " + err.message); });
+}
+
+function _ageDays(ts) {
+  if (!ts) return null;
+  const ms = ts.toMillis ? ts.toMillis() : (ts.getTime ? ts.getTime() : 0);
+  return ms ? (Date.now() - ms) / 86400000 : null;
+}
+
+function passesEmailedToggle(lead, bucket) {
+  const t = state._emailedToggles;
+  if (bucket === "awaiting_first" && t.awaiting_first_3plus_days) {
+    const age = _ageDays(lead.crm_email_last_outbound_at);
+    return age !== null && age >= EMAILED_AWAITING_OVERDUE_DAYS;
+  }
+  if (bucket === "following_up") {
+    const anyOn = t.following_up_2weeks || t.following_up_2weeks_3days;
+    if (!anyOn) return true;
+    const out = lead.crm_email_outbound_count || 0;
+    const age = _ageDays(lead.crm_email_last_outbound_at);
+    if (age === null) return false;
+    if (t.following_up_2weeks && out === 2 && age >= EMAILED_FOLLOWUP_2WEEKS_DAYS) return true;
+    if (t.following_up_2weeks_3days && out === 3 && age >= EMAILED_FOLLOWUP_2WEEKS_3DAYS_DAYS) return true;
+    return false;
+  }
+  return true;
+}
+
+function renderEmailedSections(body, emailedLeads) {
+  const groups = { needs_response: [], in_conversation: [], awaiting_first: [], following_up: [] };
+  for (const l of emailedLeads) groups[emailedBucket(l)].push(l);
+
+  // Awaiting First Response specifically: push "orphan" leads (manually
+  // flagged crm_emailed=true with no real email data — typically from
+  // sending via non-Propagentic accounts and marking the lead by hand) to
+  // the bottom. Leads with actual outbound emails stay on top in their
+  // existing last_touched order.
+  groups.awaiting_first.sort((a, b) => {
+    const aHasData = (a.crm_email_outbound_count || 0) > 0 ? 0 : 1;
+    const bHasData = (b.crm_email_outbound_count || 0) > 0 ? 0 : 1;
+    if (aHasData !== bHasData) return aHasData - bHasData;
+    const at = a.crm_last_touched && a.crm_last_touched.toMillis ? a.crm_last_touched.toMillis() : 0;
+    const bt = b.crm_last_touched && b.crm_last_touched.toMillis ? b.crm_last_touched.toMillis() : 0;
+    if (bt !== at) return bt - at;
+    return (a.owner_name || "").localeCompare(b.owner_name || "");
+  });
+
+  const sections = [
+    { id: "needs_response",   label: "Needs Response",          drop_sub: "emailed_waiting" },
+    { id: "in_conversation",  label: "In Conversation",         drop_sub: "emailed_responded" },
+    { id: "awaiting_first",   label: "Awaiting First Response", drop_sub: "emailed_waiting",
+      toggles: [{ key: "awaiting_first_3plus_days", label: "3+ days overdue" }] },
+    { id: "following_up",     label: "Following Up",            drop_sub: "emailed_waiting",
+      toggles: [
+        { key: "following_up_2weeks",        label: "2+ weeks" },
+        { key: "following_up_2weeks_3days",  label: "2 wks 3 days+" },
+      ] },
+  ];
+
+  for (const s of sections) {
+    const sec = document.createElement("div");
+    sec.className = "emailed-section";
+    sec.dataset.section = s.id;
+    const visible = groups[s.id].filter(l => passesEmailedToggle(l, s.id));
+    // Plain button-like spans (NOT <label><input/></label>) — the input/label
+    // pairing fires two click events per user click which cancels the toggle.
+    const togglesHtml = (s.toggles || []).map(t => {
+      const on = !!state._emailedToggles[t.key];
+      return `<span role="button" tabindex="0" class="emailed-section-toggle${on ? " on" : ""}" data-toggle="${t.key}">${escapeHtml(t.label)}</span>`;
+    }).join("");
+    const totalForBucket = groups[s.id].length;
+    // For sections that have toggles, always show the count as a fraction
+    // (visible/total) so the team can see "I'm filtering to 12 of 475" at a
+    // glance. Sections without toggles just show the total.
+    const hasToggles = !!(s.toggles && s.toggles.length);
+    const countLabel = hasToggles
+      ? `<span class="count">${visible.length}/${totalForBucket}</span>`
+      : `<span class="count">${totalForBucket}</span>`;
+    sec.innerHTML = `
+      <div class="emailed-section-head">
+        <div class="emailed-section-head-row1">
+          <span class="name">${escapeHtml(s.label)}</span>
+          ${countLabel}
+        </div>
+        <div class="emailed-section-head-row2">
+          ${togglesHtml}
+          <button class="emailed-section-export-btn" data-export-section="${s.id}" title="Export the ${visible.length} visible leads to XLSX">Export</button>
+        </div>
+      </div>
+      <div class="emailed-section-body"></div>
+    `;
+    const sBody = sec.querySelector(".emailed-section-body");
+    if (visible.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "emailed-section-empty";
+      empty.textContent = totalForBucket === 0 ? "—" : "(no matches with current toggle)";
+      sBody.appendChild(empty);
+    } else {
+      for (const lead of visible) sBody.appendChild(makeKanbanCard(lead, "emailed"));
+    }
+    // Wire toggle clicks (only on this section's own toggles).
+    sec.querySelectorAll("[data-toggle]").forEach(el => {
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const key = el.dataset.toggle;
+        state._emailedToggles[key] = !state._emailedToggles[key];
+        // Just re-render the kanban to apply the new filter.
+        renderAll();
+      });
+    });
+    // Wire the per-section Export button → uses the same column shape as the
+    // global Export but only the leads currently visible in THIS section
+    // (after sidebar filters, bucketing, and any active toggles).
+    const exportBtn = sec.querySelector("[data-export-section]");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        exportEmailedSection(s.id, s.label, visible);
+      });
+    }
+    // Drag-drop into any section just routes to Emailed bucket. The actual
+    // sub-section a lead lands in is derived from email summary fields, not
+    // chosen by the drop target. So all four drops use the same sub value.
+    sec.addEventListener("dragover", (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      ev.dataTransfer.dropEffect = "move";
+      sec.classList.add("drop-target");
+    });
+    sec.addEventListener("dragleave", (ev) => {
+      if (!sec.contains(ev.relatedTarget)) sec.classList.remove("drop-target");
+    });
+    sec.addEventListener("drop", (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      sec.classList.remove("drop-target");
+      const leadId = ev.dataTransfer.getData("text/plain");
+      if (!leadId) return;
+      const dl = state.leads.get(leadId);
+      if (!dl) return;
+      // No-op if the lead is already in this exact sub-section.
+      if (emailedBucket(dl) === s.id) { playClickSound(); return; }
+      if (leadColumn(dl) !== "emailed") playDingSound();
+      else playClickSound();
+      setEmailedBucketOverride(leadId, s.id);
+    });
+    body.appendChild(sec);
+  }
+}
+
 function renderKanban(filteredLeads) {
   const kanban = document.getElementById("kanban");
   if (!kanban) return;
@@ -1770,56 +2143,10 @@ function renderKanban(filteredLeads) {
       });
       body.appendChild(undef);
     } else if (colId === "emailed") {
-      // Two stacked sections: Responded / In Conversation (top) and Waiting Response (bottom).
-      // Leads without crm_email_outcome land in Waiting Response.
-      const emailGroups = { responded: [], waiting: [] };
-      for (const l of cols.emailed) {
-        if (l.crm_email_outcome === "responded") emailGroups.responded.push(l);
-        else emailGroups.waiting.push(l);
-      }
-      const sectionLabels = {
-        responded: "Responded / In Conversation",
-        waiting:   "Waiting Response",
-      };
-      for (const section of ["responded", "waiting"]) {
-        const sec = document.createElement("div");
-        sec.className = "emailed-section";
-        sec.dataset.section = section;
-        const items = emailGroups[section];
-        sec.innerHTML = `
-          <div class="emailed-section-head">${sectionLabels[section]} · ${items.length}</div>
-          <div class="emailed-section-body"></div>
-        `;
-        const sBody = sec.querySelector(".emailed-section-body");
-        if (items.length === 0) {
-          const empty = document.createElement("div");
-          empty.className = "emailed-section-empty";
-          empty.textContent = "Drop here";
-          sBody.appendChild(empty);
-        } else {
-          for (const lead of items) sBody.appendChild(makeKanbanCard(lead, "emailed"));
-        }
-        const droppedSub = section === "responded" ? "emailed_responded" : "emailed_waiting";
-        sec.addEventListener("dragover", (ev) => {
-          ev.preventDefault(); ev.stopPropagation();
-          ev.dataTransfer.dropEffect = "move";
-          sec.classList.add("drop-target");
-        });
-        sec.addEventListener("dragleave", (ev) => {
-          if (!sec.contains(ev.relatedTarget)) sec.classList.remove("drop-target");
-        });
-        sec.addEventListener("drop", (ev) => {
-          ev.preventDefault(); ev.stopPropagation();
-          sec.classList.remove("drop-target");
-          const leadId = ev.dataTransfer.getData("text/plain");
-          if (!leadId) return;
-          const dl = state.leads.get(leadId);
-          if (dl && leadColumn(dl) !== "emailed") playDingSound();
-          else playClickSound();
-          applyContactedSubZone(leadId, droppedSub);
-        });
-        body.appendChild(sec);
-      }
+      // 2×2 grid sub-sections (v2.15) driven by per-lead email summary fields
+      // populated by the gmail_poll Cloud Function. See emailedBucket() for
+      // the classification rules and renderEmailedSections() for the layout.
+      renderEmailedSections(body, cols.emailed);
     } else if (cols[colId].length === 0) {
       const empty = document.createElement("div");
       empty.className = "kanban-empty";
@@ -2111,28 +2438,8 @@ function openDrawer(leadId) {
   }
   body.appendChild(contactSec);
 
-  // Activity (Called / Emailed) — quick toggles, independent of pipeline stage
-  const actSec = document.createElement("div");
-  actSec.className = "drawer-section";
-  actSec.innerHTML = `<h4>Activity</h4>`;
-  const actRow = document.createElement("div");
-  actRow.style.cssText = "display:flex;gap:14px;flex-wrap:wrap;padding:4px 0;";
-  const calledChecked = !!lead.crm_called;
-  const emailedChecked = !!lead.crm_emailed;
-  actRow.innerHTML = `
-    <label class="form-check" style="font-size:13px">
-      <input type="checkbox" id="drawer-called" ${calledChecked ? "checked" : ""}> Called
-      ${lead.crm_called_at ? `<span style="font-size:10.5px;color:var(--text-dim);margin-left:4px">${formatDate(lead.crm_called_at.toDate ? lead.crm_called_at.toDate() : new Date(lead.crm_called_at))}${lead.crm_called_by ? ` · ${escapeHtml(lead.crm_called_by.split("@")[0])}` : ""}</span>` : ""}
-    </label>
-    <label class="form-check" style="font-size:13px">
-      <input type="checkbox" id="drawer-emailed" ${emailedChecked ? "checked" : ""}> Emailed
-      ${lead.crm_emailed_at ? `<span style="font-size:10.5px;color:var(--text-dim);margin-left:4px">${formatDate(lead.crm_emailed_at.toDate ? lead.crm_emailed_at.toDate() : new Date(lead.crm_emailed_at))}${lead.crm_emailed_by ? ` · ${escapeHtml(lead.crm_emailed_by.split("@")[0])}` : ""}</span>` : ""}
-    </label>
-  `;
-  actSec.appendChild(actRow);
-  actRow.querySelector("#drawer-called").addEventListener("change", (e) => updateActivityFlag(leadId, "called", e.target.checked));
-  actRow.querySelector("#drawer-emailed").addEventListener("change", (e) => updateActivityFlag(leadId, "emailed", e.target.checked));
-  body.appendChild(actSec);
+  // (v2.19) Activity section removed — the new vertical Outreach buttons
+  // below capture Called/Emailed state implicitly via bucket membership.
 
   // Owner assignment — explicit dropdown writing crm_owner on the lead doc.
   // Renamed from `ownerSec` to avoid collision with the property-ownership
@@ -2182,20 +2489,13 @@ function openDrawer(leadId) {
   }
   body.appendChild(assignedOwnerSec);
 
-  // Outreach status
+  // Outreach status — v2.19 vertical layout w/ View in Outreach button,
+  // bucket-and-sub-section buttons, auto-active highlighting, and live
+  // re-render when the lead doc changes (via subscribeToLeads).
   const statusSec = document.createElement("div");
   statusSec.className = "drawer-section";
-  statusSec.innerHTML = `<h4>Outreach</h4>`;
-  const pills = document.createElement("div");
-  pills.className = "status-pills";
-  [null, ...STATUSES].forEach(s => {
-    const b = document.createElement("button");
-    b.textContent = s == null ? "Clear" : statusLabel(s);
-    if (lead.crm_status === s) b.classList.add("active");
-    b.addEventListener("click", () => updateStatus(leadId, s));
-    pills.appendChild(b);
-  });
-  statusSec.appendChild(pills);
+  renderDrawerOutreachSection(statusSec, lead, leadId);
+  state._drawerOutreachSec = statusSec;  // ref for live re-render
   // Do Not Contact reason editor — only when current status is do_not_contact.
   if (lead.crm_status === "do_not_contact") {
     const dncEdit = document.createElement("div");
@@ -2400,12 +2700,164 @@ function closeDrawer() {
   document.querySelectorAll("#leads-tbody tr.selected").forEach(tr => tr.classList.remove("selected"));
   // Tear down the email-activity listener so we don't accumulate them.
   if (state._emailActivityUnsub) { state._emailActivityUnsub(); state._emailActivityUnsub = null; }
+  // Drop the drawer outreach-section ref so subscribeToLeads stops trying to
+  // re-render into a detached DOM node.
+  state._drawerOutreachSec = null;
 }
 
 // Subscribe to emailActivity docs matched to this lead. Re-renders on every
 // Firestore change. The first invocation while the Gmail ingest is not yet
 // deployed will simply show "No email activity yet" — collection may not
 // even exist, which is fine (queries against missing collections return empty).
+// =========================================================================
+// v2.19 — Drawer "Outreach" vertical buttons + View in Outreach + modals
+// =========================================================================
+
+// Build (or rebuild in place) the contents of the drawer's Outreach section.
+// Called by openDrawer initially and again from subscribeToLeads whenever the
+// currently-open lead's doc updates, so manual drags / Cloud Function pushes
+// reflect immediately without closing the drawer.
+function renderDrawerOutreachSection(container, lead, leadId) {
+  container.innerHTML = "<h4>Outreach</h4>";
+  const viewBtn = document.createElement("button");
+  viewBtn.className = "outreach-view-btn";
+  viewBtn.innerHTML = "View in Outreach →";
+  viewBtn.addEventListener("click", () => viewInOutreach(leadId));
+  container.appendChild(viewBtn);
+
+  const grid = document.createElement("div");
+  grid.className = "outreach-grid";
+  const leftCol = document.createElement("div");
+  leftCol.className = "outreach-col";
+  const rightCol = document.createElement("div");
+  rightCol.className = "outreach-col";
+
+  const bucket = leadColumn(lead);
+  const emailedSub = bucket === "emailed" ? emailedBucket(lead) : null;
+  const callOutcome = lead.crm_call_outcome || null;
+
+  function addBtn(parent, label, isActive, depth, onClick, extraCls) {
+    const b = document.createElement("button");
+    b.className = "outreach-btn " + (depth === "sub" ? "sub" : "parent") +
+                  (isActive ? " active" : "") + (extraCls ? " " + extraCls : "");
+    b.innerHTML = label;
+    b.addEventListener("click", onClick);
+    parent.appendChild(b);
+  }
+
+  // Left column: Emailed + sub-sections, then Called + sub-sections
+  addBtn(leftCol, "Emailed", bucket === "emailed", "parent", () => openEmailedSubsectionPicker(leadId));
+  addBtn(leftCol, "Needs Response",          bucket === "emailed" && emailedSub === "needs_response", "sub", () => setEmailedBucketOverride(leadId, "needs_response"));
+  addBtn(leftCol, "In Conversation",         bucket === "emailed" && emailedSub === "in_conversation", "sub", () => setEmailedBucketOverride(leadId, "in_conversation"));
+  addBtn(leftCol, "Awaiting First Response", bucket === "emailed" && emailedSub === "awaiting_first",  "sub", () => setEmailedBucketOverride(leadId, "awaiting_first"));
+  addBtn(leftCol, "Following Up",            bucket === "emailed" && emailedSub === "following_up",   "sub", () => setEmailedBucketOverride(leadId, "following_up"));
+  addBtn(leftCol, "Called", bucket === "called", "parent", () => applyContactedSubZone(leadId, "called_undefined"));
+  addBtn(leftCol, "Didn't Pick Up: Needs Follow Up", bucket === "called" && callOutcome === "no_pickup", "sub", () => applyContactedSubZone(leadId, "called_no_pickup"));
+  addBtn(leftCol, "Picked Up: Needs Follow Up",      bucket === "called" && callOutcome === "picked_up", "sub", () => applyContactedSubZone(leadId, "called_picked_up"));
+  addBtn(leftCol, "Undefined",                       bucket === "called" && !callOutcome,                "sub", () => applyContactedSubZone(leadId, "called_undefined"));
+
+  // Right column: pipeline-status buttons + Clear (uses the otherwise-empty
+  // horizontal space alongside the Emailed/Called sub-section lists).
+  addBtn(rightCol, "Demo Scheduled", lead.crm_status === "demo_scheduled", "parent", () => updateStatus(leadId, "demo_scheduled"));
+  addBtn(rightCol, "Paid",           lead.crm_status === "paid",           "parent", () => updateStatus(leadId, "paid"));
+  addBtn(rightCol, "Do Not Contact", lead.crm_status === "do_not_contact", "parent", () => updateStatus(leadId, "do_not_contact"));
+  addBtn(rightCol, "Clear",          bucket === null,                       "parent", () => openClearOutreachConfirm(leadId), "clear-btn");
+
+  grid.appendChild(leftCol);
+  grid.appendChild(rightCol);
+  container.appendChild(grid);
+}
+
+// Pending state for the Emailed sub-section picker / clear-confirm modals.
+state._emailedPickerLeadId = null;
+state._clearConfirmLeadId = null;
+
+function openEmailedSubsectionPicker(leadId) {
+  state._emailedPickerLeadId = leadId;
+  document.getElementById("emailed-subsection-picker-modal").classList.remove("hidden");
+}
+// `defaultIfClosed` true means closing the modal without picking applies the
+// "Awaiting First Response" fallback the user requested. The buttons inside
+// the modal pick a specific sub and pass false (so it doesn't double-apply).
+function closeEmailedSubsectionPicker(defaultIfClosed) {
+  const lid = state._emailedPickerLeadId;
+  state._emailedPickerLeadId = null;
+  document.getElementById("emailed-subsection-picker-modal").classList.add("hidden");
+  if (defaultIfClosed && lid) setEmailedBucketOverride(lid, "awaiting_first");
+}
+// Wire the picker buttons once on load.
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("emailed-subsection-picker-modal");
+  if (!modal) return;
+  modal.querySelectorAll("[data-sub]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sub = btn.dataset.sub;
+      const lid = state._emailedPickerLeadId;
+      state._emailedPickerLeadId = null;
+      document.getElementById("emailed-subsection-picker-modal").classList.add("hidden");
+      if (lid) setEmailedBucketOverride(lid, sub);
+    });
+  });
+});
+
+function openClearOutreachConfirm(leadId) {
+  state._clearConfirmLeadId = leadId;
+  document.getElementById("clear-outreach-confirm-modal").classList.remove("hidden");
+}
+function closeClearOutreachConfirm() {
+  state._clearConfirmLeadId = null;
+  document.getElementById("clear-outreach-confirm-modal").classList.add("hidden");
+}
+function confirmClearOutreach() {
+  const lid = state._clearConfirmLeadId;
+  state._clearConfirmLeadId = null;
+  document.getElementById("clear-outreach-confirm-modal").classList.add("hidden");
+  if (lid) clearLeadOutreach(lid);
+}
+function clearLeadOutreach(leadId) {
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  firebase.firestore().collection("leads").doc(leadId).set({
+    crm_status: null,
+    crm_called: false,
+    crm_emailed: false,
+    crm_call_outcome: null,
+    crm_email_bucket_override: null,
+    crm_email_outcome: null,
+    crm_dnc_reason: null,
+    crm_dnc_reason_text: null,
+    crm_follow_up_needed: false,
+    crm_last_touched: now,
+    crm_touched_by: user ? user.email : null,
+  }, { merge: true })
+    .then(() => showToast("Cleared all outreach state."))
+    .catch(err => { console.error(err); showToast("Clear failed: " + err.message); });
+}
+
+// View in Outreach: close drawer, switch to Outreach tab, scroll the lead's
+// card into view, briefly highlight it. Run in two phases so the kanban has
+// a chance to actually render before we try to find the card.
+function viewInOutreach(leadId) {
+  closeDrawer();
+  // Switch to the Outreach tab via the existing tab system.
+  const tabBtn = document.querySelector('.tab[data-tab="outreach"]');
+  if (tabBtn) tabBtn.click();
+  // Defer the scroll/highlight until the kanban has rendered.
+  setTimeout(() => {
+    const card = document.querySelector(`.kanban-card[data-id="${leadId}"]`);
+    if (!card) {
+      showToast("Lead isn't in any Outreach column right now.");
+      return;
+    }
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.remove("flash-highlight");
+    // Re-trigger the animation by forcing a reflow.
+    void card.offsetWidth;
+    card.classList.add("flash-highlight");
+    setTimeout(() => card.classList.remove("flash-highlight"), 1500);
+  }, 120);
+}
+
 function subscribeEmailActivity(leadId) {
   if (state._emailActivityUnsub) { state._emailActivityUnsub(); state._emailActivityUnsub = null; }
   const listEl = document.getElementById("email-activity-list");
@@ -2432,11 +2884,10 @@ function renderEmailActivity(listEl, docs) {
     listEl.innerHTML = '<div class="email-activity-empty">No email activity yet — the Gmail ingest will surface conversations here once it\'s running.</div>';
     return;
   }
-  // Only render full body text when the lead has actually replied (any inbound
-  // message exists). For pure outbound-only conversations we just show subject
-  // + snippet — keeps the drawer lightweight for the ~900 leads who haven't
-  // replied yet.
-  const leadHasReplied = docs.some(d => d.direction === "inbound");
+  // Always render the full body text inline when it's available (v2.16).
+  // Earlier we gated this on the lead having replied, but the team wants the
+  // full conversation visible the moment any drawer opens — including pure
+  // outbound-only threads (Awaiting First Response / Following Up).
   listEl.innerHTML = "";
   for (const d of docs) {
     const sentMs = d.sent_at && d.sent_at.toMillis ? d.sent_at.toMillis() : 0;
@@ -2454,7 +2905,7 @@ function renderEmailActivity(listEl, docs) {
     row.dataset.dir = d.direction || "outbound";
     const opens = d.opens ? `<span class="opens">Opened ${d.opens}×</span>` : "";
     const attach = d.has_attachments ? `<span class="attach">📎 attachment</span>` : "";
-    const showFullBody = leadHasReplied && d.body_text;
+    const showFullBody = !!d.body_text;
     row.innerHTML = `
       <div class="head">
         <span class="dir">${arrow}</span>
@@ -2582,6 +3033,94 @@ function _formatExportCell(value, field) {
   return value;
 }
 
+function _buildFilterDescription(count) {
+  // Build a human-readable description of which sidebar filters are active.
+  const items = [`${count.toLocaleString()} lead${count === 1 ? "" : "s"} total`];
+  const f = state.filters || {};
+  if (f.search) items.push(`Search: "${f.search}"`);
+  if (f.markets && f.markets.size > 0) items.push(`Markets: ${[...f.markets].map(formatMarket).join(", ")}`);
+  // v2.18 tristate filter — surface each Yes/No condition in the export summary.
+  const labels = { emailed: "Emailed", called: "Called", demo_scheduled: "Demo Scheduled", do_not_contact: "Do Not Contact" };
+  const ts = f.activity_states || {};
+  for (const k of Object.keys(labels)) {
+    if (ts[k]) items.push(`${labels[k]}: ${ts[k]}`);
+  }
+  if (f.phone === "yes") items.push("Has phone");
+  else if (f.phone === "no") items.push("No phone");
+  if (f.email === "yes") items.push("Has email");
+  else if (f.email === "no") items.push("No email");
+  if (f.dnc === "hide") items.push("DNC: hidden");
+  else if (f.dnc === "only") items.push("DNC: only");
+  if (f.owner_type && f.owner_type !== "any") items.push(`Owner type: ${f.owner_type}`);
+  if (f.absentee === "yes") items.push("Absentee: yes");
+  else if (f.absentee === "no") items.push("Absentee: no");
+  if (f.owner && f.owner !== "any") items.push(`Owner: ${f.owner === "unassigned" ? "unassigned" : f.owner}`);
+  if (items.length === 1) items.push("No sidebar filters applied (all leads)");
+  return items;
+}
+
+// Stash for the pending export — populated when the modal opens, consumed by
+// confirmExport(). Keeps the actual XLSX generation out of the modal-open path
+// so the user can still cancel without paying the sheet-build cost.
+state._exportPending = null;
+
+function openExportConfirmModal(meta) {
+  state._exportPending = meta;
+  document.getElementById("export-confirm-filename").value = meta.defaultFilename;
+  const summaryEl = document.getElementById("export-confirm-summary");
+  summaryEl.innerHTML = meta.descriptionItems.map(item => `<li>${escapeHtml(item)}</li>`).join("");
+  document.getElementById("export-confirm-modal").classList.remove("hidden");
+  // Select the filename minus extension so the user can rename fast.
+  setTimeout(() => {
+    const inp = document.getElementById("export-confirm-filename");
+    inp.focus();
+    const dot = inp.value.lastIndexOf(".xlsx");
+    if (dot > 0) inp.setSelectionRange(0, dot);
+    else inp.select();
+  }, 50);
+}
+
+function closeExportConfirmModal() {
+  document.getElementById("export-confirm-modal").classList.add("hidden");
+  state._exportPending = null;
+}
+
+function confirmExport() {
+  const pending = state._exportPending;
+  if (!pending) return;
+  let filename = (document.getElementById("export-confirm-filename").value || "").trim();
+  if (!filename) filename = pending.defaultFilename;
+  if (!filename.toLowerCase().endsWith(".xlsx")) filename += ".xlsx";
+  closeExportConfirmModal();
+  _writeLeadsXlsx(pending.leads, filename, pending.sheetName || "Leads");
+}
+
+function _writeLeadsXlsx(leads, filename, sheetName) {
+  if (typeof XLSX === "undefined") {
+    showToast("Export library not loaded — refresh and try again.");
+    return;
+  }
+  try {
+    const allCols = [...DATAZAPP_EXPORT_COLUMNS, ...CRM_EXPORT_COLUMNS];
+    const headers = allCols.map(c => c[0]);
+    const rows = leads.map(lead => {
+      const out = {};
+      for (const [header, field] of allCols) {
+        out[header] = _formatExportCell(lead[field], field);
+      }
+      return out;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, (sheetName || "Leads").substring(0, 31));
+    XLSX.writeFile(wb, filename);
+    showToast(`Exported ${leads.length.toLocaleString()} leads → ${filename}`);
+  } catch (e) {
+    console.error(e);
+    showToast("Export failed: " + (e.message || String(e)));
+  }
+}
+
 function exportLeadsXlsx() {
   if (typeof XLSX === "undefined") {
     showToast("Export library not loaded — refresh and try again.");
@@ -2593,37 +3132,61 @@ function exportLeadsXlsx() {
     showToast("No leads match the current filters — nothing to export.");
     return;
   }
-  const btn = document.getElementById("export-leads-btn");
-  const origText = btn ? btn.textContent : "Export";
-  if (btn) { btn.disabled = true; btn.textContent = "Exporting…"; }
-  // Yield to the browser so the button update paints before the (possibly
-  // multi-thousand-row) sheet generation blocks the main thread.
-  setTimeout(() => {
-    try {
-      const allCols = [...DATAZAPP_EXPORT_COLUMNS, ...CRM_EXPORT_COLUMNS];
-      const headers = allCols.map(c => c[0]);
-      const rows = filtered.map(lead => {
-        const out = {};
-        for (const [header, field] of allCols) {
-          out[header] = _formatExportCell(lead[field], field);
-        }
-        return out;
-      });
-      const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Leads");
-      const now = new Date();
-      const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}-${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
-      const fname = `propagentic-leads-${stamp}.xlsx`;
-      XLSX.writeFile(wb, fname);
-      showToast(`Exported ${filtered.length.toLocaleString()} leads → ${fname}`);
-    } catch (e) {
-      console.error(e);
-      showToast("Export failed: " + (e.message || String(e)));
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = origText; }
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}-${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+  openExportConfirmModal({
+    leads: filtered,
+    sheetName: "Leads",
+    defaultFilename: `propagentic-leads-${stamp}.xlsx`,
+    descriptionItems: _buildFilterDescription(filtered.length),
+  });
+}
+
+// Per-section Emailed export. Leads passed in are already filtered by sidebar
+// filters, bucket, and active toggles — the caller (renderEmailedSections)
+// hands us the exact `visible` array shown on screen.
+function exportEmailedSection(sectionId, sectionLabel, leads) {
+  if (typeof XLSX === "undefined") {
+    showToast("Export library not loaded — refresh and try again.");
+    return;
+  }
+  if (!leads || leads.length === 0) {
+    showToast("Nothing to export in this section.");
+    return;
+  }
+  const slug = sectionId.replace(/_/g, "-");
+  const t = state._emailedToggles || {};
+  let toggleSuffix = "";
+  const toggleItems = [];
+  if (sectionId === "awaiting_first" && t.awaiting_first_3plus_days) {
+    toggleSuffix = "-3plus-days";
+    toggleItems.push("Toggle: 3+ days overdue (last outbound ≥3 days ago)");
+  } else if (sectionId === "following_up") {
+    const parts = [];
+    if (t.following_up_2weeks) {
+      parts.push("2plus-weeks");
+      toggleItems.push("Toggle: 2+ weeks (exactly 2 outbound, last ≥14 days ago)");
     }
-  }, 30);
+    if (t.following_up_2weeks_3days) {
+      parts.push("2wks-3days");
+      toggleItems.push("Toggle: 2 wks 3 days+ (exactly 3 outbound, last ≥17 days ago)");
+    }
+    if (parts.length) toggleSuffix = "-" + parts.join("-");
+  }
+  const description = [
+    `Section: Emailed → ${sectionLabel}`,
+    `${leads.length.toLocaleString()} lead${leads.length === 1 ? "" : "s"} in this section after filters`,
+    ..._buildFilterDescription(leads.length).slice(1),  // skip the count line we already have
+    ...toggleItems,
+  ];
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}-${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}`;
+  openExportConfirmModal({
+    leads: leads,
+    sheetName: sectionLabel,
+    defaultFilename: `propagentic-${slug}${toggleSuffix}-${stamp}.xlsx`,
+    descriptionItems: description,
+  });
 }
 
 // =========================================================================
@@ -2710,13 +3273,41 @@ function attachFilterHandlers() {
     state.filters.search = e.target.value;
     renderAll();
   });
-  document.querySelectorAll('#f-activity input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener("change", () => {
-      const v = cb.dataset.activity;
-      if (cb.checked) state.filters.activity.add(v);
-      else state.filters.activity.delete(v);
-      renderAll();
+  // v2.18: Activity/Stage tristate filter. Each row has Yes/No buttons +
+  // a Clear link; the top "Clear options" resets all four rows.
+  function _renderActivityTristateRow(row) {
+    const cond = row.dataset.cond;
+    const cur = state.filters.activity_states[cond];
+    row.querySelectorAll(".atri-btn").forEach(b => {
+      b.classList.toggle("on", b.dataset.val === cur);
     });
+  }
+  function _setActivityTristate(cond, value) {
+    state.filters.activity_states[cond] = value;
+    const row = document.querySelector(`#f-activity .activity-tristate-row[data-cond="${cond}"]`);
+    if (row) _renderActivityTristateRow(row);
+    renderAll();
+  }
+  document.querySelectorAll("#f-activity .activity-tristate-row").forEach(row => {
+    const cond = row.dataset.cond;
+    row.querySelectorAll(".atri-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.val;
+        const cur = state.filters.activity_states[cond];
+        // Re-clicking the same active button deselects it (back to null).
+        _setActivityTristate(cond, cur === v ? null : v);
+      });
+    });
+    row.querySelector(".atri-clear").addEventListener("click", () => {
+      _setActivityTristate(cond, null);
+    });
+  });
+  document.getElementById("f-activity-clear-all").addEventListener("click", () => {
+    for (const k of Object.keys(state.filters.activity_states)) {
+      state.filters.activity_states[k] = null;
+    }
+    document.querySelectorAll("#f-activity .activity-tristate-row").forEach(_renderActivityTristateRow);
+    renderAll();
   });
   document.getElementById("f-owner-type").addEventListener("change", (e) => {
     state.filters.owner_type = e.target.value;
@@ -2748,13 +3339,15 @@ function attachFilterHandlers() {
 function resetFilters() {
   state.filters = {
     search: "", markets: new Set(), activity: new Set(),
+    activity_states: { emailed: null, called: null, demo_scheduled: null, do_not_contact: null },
     phone: "any", email: "any", dnc: "any", owner_type: "any", absentee: "any",
     owner: "any",
   };
   document.getElementById("f-search").value = "";
   document.getElementById("f-owner-type").value = "any";
   document.querySelectorAll('#f-markets input').forEach(c => c.checked = false);
-  document.querySelectorAll('#f-activity input').forEach(c => c.checked = false);
+  // Reset every tristate row's button highlighting to match the cleared state.
+  document.querySelectorAll('#f-activity .atri-btn').forEach(b => b.classList.remove("on"));
   [["f-phone","any"], ["f-email","any"], ["f-dnc","any"], ["f-absentee","any"]].forEach(([id,val]) => {
     document.querySelectorAll(`#${id} button`).forEach(b => {
       b.classList.toggle("active", b.dataset.value === val);
@@ -3577,7 +4170,6 @@ function renderSbList() {
             <label><input type="checkbox" data-lid="${lid}" data-field="pickup_no" ${rs.call_outcome === "no_pickup" ? "checked" : ""}>Didn't Pick Up: Needs Follow Up</label>
             <label><input type="checkbox" data-lid="${lid}" data-field="pickup_yes" ${rs.call_outcome === "picked_up" ? "checked" : ""}>Picked Up: Needs Follow Up</label>
           </div>
-          <label><input type="checkbox" data-lid="${lid}" data-field="emailed" ${rs.emailed ? "checked" : ""}>Emailed</label>
         </div>
         <div class="col col-right">
           <label><input type="checkbox" data-lid="${lid}" data-field="demo_scheduled" ${rs.demo_scheduled ? "checked" : ""}>Demo Booked</label>

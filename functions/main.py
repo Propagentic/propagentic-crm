@@ -165,6 +165,11 @@ def _run_poll() -> dict:
             email_to_lead_ids.setdefault(email, []).append(d.id)
     print(f"loaded {n_leads} leads ({len(email_to_lead_ids)} with email)")
 
+    # Load the crm_users registry so we can resolve outbound sender emails
+    # (including aliases like weinba23@wfu.edu) back to the canonical team
+    # member's email for auto-assignment.
+    crm_users_lookup = _load_crm_users_lookup(db)
+
     sa_info = json.loads(GMAIL_SA_KEY.value)
     after_ts = int(
         (datetime.now(timezone.utc) - timedelta(minutes=LOOKBACK_MINUTES)).timestamp()
@@ -173,6 +178,7 @@ def _run_poll() -> dict:
 
     total_seen = 0
     total_matched = 0
+    affected_leads: set[str] = set()
 
     for mailbox in MAILBOXES:
         try:
@@ -273,6 +279,7 @@ def _run_poll() -> dict:
             db.collection("emailActivity").document(doc_id).set(doc, merge=True)
 
             for lid in matched:
+                affected_leads.add(lid)
                 update = {
                     "crm_emailed": True,
                     "crm_emailed_at": firestore.SERVER_TIMESTAMP,
@@ -284,8 +291,156 @@ def _run_poll() -> dict:
         if mailbox_matched:
             print(f"[{mailbox}] matched {mailbox_matched} of {len(msg_ids)}")
 
-    print(f"poll complete: matched {total_matched} of {total_seen}")
-    return {"seen": total_seen, "matched": total_matched}
+    # Recompute per-lead email summary fields (counts + last-message timing +
+    # direction) for every lead touched this cycle. The kanban Emailed sub-
+    # sections (Needs Response / In Conversation / Awaiting First Response /
+    # Following Up) read these fields directly — no client-side aggregation.
+    # Also re-runs auto-assignment: whoever sent the most recent outbound is
+    # the lead's owner (crm_owner field).
+    for lid in affected_leads:
+        try:
+            _recompute_lead_email_summary(db, lid, crm_users_lookup)
+        except Exception as e:
+            print(f"summary recompute failed for {lid}: {e}")
+
+    # Auto-DNC pass: any lead with >=4 outbound and 0 inbound and the most
+    # recent outbound was >=14 days ago (the chosen grace window) gets moved
+    # to Do Not Contact with reason="unspecified". Runs every poll cycle so a
+    # lead that crosses the threshold is caught within minutes.
+    dnc_count = _auto_dnc_pass(db)
+    if dnc_count:
+        print(f"auto-DNC: marked {dnc_count} leads")
+
+    print(f"poll complete: matched {total_matched} of {total_seen}; touched {len(affected_leads)} leads")
+    return {"seen": total_seen, "matched": total_matched, "leads_touched": len(affected_leads), "auto_dnc": dnc_count}
+
+
+# Window after the 4th outbound during which we still wait for a reply.
+# Aligned with the user's stated cadence (initial / 3d / 2w / 2w+3d).
+AUTO_DNC_GRACE_DAYS = 14
+
+
+def _natural_bucket(inbound: int, outbound: int, last_dir: str) -> str:
+    """Compute the natural Emailed sub-section a lead lands in, ignoring any
+    manual override. Mirrors the frontend `emailedBucket()` exactly so they
+    stay in sync."""
+    if inbound > 0 and last_dir == "inbound": return "needs_response"
+    if inbound > 0 and last_dir == "outbound": return "in_conversation"
+    if inbound == 0 and outbound == 1: return "awaiting_first"
+    if inbound == 0 and outbound >= 2: return "following_up"
+    return "awaiting_first"
+
+
+def _load_crm_users_lookup(db) -> dict:
+    """
+    Build a lookup map from any team-member email (primary or alias) to the
+    canonical primary email. e.g. "weinba23@wfu.edu" -> "ben@propagenticai.com".
+    """
+    lookup = {}
+    for d in db.collection("crm_users").stream():
+        data = d.to_dict()
+        primary = (data.get("email") or d.id).lower()
+        lookup[primary] = primary
+        for alias in (data.get("aliases") or []):
+            if alias:
+                lookup[alias.lower()] = primary
+    return lookup
+
+
+def _recompute_lead_email_summary(db, lead_id: str, crm_users_lookup: dict = None) -> None:
+    """
+    Aggregate all emailActivity for this lead and write summary fields to the
+    lead doc. Idempotent — same input always produces the same output.
+
+    Also auto-assigns crm_owner = canonical email of the team member whose
+    address appears in the most recent outbound message. If we can't resolve
+    the sender to a known team member, crm_owner is left untouched.
+    """
+    docs = db.collection("emailActivity") \
+        .where("matched_lead_ids", "array_contains", lead_id) \
+        .stream()
+    inbound = 0
+    outbound = 0
+    last_at = None
+    last_dir = None
+    last_outbound_at = None
+    last_inbound_at = None
+    last_outbound_from = None
+    for d in docs:
+        data = d.to_dict()
+        direction = data.get("direction") or "outbound"
+        sent_at = data.get("sent_at")
+        if direction == "inbound":
+            inbound += 1
+            if sent_at and (last_inbound_at is None or sent_at > last_inbound_at):
+                last_inbound_at = sent_at
+        else:
+            outbound += 1
+            if sent_at and (last_outbound_at is None or sent_at > last_outbound_at):
+                last_outbound_at = sent_at
+                last_outbound_from = (data.get("from_email") or "").lower()
+        if sent_at and (last_at is None or sent_at > last_at):
+            last_at = sent_at
+            last_dir = direction
+
+    update = {
+        "crm_email_outbound_count": outbound,
+        "crm_email_inbound_count": inbound,
+        "crm_email_last_at": last_at,
+        "crm_email_last_outbound_at": last_outbound_at,
+        "crm_email_last_inbound_at": last_inbound_at,
+        "crm_email_last_direction": last_dir,
+    }
+    # Auto-assignment: most recent outbound's sender wins. We only write
+    # crm_owner if we can resolve the sender to a known team member; otherwise
+    # the existing value is left as-is.
+    if last_outbound_from and crm_users_lookup:
+        canonical = crm_users_lookup.get(last_outbound_from)
+        if canonical:
+            update["crm_owner"] = canonical
+
+    # Manual bucket override yields to auto once natural data catches up. If
+    # the lead has a crm_email_bucket_override AND the natural bucket now
+    # matches that override, clear it — no longer needed.
+    existing = db.collection("leads").document(lead_id).get()
+    existing_data = existing.to_dict() if existing.exists else {}
+    override = existing_data.get("crm_email_bucket_override")
+    if override:
+        natural = _natural_bucket(inbound, outbound, last_dir)
+        if natural == override:
+            update["crm_email_bucket_override"] = firestore.DELETE_FIELD
+
+    db.collection("leads").document(lead_id).set(update, merge=True)
+
+
+def _auto_dnc_pass(db) -> int:
+    """
+    Find leads where: 4+ outbound, 0 inbound, latest outbound >=14 days ago,
+    and not already DNC. Mark them DNC with reason='unspecified' + audit flag.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=AUTO_DNC_GRACE_DAYS)
+    # Single-field query to keep index requirements minimal; filter the rest in Python.
+    candidates = db.collection("leads") \
+        .where("crm_email_outbound_count", ">=", 4) \
+        .stream()
+    marked = 0
+    for c in candidates:
+        data = c.to_dict()
+        if data.get("crm_status") == "do_not_contact":
+            continue
+        if (data.get("crm_email_inbound_count") or 0) > 0:
+            continue
+        last_out = data.get("crm_email_last_outbound_at")
+        if not last_out or last_out > cutoff:
+            continue
+        db.collection("leads").document(c.id).set({
+            "crm_status": "do_not_contact",
+            "crm_dnc_reason": "unspecified",
+            "crm_dnc_auto": True,
+            "crm_dnc_auto_at": firestore.SERVER_TIMESTAMP,
+        }, merge=True)
+        marked += 1
+    return marked
 
 
 # HTTPS-triggered ingest function. Cloud Scheduler invokes this URL on a 2-min
