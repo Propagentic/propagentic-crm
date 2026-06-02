@@ -227,6 +227,14 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 .badge-status-paid { background: rgba(16, 185, 129, 0.18); color: #34d399; }
 .badge-dnc { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
 .badge-market { background: var(--panel-2); color: var(--text-dim); }
+/* PM badge (v2.21) — Property Manager entries are colored purple to
+   distinguish them from the default landlord cards. Used on kanban
+   cards, drawer header, and the lead list row. */
+.badge-pm { background: rgba(139, 92, 246, 0.18); color: #c4b5fd; font-weight: 700; letter-spacing: 0.05em; }
+/* PM Profile section in drawer */
+.pm-profile-link { color: var(--accent); text-decoration: none; word-break: break-all; }
+.pm-profile-link:hover { text-decoration: underline; }
+.pm-profile-hook { background: var(--bg); border: 1px solid var(--border); border-left: 3px solid #8b5cf6; border-radius: 5px; padding: 10px 12px; font-size: 12.5px; color: var(--text-soft); line-height: 1.5; font-style: italic; margin-top: 4px; }
 
 /* --- Outreach kanban --- */
 .kanban { display: flex; gap: 12px; padding: 14px; overflow-x: auto; flex: 1; min-height: 0; }
@@ -869,12 +877,11 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
       </div>
 
       <div class="filter-group">
-        <span class="label">Owner type</span>
-        <select id="f-owner-type" class="select-input">
-          <option value="any">All</option>
-          <option value="Individual-Single">Individual — Single</option>
-          <option value="Individual-Joint">Individual — Joint</option>
-        </select>
+        <span class="label">Lead type</span>
+        <div class="toggle-pills" id="f-entity-type">
+          <button data-value="landlord">Landlord</button>
+          <button data-value="property_manager">Property Manager</button>
+        </div>
       </div>
 
       <div class="filter-group">
@@ -900,6 +907,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <button class="tab active" data-tab="map">Map <span class="badge" id="tab-count-map">0</span></button>
         <button class="tab" data-tab="list">List <span class="badge" id="tab-count-list">0</span></button>
         <button class="tab" data-tab="outreach">Outreach <span class="badge" id="tab-count-outreach">0</span></button>
+        <button class="tab" data-tab="investors">Investors <span class="badge" id="tab-count-investors">0</span></button>
         <button class="tab" data-tab="daily">Call Log <span class="badge" id="tab-count-daily">0</span></button>
         <button class="tab" data-tab="stats">Stats</button>
         <button class="tab" data-tab="import">Import</button>
@@ -932,8 +940,35 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
             <div id="list-empty" class="empty-state" style="display:none">No leads match the current filters.</div>
           </div>
         </div>
+
         <div class="tab-pane" data-tab="outreach">
           <div class="kanban" id="kanban"></div>
+        </div>
+
+        <div class="tab-pane" data-tab="investors">
+          <div class="list-wrap">
+            <table class="leads-table" id="investors-table">
+              <thead>
+                <tr>
+                  <th data-inv-sort="last_name">Name <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="title">Title <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="firm_name">Firm <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="firm_type">Type <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="city">Location <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="email">Email <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="phone">Phone <span class="sort-arrow">↕</span></th>
+                  <th data-inv-sort="crm_last_touched">Last touched <span class="sort-arrow">↕</span></th>
+                </tr>
+                <tr class="list-toolbar-row">
+                  <td colspan="8">
+                    <button class="list-toolbar-add-btn" onclick="openInvestorModal()">+ New Investor</button>
+                  </td>
+                </tr>
+              </thead>
+              <tbody id="investors-tbody"></tbody>
+            </table>
+            <div id="investors-empty" class="empty-state" style="display:none">No investors yet — click <b>+ New Investor</b> to add the first one.</div>
+          </div>
         </div>
         <div class="tab-pane" data-tab="daily">
           <div class="daily-wrap">
@@ -1085,6 +1120,68 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
     <div class="badges" id="drawer-badges"></div>
   </div>
   <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<div id="investor-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 640px;">
+    <div class="modal-head">
+      <h3 id="investor-modal-title">Add new investor</h3>
+      <button class="modal-close" onclick="closeInvestorModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <h4>Contact</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <input id="inv-first" class="text-input" placeholder="First name *" />
+          <input id="inv-last"  class="text-input" placeholder="Last name *" />
+          <input id="inv-email" class="text-input" placeholder="Email" />
+          <input id="inv-phone" class="text-input" placeholder="Phone" />
+          <input id="inv-title" class="text-input" placeholder="Title (e.g. Partner, Principal, Angel)" style="grid-column:1/-1;" />
+          <input id="inv-linkedin" class="text-input" placeholder="LinkedIn URL" style="grid-column:1/-1;" />
+        </div>
+      </div>
+      <div class="form-section">
+        <h4>Firm</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <input id="inv-firm-name" class="text-input" placeholder="Firm / fund name" style="grid-column:1/-1;" />
+          <input id="inv-firm-website" class="text-input" placeholder="Firm website" style="grid-column:1/-1;" />
+          <select id="inv-firm-type" class="select-input">
+            <option value="">— Firm type —</option>
+            <option value="VC">VC</option>
+            <option value="Angel">Angel</option>
+            <option value="Family Office">Family Office</option>
+            <option value="Strategic">Strategic</option>
+            <option value="Accelerator">Accelerator</option>
+            <option value="Other">Other</option>
+          </select>
+          <input id="inv-check-size" class="text-input" placeholder='Check size (e.g. "$25K–$250K")' />
+          <input id="inv-stage-focus" class="text-input" placeholder='Stage focus (e.g. "Pre-seed, Seed")' />
+          <input id="inv-sector-focus" class="text-input" placeholder='Sector focus (e.g. "PropTech, AI")' />
+        </div>
+      </div>
+      <div class="form-section">
+        <h4>Location</h4>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;">
+          <input id="inv-city" class="text-input" placeholder="City" />
+          <input id="inv-state" class="text-input" placeholder="State / region" />
+          <input id="inv-country" class="text-input" placeholder="Country" />
+        </div>
+      </div>
+      <div class="form-section">
+        <h4>Relationship</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <input id="inv-source" class="text-input" placeholder='Source (e.g. "Referral", "LinkedIn")' />
+          <input id="inv-referred-by" class="text-input" placeholder="Referred by" />
+        </div>
+        <textarea id="inv-notes" class="notes-input" style="min-height:80px;margin-top:10px;" placeholder="Notes (markdown supported — meeting recaps, follow-ups, intros to make)"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span id="inv-error" class="err" style="display:none"></span>
+      <button class="btn" onclick="closeInvestorModal()">Cancel</button>
+      <button class="btn btn-primary" id="inv-save-btn" onclick="saveInvestor()">Save investor</button>
+    </div>
+  </div>
 </div>
 
 <div id="add-lead-modal" class="modal-overlay hidden">
@@ -1411,6 +1508,9 @@ function isStatusUpgrade(fromStatus, toStatus) {
 // Mutable app state
 const state = {
   leads: new Map(),          // doc_id -> lead doc
+  investors: new Map(),      // v2.23: doc_id -> investor doc (separate Firestore collection)
+  investorsSort: { key: "last_name", dir: 1 },
+  editingInvestorId: null,
   crmUsers: new Map(),       // lowercased email (primary or alias) -> {email, displayName, color, initials, role}
   filters: {
     search: "",
@@ -1428,6 +1528,7 @@ const state = {
     owner_type: "any",
     absentee: "any",
     owner: "any",          // 'any' | 'unassigned' | <email of a crm_users entry or alias>
+    entity_type: "any",    // v2.21: 'any' | 'landlord' | 'property_manager'
   },
   sort: { key: "owner_name", dir: 1 },  // 1 asc, -1 desc
   activeTab: "map",
@@ -1446,6 +1547,7 @@ window.onAuthReady = function(user) {
   subscribeToLeads();
   subscribeToBatches();
   subscribeToCrmUsers();
+  subscribeToInvestors();
   attachFilterHandlers();
   attachTabHandlers();
   attachImportHandlers();
@@ -1677,6 +1779,197 @@ function getOwnerUser(email) {
 }
 
 // =========================================================================
+// Investors (v2.23) — separate Firestore collection. Contact records only
+// for first iteration; no pipeline status, no kanban, no email integration.
+// =========================================================================
+function subscribeToInvestors() {
+  const db = firebase.firestore();
+  db.collection("investors").onSnapshot((snap) => {
+    snap.docChanges().forEach((ch) => {
+      if (ch.type === "removed") {
+        state.investors.delete(ch.doc.id);
+      } else {
+        const d = ch.doc.data();
+        d._id = ch.doc.id;
+        state.investors.set(ch.doc.id, d);
+      }
+    });
+    renderInvestors();
+  }, (err) => {
+    // Most likely the firestore rule allowlist doesn't include `investors`
+    // yet — surface a clear message in the tab so the user knows what to do.
+    console.warn("investors snapshot error:", err);
+    const empty = document.getElementById("investors-empty");
+    if (empty) {
+      empty.style.display = "block";
+      empty.innerHTML = `Couldn't load investors — Firestore rules likely need an <code>investors</code> collection rule added. (Console error: ${escapeHtml(err.message || String(err))})`;
+    }
+  });
+}
+
+function renderInvestors() {
+  const tbody = document.getElementById("investors-tbody");
+  if (!tbody) return;
+  const empty = document.getElementById("investors-empty");
+  const all = Array.from(state.investors.values());
+  document.getElementById("tab-count-investors").textContent = all.length.toLocaleString();
+  if (all.length === 0) {
+    tbody.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  const { key, dir } = state.investorsSort;
+  const safe = v => v == null ? "" : String(v).toLowerCase();
+  const sorted = all.slice().sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (key === "crm_last_touched") {
+      av = av && av.toMillis ? av.toMillis() : 0;
+      bv = bv && bv.toMillis ? bv.toMillis() : 0;
+      return (av - bv) * dir;
+    }
+    av = safe(av); bv = safe(bv);
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+
+  tbody.innerHTML = "";
+  for (const inv of sorted) {
+    const tr = document.createElement("tr");
+    tr.dataset.id = inv._id;
+    const fullName = [inv.first_name, inv.last_name].filter(Boolean).join(" ") || "—";
+    const location = [inv.city, inv.state].filter(Boolean).join(", ");
+    const last = inv.crm_last_touched && inv.crm_last_touched.toMillis
+      ? formatDate(new Date(inv.crm_last_touched.toMillis()))
+      : "—";
+    tr.innerHTML = `
+      <td class="name">${escapeHtml(fullName)}</td>
+      <td>${escapeHtml(inv.title || "")}</td>
+      <td>${escapeHtml(inv.firm_name || "")}</td>
+      <td>${escapeHtml(inv.firm_type || "")}</td>
+      <td>${escapeHtml(location)}</td>
+      <td>${escapeHtml(inv.email || "")}</td>
+      <td>${escapeHtml(inv.phone ? formatPhone(inv.phone) : "")}</td>
+      <td>${escapeHtml(last)}</td>
+    `;
+    tr.addEventListener("click", () => openInvestorModal(inv._id));
+    tbody.appendChild(tr);
+  }
+}
+
+function openInvestorModal(investorId) {
+  state.editingInvestorId = investorId || null;
+  const v = (id, val) => { document.getElementById(id).value = val || ""; };
+  if (investorId && state.investors.has(investorId)) {
+    const inv = state.investors.get(investorId);
+    document.getElementById("investor-modal-title").textContent = "Edit investor";
+    v("inv-first", inv.first_name);
+    v("inv-last", inv.last_name);
+    v("inv-email", inv.email);
+    v("inv-phone", inv.phone);
+    v("inv-title", inv.title);
+    v("inv-linkedin", inv.linkedin_url);
+    v("inv-firm-name", inv.firm_name);
+    v("inv-firm-website", inv.firm_website);
+    document.getElementById("inv-firm-type").value = inv.firm_type || "";
+    v("inv-check-size", inv.check_size);
+    v("inv-stage-focus", inv.stage_focus);
+    v("inv-sector-focus", inv.sector_focus);
+    v("inv-city", inv.city);
+    v("inv-state", inv.state);
+    v("inv-country", inv.country);
+    v("inv-source", inv.source);
+    v("inv-referred-by", inv.referred_by);
+    v("inv-notes", inv.crm_notes);
+    document.getElementById("inv-save-btn").textContent = "Save changes";
+  } else {
+    document.getElementById("investor-modal-title").textContent = "Add new investor";
+    ["inv-first","inv-last","inv-email","inv-phone","inv-title","inv-linkedin","inv-firm-name",
+     "inv-firm-website","inv-check-size","inv-stage-focus","inv-sector-focus","inv-city",
+     "inv-state","inv-country","inv-source","inv-referred-by","inv-notes"].forEach(id => v(id, ""));
+    document.getElementById("inv-firm-type").value = "";
+    document.getElementById("inv-save-btn").textContent = "Save investor";
+  }
+  document.getElementById("inv-error").style.display = "none";
+  document.getElementById("investor-modal").classList.remove("hidden");
+  setTimeout(() => document.getElementById("inv-first").focus(), 50);
+}
+
+function closeInvestorModal() {
+  document.getElementById("investor-modal").classList.add("hidden");
+  state.editingInvestorId = null;
+}
+
+async function saveInvestor() {
+  const errEl = document.getElementById("inv-error");
+  const v = (id) => (document.getElementById(id).value || "").trim();
+  const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = "inline"; };
+
+  const first = v("inv-first");
+  const last = v("inv-last");
+  if (!first || !last) return showErr("First and last name are required.");
+
+  const user = window.propagenticAuth.user;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const payload = {
+    first_name: first, last_name: last,
+    email: v("inv-email") || null,
+    phone: v("inv-phone").replace(/\D/g, "") || null,
+    title: v("inv-title") || null,
+    linkedin_url: v("inv-linkedin") || null,
+    firm_name: v("inv-firm-name") || null,
+    firm_website: v("inv-firm-website") || null,
+    firm_type: v("inv-firm-type") || null,
+    check_size: v("inv-check-size") || null,
+    stage_focus: v("inv-stage-focus") || null,
+    sector_focus: v("inv-sector-focus") || null,
+    city: v("inv-city") || null,
+    state: v("inv-state") || null,
+    country: v("inv-country") || null,
+    source: v("inv-source") || null,
+    referred_by: v("inv-referred-by") || null,
+    crm_notes: v("inv-notes") || null,
+    crm_last_touched: now,
+    crm_touched_by: user ? user.email : null,
+  };
+
+  const btn = document.getElementById("inv-save-btn");
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    if (state.editingInvestorId) {
+      await firebase.firestore().collection("investors").doc(state.editingInvestorId).set(payload, { merge: true });
+      showToast("Investor updated");
+    } else {
+      payload.created_at = now;
+      payload.created_by = user ? user.email : null;
+      await firebase.firestore().collection("investors").add(payload);
+      showToast("Investor added");
+    }
+    closeInvestorModal();
+  } catch (e) {
+    console.error(e);
+    showErr("Save failed: " + (e.message || String(e)));
+  } finally {
+    btn.disabled = false; btn.textContent = state.editingInvestorId ? "Save changes" : "Save investor";
+  }
+}
+
+// Sort handlers for the investors table — added once after first render.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#investors-table th[data-inv-sort]").forEach(th => {
+    th.style.cursor = "pointer";
+    th.addEventListener("click", () => {
+      const key = th.dataset.invSort;
+      if (state.investorsSort.key === key) state.investorsSort.dir *= -1;
+      else { state.investorsSort.key = key; state.investorsSort.dir = 1; }
+      renderInvestors();
+    });
+  });
+});
+
+// =========================================================================
 // Filtering
 // =========================================================================
 function applyFilters(leads, overrides) {
@@ -1692,6 +1985,10 @@ function applyFilters(leads, overrides) {
       if (!blob.includes(q)) continue;
     }
     if (f.markets && f.markets.size > 0 && !f.markets.has(lead.market)) continue;
+    // Lead type (v2.21). Missing field is treated as "landlord" so the 4,756
+    // existing leads behave identically without a migration.
+    if (f.entity_type === "landlord" && lead.crm_entity_type === "property_manager") continue;
+    if (f.entity_type === "property_manager" && lead.crm_entity_type !== "property_manager") continue;
     // Activity / Stage tristate filter (v2.18). AND across rows: only leads
     // matching every set Yes/No condition pass. Rows left null are ignored.
     const ts = f.activity_states || {};
@@ -2171,6 +2468,11 @@ function makeKanbanCard(lead, status) {
   const metaPieces = [];
   if (lead.phone) metaPieces.push(`<span class="card-phone">${formatPhone(lead.phone)}</span>`);
   if (lead.dnc) metaPieces.push(`<span class="badge-pill badge-dnc">DNC</span>`);
+  // v2.21 — purple PM badge (only on Property Manager leads)
+  if (lead.crm_entity_type === "property_manager") {
+    const u = lead.units_count ? ` · ${lead.units_count.toLocaleString()} units` : "";
+    metaPieces.push(`<span class="badge-pill badge-pm">PM${u}</span>`);
+  }
   if (lead.market) metaPieces.push(`<span class="badge-pill badge-market">${escapeHtml(formatMarket(lead.market))}</span>`);
   const reasonLine = (status === "do_not_contact")
     ? `<div class="card-reason">Reason: ${lead.crm_dnc_reason ? escapeHtml(dncReasonLabel(lead.crm_dnc_reason)) + (lead.crm_dnc_reason === "other" && lead.crm_dnc_reason_text ? " — " + escapeHtml(lead.crm_dnc_reason_text) : "") : "<i style=\"color:var(--red);opacity:0.7\">not set — click card to fill</i>"}</div>`
@@ -2396,9 +2698,19 @@ function openDrawer(leadId) {
     tr.classList.toggle("selected", tr.dataset.id === leadId);
   });
 
-  document.getElementById("drawer-name").textContent = lead.owner_name || "(no name)";
-  document.getElementById("drawer-sub").textContent =
-    [lead.property_address, lead.property_city, lead.property_state, lead.property_zip].filter(Boolean).join(", ");
+  // v2.21: drawer header shows a "PM" pill next to the name for PM leads.
+  // Use innerHTML so the badge renders alongside the escaped owner name.
+  const drawerName = document.getElementById("drawer-name");
+  const safeName = escapeHtml(lead.owner_name || "(no name)");
+  drawerName.innerHTML = lead.crm_entity_type === "property_manager"
+    ? `${safeName} <span class="badge-pill badge-pm" style="vertical-align:middle;margin-left:6px;font-size:10px">PM</span>`
+    : safeName;
+  // For PMs the property address is empty; show city + state instead so the
+  // sub-line isn't blank.
+  const subLine = lead.crm_entity_type === "property_manager"
+    ? [lead.company_name || lead.owner_name, lead.property_city, lead.property_state].filter(Boolean).join(" · ")
+    : [lead.property_address, lead.property_city, lead.property_state, lead.property_zip].filter(Boolean).join(", ");
+  document.getElementById("drawer-sub").textContent = subLine;
 
   // Badges
   const badges = document.getElementById("drawer-badges");
@@ -2651,20 +2963,45 @@ function openDrawer(leadId) {
   body.appendChild(emailSec);
   subscribeEmailActivity(leadId);
 
-  // Property details
-  const propSec = document.createElement("div");
-  propSec.className = "drawer-section";
-  propSec.innerHTML = `<h4>Property</h4>
-    <div class="kv">
-      ${kv("Type", lead.property_type)}
-      ${kv("Year built", lead.year_built)}
-      ${kv("Land sqft", lead.land_sqft ? lead.land_sqft.toLocaleString() : null)}
-      ${kv("Living area", lead.living_area ? lead.living_area.toLocaleString() : null)}
-      ${kv("County", lead.property_county)}
-      ${kv("Absentee", lead.absentee == null ? null : (lead.absentee ? "Yes" : "No"))}
-      ${kv("Vacant", lead.vacant == null ? null : (lead.vacant ? "Yes" : "No"))}
-    </div>`;
-  body.appendChild(propSec);
+  // v2.21 — Property section is unchanged for landlords. For Property Manager
+  // leads, swap in a PM Profile section showing Company, Decision Maker, Units,
+  // Software, Website, AppFolio Portal, and the personalized Hook line.
+  if (lead.crm_entity_type === "property_manager") {
+    const pmSec = document.createElement("div");
+    pmSec.className = "drawer-section";
+    function kvLink(label, url) {
+      if (!url) return `<div class="k">${escapeHtml(label)}</div><div class="v muted">—</div>`;
+      return `<div class="k">${escapeHtml(label)}</div><div class="v"><a class="pm-profile-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)} →</a></div>`;
+    }
+    pmSec.innerHTML = `<h4>PM Profile</h4>
+      <div class="kv">
+        ${kv("Company", lead.company_name || lead.owner_name)}
+        ${kv("Decision Maker", lead.decision_maker)}
+        ${kv("Title", lead.title)}
+        ${kv("Units managed", lead.units_raw || (lead.units_count != null ? lead.units_count.toLocaleString() : null))}
+        ${kv("Software", lead.software)}
+        ${kvLink("Website", lead.website)}
+        ${kvLink("AppFolio Portal", lead.appfolio_portal)}
+      </div>
+      ${lead.hook ? `<div style="margin-top:10px;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Hook</div>
+        <div class="pm-profile-hook">${escapeHtml(lead.hook)}</div>` : ""}`;
+    body.appendChild(pmSec);
+  } else {
+    // Property details (landlord, unchanged from earlier versions)
+    const propSec = document.createElement("div");
+    propSec.className = "drawer-section";
+    propSec.innerHTML = `<h4>Property</h4>
+      <div class="kv">
+        ${kv("Type", lead.property_type)}
+        ${kv("Year built", lead.year_built)}
+        ${kv("Land sqft", lead.land_sqft ? lead.land_sqft.toLocaleString() : null)}
+        ${kv("Living area", lead.living_area ? lead.living_area.toLocaleString() : null)}
+        ${kv("County", lead.property_county)}
+        ${kv("Absentee", lead.absentee == null ? null : (lead.absentee ? "Yes" : "No"))}
+        ${kv("Vacant", lead.vacant == null ? null : (lead.vacant ? "Yes" : "No"))}
+      </div>`;
+    body.appendChild(propSec);
+  }
 
   // Mailing
   if (lead.mailing_address) {
@@ -3309,10 +3646,24 @@ function attachFilterHandlers() {
     document.querySelectorAll("#f-activity .activity-tristate-row").forEach(_renderActivityTristateRow);
     renderAll();
   });
-  document.getElementById("f-owner-type").addEventListener("change", (e) => {
-    state.filters.owner_type = e.target.value;
-    renderAll();
+  // (v2.22 — Owner type filter removed from the sidebar; entry above is the
+  // replacement. state.filters.owner_type stays at "any" as a no-op so
+  // applyFilters and any external references don't break.)
+  // v2.21 / v2.22 — Lead type filter. Two-button toggle: clicking the active
+  // button deselects it (showing both). No "All" button needed.
+  document.querySelectorAll("#f-entity-type button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const v = btn.dataset.value;
+      const cur = state.filters.entity_type;
+      const newVal = cur === v ? "any" : v;
+      document.querySelectorAll("#f-entity-type button").forEach(b => {
+        b.classList.toggle("active", b.dataset.value === newVal);
+      });
+      state.filters.entity_type = newVal;
+      renderAll();
+    });
   });
+
   ["f-phone", "f-email", "f-dnc", "f-absentee"].forEach(id => {
     const stateKey = id === "f-phone" ? "phone" : id === "f-email" ? "email" : id === "f-dnc" ? "dnc" : "absentee";
     document.querySelectorAll(`#${id} button`).forEach(btn => {
@@ -3341,10 +3692,10 @@ function resetFilters() {
     search: "", markets: new Set(), activity: new Set(),
     activity_states: { emailed: null, called: null, demo_scheduled: null, do_not_contact: null },
     phone: "any", email: "any", dnc: "any", owner_type: "any", absentee: "any",
-    owner: "any",
+    owner: "any", entity_type: "any",
   };
+  document.querySelectorAll('#f-entity-type button').forEach(b => b.classList.remove("active"));
   document.getElementById("f-search").value = "";
-  document.getElementById("f-owner-type").value = "any";
   document.querySelectorAll('#f-markets input').forEach(c => c.checked = false);
   // Reset every tristate row's button highlighting to match the cleared state.
   document.querySelectorAll('#f-activity .atri-btn').forEach(b => b.classList.remove("on"));
