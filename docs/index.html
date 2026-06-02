@@ -99,6 +99,10 @@ a:hover { text-decoration: underline; }
 /* --- Filters sidebar --- */
 .filters { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
+/* When the Investors tab is active (body.tab-investors), hide filter groups
+   that don't apply to investors. Search, phone, email, and Team stay visible
+   and interactive. (v2.24, refined v2.25 — hidden instead of greyed.) */
+body.tab-investors .filter-group.investor-disabled { display: none; }
 .filter-group .label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
 .filter-group .sublabel { font-size: 11.5px; color: var(--text-dim); margin-top: -2px; }
 .checkbox-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; padding-right: 4px; }
@@ -106,6 +110,12 @@ a:hover { text-decoration: underline; }
 .checkbox-row input { margin: 0; cursor: pointer; }
 .checkbox-row .count { color: var(--text-dim); margin-left: auto; font-size: 11.5px; }
 .checkbox-row:hover { color: var(--text); }
+/* + New Lead modal — show/hide form sections based on Lead type (v2.27).
+   Landlord mode is the default; PM mode hides property/owner fields and
+   reveals PM-specific ones (company / decision maker / units / hook etc.). */
+#add-lead-modal .al-pm-only { display: none; }
+#add-lead-modal.al-mode-pm .al-pm-only { display: block; }
+#add-lead-modal.al-mode-pm .al-landlord-only { display: none; }
 /* Activity/Stage tristate filter — Yes/No/Clear per condition, AND across rows. */
 .filter-clear-all { font-size: 10.5px; color: var(--text-dim); cursor: pointer; text-decoration: underline; display: inline-block; margin: 0 0 6px 0; user-select: none; }
 .filter-clear-all:hover { color: var(--text); }
@@ -806,12 +816,12 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <input id="f-search" class="text-input" type="text" placeholder="name, address, email, phone…" />
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group investor-disabled">
         <span class="label">Markets</span>
         <div id="f-markets" class="checkbox-list"></div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group investor-disabled">
         <span class="label">Activity / Stage</span>
         <a class="filter-clear-all" id="f-activity-clear-all" role="button" tabindex="0">Clear options</a>
         <div class="activity-tristate-list" id="f-activity">
@@ -866,7 +876,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         </div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group investor-disabled">
         <span class="label">Outreach safety</span>
         <span class="sublabel">DNC (Do Not Call)</span>
         <div class="toggle-pills" id="f-dnc">
@@ -876,7 +886,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         </div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group investor-disabled">
         <span class="label">Lead type</span>
         <div class="toggle-pills" id="f-entity-type">
           <button data-value="landlord">Landlord</button>
@@ -884,7 +894,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         </div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group investor-disabled">
         <span class="label">Absentee owner</span>
         <div class="toggle-pills" id="f-absentee">
           <button data-value="any" class="active">Any</button>
@@ -1072,8 +1082,15 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
               <div id="vendor-pills" class="vendor-pills">
                 <button data-vendor="datazapp">DataZapp</button>
                 <button data-vendor="batchdata">BatchData</button>
+                <button data-vendor="property_manager">Property Manager</button>
                 <button data-vendor="manual">Manual / custom</button>
               </div>
+              <!-- v2.26 — PM toggle. Auto-on when "Property Manager" vendor
+                   is selected; manually toggleable when using Manual. -->
+              <label class="form-check" id="pm-toggle-wrap" style="margin-top:10px;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pm-toggle" />
+                <span><b>These are Property Managers</b> — sets <code>crm_entity_type</code>, <code>third_party_pm</code>, and <code>owner_type="Property Management"</code> for every row. Skips the <code>property_address</code> requirement.</span>
+              </label>
             </div>
 
             <div class="import-step disabled" id="step-mapping">
@@ -1193,6 +1210,31 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
     <div class="modal-body">
 
       <div class="form-section">
+        <h4>Lead type</h4>
+        <div class="toggle-pills" id="al-entity-type">
+          <button class="active" data-value="landlord">Landlord</button>
+          <button data-value="property_manager">Property Manager</button>
+        </div>
+      </div>
+
+      <div class="form-section al-pm-only">
+        <h4>Property Manager *</h4>
+        <input id="al-pm-company" class="text-input" placeholder="Company name (required)" />
+        <div class="form-row">
+          <input id="al-pm-city" class="text-input" placeholder="City" />
+          <input id="al-pm-state" class="text-input small" placeholder="ST (required)" maxlength="2" />
+        </div>
+        <input id="al-pm-decision-maker" class="text-input" placeholder="Decision maker (e.g. 'Cliff Hall, Owner/Broker-In-Charge')" />
+        <input id="al-pm-title" class="text-input" placeholder="Title (e.g. President & CEO)" />
+        <input id="al-pm-units" class="text-input" placeholder="Units managed (e.g. '300+ units')" />
+        <input id="al-pm-software" class="text-input" placeholder="Software (e.g. AppFolio)" />
+        <input id="al-pm-website" class="text-input" placeholder="Website URL" />
+        <input id="al-pm-portal" class="text-input" placeholder="AppFolio Portal URL" />
+        <input id="al-pm-linkedin" class="text-input" placeholder="LinkedIn URL" />
+        <textarea id="al-pm-hook" class="notes-input" rows="3" placeholder="Hook — personalized opener for cold outreach (optional)"></textarea>
+      </div>
+
+      <div class="form-section al-landlord-only">
         <h4>Property *</h4>
         <input id="al-prop-addr" class="text-input" placeholder="Street address (required)" />
         <div class="form-row">
@@ -1208,13 +1250,14 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
       </div>
 
       <div class="form-section">
-        <h4>Owner</h4>
+        <h4 class="al-landlord-only">Owner</h4>
+        <h4 class="al-pm-only">Contact person</h4>
         <div class="form-row">
           <input id="al-first" class="text-input" placeholder="First name" />
           <input id="al-last" class="text-input" placeholder="Last name" />
         </div>
-        <input id="al-co" class="text-input" placeholder="Co-owner name (optional)" />
-        <select id="al-owner-type" class="select-input">
+        <input id="al-co" class="text-input al-landlord-only" placeholder="Co-owner name (optional)" />
+        <select id="al-owner-type" class="select-input al-landlord-only">
           <option value="">Owner type…</option>
           <option value="Individual-Single">Individual — Single</option>
           <option value="Individual-Joint">Individual — Joint</option>
@@ -1222,7 +1265,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
           <option value="Trust">Trust</option>
           <option value="Other">Other</option>
         </select>
-        <label class="form-check"><input type="checkbox" id="al-absentee" checked /> Absentee owner</label>
+        <label class="form-check al-landlord-only"><input type="checkbox" id="al-absentee" checked /> Absentee owner</label>
       </div>
 
       <div class="form-section">
@@ -1232,7 +1275,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <label class="form-check"><input type="checkbox" id="al-dnc" /> Do Not Call (DNC)</label>
       </div>
 
-      <div class="form-section">
+      <div class="form-section al-landlord-only">
         <h4>Mailing address (only if different from property)</h4>
         <input id="al-mail-addr" class="text-input" placeholder="Mailing street address" />
         <div class="form-row">
@@ -1807,22 +1850,59 @@ function subscribeToInvestors() {
   });
 }
 
+// Apply the sidebar filters that apply to investors (v2.24): free-text search,
+// has-phone, has-email, owner (team member). Other sidebar filters are no-ops.
+function applyInvestorFilters(all) {
+  const f = state.filters || {};
+  const q = (f.search || "").trim().toLowerCase();
+  const ownerKey = (f.owner || "any");
+  const out = [];
+  for (const inv of all) {
+    if (q) {
+      const blob = [
+        inv.first_name, inv.last_name, inv.firm_name, inv.title,
+        inv.email, inv.phone, inv.city, inv.state, inv.country,
+        inv.source, inv.referred_by, inv.crm_notes,
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (!blob.includes(q)) continue;
+    }
+    if (f.phone === "yes" && !inv.phone) continue;
+    if (f.phone === "no" && inv.phone) continue;
+    if (f.email === "yes" && !inv.email) continue;
+    if (f.email === "no" && inv.email) continue;
+    if (ownerKey !== "any") {
+      const own = (inv.crm_touched_by || inv.created_by || "").toLowerCase();
+      if (ownerKey === "unassigned") {
+        if (own) continue;
+      } else {
+        if (own !== ownerKey.toLowerCase()) continue;
+      }
+    }
+    out.push(inv);
+  }
+  return out;
+}
+
 function renderInvestors() {
   const tbody = document.getElementById("investors-tbody");
   if (!tbody) return;
   const empty = document.getElementById("investors-empty");
   const all = Array.from(state.investors.values());
-  document.getElementById("tab-count-investors").textContent = all.length.toLocaleString();
-  if (all.length === 0) {
+  const filtered = applyInvestorFilters(all);
+  document.getElementById("tab-count-investors").textContent = filtered.length.toLocaleString();
+  if (filtered.length === 0) {
     tbody.innerHTML = "";
     empty.style.display = "block";
+    empty.innerHTML = (all.length === 0)
+      ? `No investors yet — click <b>+ New Investor</b> to add the first one.`
+      : `No investors match the current filters.`;
     return;
   }
   empty.style.display = "none";
 
   const { key, dir } = state.investorsSort;
   const safe = v => v == null ? "" : String(v).toLowerCase();
-  const sorted = all.slice().sort((a, b) => {
+  const sorted = filtered.slice().sort((a, b) => {
     let av = a[key], bv = b[key];
     if (key === "crm_last_touched") {
       av = av && av.toMillis ? av.toMillis() : 0;
@@ -2057,6 +2137,9 @@ function renderAll() {
   rebuildMapMarkers(filtered);
   renderList(sorted);
   renderKanban(filteredForKanban);
+  // v2.24 — investors get the same sidebar filter pass (search / has-phone /
+  // has-email / owner only; other filters are no-ops via applyInvestorFilters).
+  renderInvestors();
   document.getElementById("tab-count-map").textContent = filtered.length.toLocaleString();
   document.getElementById("tab-count-list").textContent = filtered.length.toLocaleString();
   document.getElementById("tab-count-outreach").textContent = filteredForKanban.length.toLocaleString();
@@ -3717,6 +3800,8 @@ function attachTabHandlers() {
       state.activeTab = target;
       document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === target));
       document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.dataset.tab === target));
+      // v2.24 — body class drives which sidebar filters are dimmed on Investors.
+      document.body.classList.toggle("tab-investors", target === "investors");
       if (target === "map" && map) setTimeout(() => map.invalidateSize(), 50);
     });
   });
@@ -3786,6 +3871,10 @@ const SCHEMA_FIELDS = [
   "absentee", "vacant", "property_type", "year_built",
   "seller_propensity", "solar_intender", "windows_intender", "roofing_intender",
   "phone", "phone_type", "dnc", "email",
+  // v2.26 — PM-specific fields available in column mapping when the
+  // "Property Manager" vendor or the "These are PMs" toggle is active.
+  "company_name", "decision_maker", "title", "units_raw",
+  "software", "website", "appfolio_portal", "hook", "linkedin_url",
 ];
 
 // Vendor presets — header (as it appears in the XLSX) → schema field.
@@ -3826,6 +3915,53 @@ const VENDOR_PRESETS = {
       "PhoneType": "phone_type",
       "DNC": "dnc",
       "Email": "email",
+    },
+  },
+  property_manager: {
+    label: "Property Manager",
+    // v2.26 — flexible column-name matching for PM lists. Auto-enables the
+    // PM toggle (crm_entity_type="property_manager") on commit.
+    map: {
+      // Email
+      "email": "email", "email_1": "email", "email1": "email", "contact_email": "email",
+      "primary_email": "email", "work_email": "email",
+      // Name
+      "firstname": "first_name", "first_name": "first_name", "given_name": "first_name",
+      "lastname": "last_name", "last_name": "last_name", "surname": "last_name", "family_name": "last_name",
+      "full_name": "owner_name_raw", "fullname": "owner_name_raw", "name": "owner_name_raw",
+      // Company / firm (this is the PM brand name shown on cards)
+      "company": "company_name", "company_name": "company_name", "companyname": "company_name",
+      "firm": "company_name", "firm_name": "company_name", "organization": "company_name",
+      "business": "company_name", "business_name": "company_name", "brand": "company_name",
+      // Decision maker / contact
+      "decisionmaker": "decision_maker", "decision_maker": "decision_maker",
+      "contact": "decision_maker", "contact_name": "decision_maker", "primary_contact": "decision_maker",
+      "owner": "decision_maker", "principal": "decision_maker",
+      // Title / role
+      "title": "title", "role": "title", "job_title": "title", "position": "title",
+      // Units
+      "units": "units_raw", "unit_count": "units_raw", "units_managed": "units_raw",
+      "doors": "units_raw", "door_count": "units_raw", "portfolio_size": "units_raw",
+      // Phone
+      "phone": "phone", "phone_1": "phone", "phone1": "phone",
+      "contact_phone": "phone", "primary_phone": "phone", "office_phone": "phone",
+      // Web presence
+      "website": "website", "url": "website", "site": "website", "homepage": "website",
+      "appfolioportal": "appfolio_portal", "appfolio_portal": "appfolio_portal",
+      "appfolio_url": "appfolio_portal", "portal": "appfolio_portal", "portal_url": "appfolio_portal",
+      "linkedin": "linkedin_url", "linkedin_url": "linkedin_url", "linked_in": "linkedin_url",
+      // Software / tech stack
+      "software": "software", "platform": "software", "tech": "software", "tech_stack": "software",
+      "tool": "software", "tools": "software",
+      // Hook — the personalized one-line opener
+      "hook": "hook", "opener": "hook", "intro": "hook", "personalization": "hook",
+      "pitch": "hook", "personalized_line": "hook",
+      // Location — PMs don't have a property_address; city/state become both
+      // property_city/state and mailing_city/state at commit time.
+      "city": "property_city", "town": "property_city", "office_city": "property_city",
+      "state": "property_state", "region": "property_state", "office_state": "property_state",
+      // DNC (rare on PM lists but supported)
+      "dnc": "dnc", "do_not_contact": "dnc",
     },
   },
   batchdata: {
@@ -3953,6 +4089,37 @@ function attachImportHandlers() {
   document.querySelectorAll("#vendor-pills button").forEach(b => {
     b.addEventListener("click", () => selectVendor(b.dataset.vendor));
   });
+  // v2.26 — PM toggle: any change re-runs the preview so the New/Update
+  // counts reflect the PM doc-ID scheme instead of the address-based one.
+  const pmToggle = document.getElementById("pm-toggle");
+  if (pmToggle) {
+    pmToggle.addEventListener("change", () => {
+      importState.pm_mode = pmToggle.checked;
+      if (importState.headers.length) rebuildPreview();
+    });
+  }
+}
+
+// PM-specific helpers (v2.26). Doc ID and units parser must match
+// scripts/import_pms.py so XLSX re-imports update the same docs as the
+// Python script wrote.
+function _pmNormalizeForId(s) {
+  return String(s || "").replace(/[^a-zA-Z0-9]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+}
+async function _pmComputeDocId(company, state) {
+  const norm = _pmNormalizeForId(company);
+  const stNorm = String(state || "xx").trim().toLowerCase();
+  // SHA-1 via Web Crypto, first 12 hex chars — matches Python's
+  // hashlib.sha1(...).hexdigest()[:12]
+  const buf = new TextEncoder().encode(norm);
+  const hash = await crypto.subtle.digest("SHA-1", buf);
+  const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `pm__${stNorm}__${hex.slice(0, 12)}`;
+}
+function _pmParseUnits(s) {
+  if (!s) return null;
+  const m = String(s).replace(/,/g, "").match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 async function handleFile(file) {
@@ -4002,6 +4169,13 @@ function selectVendor(vendor) {
   if (activeBtn && vendor !== "manual") {
     const tag = document.createElement("span"); tag.className = "auto-tag"; tag.textContent = "auto-detected";
     activeBtn.appendChild(tag);
+  }
+  // v2.26 — auto-flip the PM toggle when the Property Manager vendor is
+  // picked. User can override (turn it off) before commit if they want.
+  const pmToggle = document.getElementById("pm-toggle");
+  if (pmToggle) {
+    pmToggle.checked = (vendor === "property_manager");
+    importState.pm_mode = pmToggle.checked;
   }
 
   // Apply mapping
@@ -4056,18 +4230,28 @@ async function rebuildPreview() {
     let nNew = 0, nUpdate = 0, nSkipNoAddr = 0;
     const parsedLeads = [];
     const existingIds = state.leads;  // reference the global app state's Map
+    // v2.26 — PM imports use a Company+State doc_id instead of address.
+    const isPM = !!importState.pm_mode;
 
     for (let r = 0; r < importState.rows.length; r++) {
       const row = importState.rows[r];
       const getF = field => fieldIdx[field] != null ? row[fieldIdx[field]] : null;
-      const addr = importCleanStr(getF("property_address"));
-      const city = importCleanStr(getF("property_city"));
-      const propSt = importUpperState(getF("property_state"));
-      const zip5 = importCleanZip(getF("property_zip"));
-      if (!addr) { nSkipNoAddr++; continue; }
-      const addrNorm = normalizeAddrForId(addr, city, propSt, zip5);
-      if (!addrNorm) { nSkipNoAddr++; continue; }
-      const doc_id = await computeDocId(propSt, zip5, addrNorm);
+      let doc_id = null;
+      if (isPM) {
+        const company = importCleanStr(getF("company_name")) || importCleanStr(getF("owner_name_raw"));
+        const stForId = importUpperState(getF("property_state")) || importUpperState(getF("mailing_state"));
+        if (!company || !stForId) { nSkipNoAddr++; continue; }
+        doc_id = await _pmComputeDocId(company, stForId);
+      } else {
+        const addr = importCleanStr(getF("property_address"));
+        const city = importCleanStr(getF("property_city"));
+        const propSt = importUpperState(getF("property_state"));
+        const zip5 = importCleanZip(getF("property_zip"));
+        if (!addr) { nSkipNoAddr++; continue; }
+        const addrNorm = normalizeAddrForId(addr, city, propSt, zip5);
+        if (!addrNorm) { nSkipNoAddr++; continue; }
+        doc_id = await computeDocId(propSt, zip5, addrNorm);
+      }
       if (existingIds && existingIds.has && existingIds.has(doc_id)) nUpdate++;
       else nNew++;
       parsedLeads.push({ doc_id, row_idx: r + 2, getF });
@@ -4075,17 +4259,25 @@ async function rebuildPreview() {
     importState.parsedLeads = parsedLeads;
     importState.previewStats = { new: nNew, update: nUpdate, skipped: nSkipNoAddr, total: parsedLeads.length };
 
-    const propAddrMapped = Object.values(mapping).includes("property_address");
+    const requiredMapped = isPM
+      ? (Object.values(mapping).includes("company_name") || Object.values(mapping).includes("owner_name_raw"))
+        && (Object.values(mapping).includes("property_state") || Object.values(mapping).includes("mailing_state"))
+      : Object.values(mapping).includes("property_address");
+    const skipLabel = isPM ? "Skipped (no company / state)" : "Skipped (no address)";
     // Render
     const box = document.getElementById("preview-stats");
     box.innerHTML = `
-      <div class="stat-box new"><div class="v">${nNew.toLocaleString()}</div><div class="k">New leads</div></div>
+      <div class="stat-box new"><div class="v">${nNew.toLocaleString()}</div><div class="k">New ${isPM ? "PMs" : "leads"}</div></div>
       <div class="stat-box update"><div class="v">${nUpdate.toLocaleString()}</div><div class="k">Update existing (CRM state preserved)</div></div>
-      <div class="stat-box skip"><div class="v">${nSkipNoAddr.toLocaleString()}</div><div class="k">Skipped (no address)</div></div>
+      <div class="stat-box skip"><div class="v">${nSkipNoAddr.toLocaleString()}</div><div class="k">${skipLabel}</div></div>
       <div class="stat-box"><div class="v">${parsedLeads.length.toLocaleString()}</div><div class="k">Total to commit</div></div>
     `;
-    if (!propAddrMapped) {
-      box.innerHTML += `<div class="stat-box error" style="grid-column: 1 / -1"><div class="v" style="font-size:14px">⚠ Map a column to <b>property_address</b> to enable import</div><div class="k">Required to compute lead IDs and geocode pins.</div></div>`;
+    if (!requiredMapped) {
+      const msg = isPM
+        ? `⚠ Map a column to <b>company_name</b> and to <b>property_state</b> (or mailing_state) to enable PM import.`
+        : `⚠ Map a column to <b>property_address</b> to enable import.`;
+      const sub = isPM ? "Required to compute the PM doc ID." : "Required to compute lead IDs and geocode pins.";
+      box.innerHTML += `<div class="stat-box error" style="grid-column: 1 / -1"><div class="v" style="font-size:14px">${msg}</div><div class="k">${sub}</div></div>`;
     }
     enableStep("step-preview");
     if (parsedLeads.length > 0) enableStep("step-commit");
@@ -4144,18 +4336,74 @@ async function commitImport() {
 
   let geocoded = 0, geocodeErrors = 0;
   const docs = [];  // [{doc_id, payload}]
+  const isPM = !!importState.pm_mode;
   for (let i = 0; i < importState.parsedLeads.length; i++) {
     const item = importState.parsedLeads[i];
     const get = item.getF;
+    const first = importNameTitlecase(get("first_name"));
+    const last = importNameTitlecase(get("last_name"));
+    const city = importCleanStr(get("property_city")) || importCleanStr(get("mailing_city"));
+    const state = importUpperState(get("property_state")) || importUpperState(get("mailing_state"));
+    const county = importUpperCounty(get("property_county"));
+
+    // v2.26 — Two payload shapes. PM rows have no property_address, get
+    // routed to the PM doc-ID scheme, and include crm_entity_type plus
+    // PM-specific fields. Landlord rows keep the existing behavior.
+    let payload;
+    if (isPM) {
+      // No geocode pass for PMs — they're companies, not properties.
+      geocoded++;  // accounted for in the progress bar even though we skipped
+      const company = importCleanStr(get("company_name")) || importCleanStr(get("owner_name_raw"));
+      const fullName = company || (first && last ? `${first} ${last}` : (first || last));
+      const unitsRaw = importCleanStr(get("units_raw"));
+      payload = {
+        crm_entity_type: "property_manager",
+        third_party_pm: true,
+        owner_type: importCleanStr(get("owner_type")) || "Property Management",
+        owner_name: fullName,
+        first_name: first, last_name: last,
+        company_name: company,
+        decision_maker: importCleanStr(get("decision_maker")),
+        title: importCleanStr(get("title")),
+        units_raw: unitsRaw,
+        units_count: _pmParseUnits(unitsRaw),
+        software: importCleanStr(get("software")),
+        website: importCleanStr(get("website")),
+        appfolio_portal: importCleanStr(get("appfolio_portal")),
+        linkedin_url: importCleanStr(get("linkedin_url")),
+        hook: importCleanStr(get("hook")),
+        // Location — PMs use city+state for both property_* and mailing_*.
+        property_city: city,
+        property_state: state,
+        mailing_city: city,
+        mailing_state: state,
+        phone: importCleanPhone(get("phone")),
+        email: importCleanStr(get("email")),
+        dnc: importYnToBool(get("dnc")),
+        market_state: state,
+        market_county: county,
+        market: `${(city || "unknown").toLowerCase().replace(/\s+/g, "_")}_${(state || "xx").toLowerCase()}`,
+        source_file: sourceFile,
+        source_row: item.row_idx,
+        imported_at: firebase.firestore.FieldValue.serverTimestamp(),
+        imported_by: importerEmail,
+      };
+      for (const k of Object.keys(payload)) if (payload[k] == null) delete payload[k];
+      docs.push({ doc_id: item.doc_id, payload });
+      if ((i + 1) % 5 === 0 || i === total - 1) {
+        const pct = Math.round((i + 1) / total * 100);
+        document.getElementById("progress-fill").style.width = pct + "%";
+        document.getElementById("progress-text").textContent = `Preparing PMs ${i + 1} / ${total} (${pct}%)`;
+      }
+      continue;
+    }
+
+    // ---- Landlord path (unchanged) ----
     const addr = importCleanStr(get("property_address"));
-    const city = importCleanStr(get("property_city"));
-    const state = importUpperState(get("property_state"));
     const zip5 = importCleanZip(get("property_zip"));
     const geo = await geocodeOne(addr, city, state, zip5);
     if (geo.status === "OK") geocoded++; else geocodeErrors++;
 
-    const first = importNameTitlecase(get("first_name"));
-    const last = importNameTitlecase(get("last_name"));
     const fullName = importNameTitlecase(get("owner_name_raw")) || (first && last ? `${first} ${last}` : (first || last));
 
     // BatchData uses owner_occupied (boolean) where DataZapp uses absentee (Y/N).
@@ -4164,9 +4412,7 @@ async function commitImport() {
     let absentee = importYnToBool(absenteeRaw);
     if (importState.vendor === "batchdata" && absentee !== null) absentee = !absentee;
 
-    const county = importUpperCounty(get("property_county"));
-
-    const payload = {
+    payload = {
       external_parcel_id: importCleanStr(get("external_parcel_id")),
       owner_name: fullName,
       owner_name_raw: importCleanStr(get("owner_name_raw")),
@@ -4887,19 +5133,48 @@ function closeDncDetailsModal() {
 // ADD LEAD modal — manual single-lead entry
 // =========================================================================
 function openAddLeadModal() {
-  // Clear any previous values
+  // Clear any previous values (landlord + PM fields)
   [
     "al-prop-addr","al-prop-city","al-prop-state","al-prop-zip","al-prop-county",
     "al-prop-year","al-prop-type","al-first","al-last","al-co",
-    "al-phone","al-email","al-mail-addr","al-mail-city","al-mail-state","al-mail-zip"
+    "al-phone","al-email","al-mail-addr","al-mail-city","al-mail-state","al-mail-zip",
+    "al-pm-company","al-pm-city","al-pm-state","al-pm-decision-maker","al-pm-title",
+    "al-pm-units","al-pm-software","al-pm-website","al-pm-portal","al-pm-linkedin",
+    "al-pm-hook",
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
   document.getElementById("al-owner-type").value = "";
   document.getElementById("al-absentee").checked = true;
   document.getElementById("al-dnc").checked = false;
+  // v2.27 — reset Lead type toggle to Landlord on every open.
+  const modal = document.getElementById("add-lead-modal");
+  modal.classList.remove("al-mode-pm");
+  document.querySelectorAll("#al-entity-type button").forEach(b => {
+    b.classList.toggle("active", b.dataset.value === "landlord");
+  });
   const err = document.getElementById("al-error"); err.style.display = "none"; err.textContent = "";
-  document.getElementById("add-lead-modal").classList.remove("hidden");
+  modal.classList.remove("hidden");
   setTimeout(() => document.getElementById("al-prop-addr").focus(), 50);
 }
+
+// v2.27 — wire the Lead type toggle once on load.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#al-entity-type button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const v = btn.dataset.value;
+      document.querySelectorAll("#al-entity-type button").forEach(b => {
+        b.classList.toggle("active", b.dataset.value === v);
+      });
+      const modal = document.getElementById("add-lead-modal");
+      modal.classList.toggle("al-mode-pm", v === "property_manager");
+      // Refocus the first PM input when switching to PM mode.
+      if (v === "property_manager") {
+        setTimeout(() => { const el = document.getElementById("al-pm-company"); if (el) el.focus(); }, 30);
+      } else {
+        setTimeout(() => { const el = document.getElementById("al-prop-addr"); if (el) el.focus(); }, 30);
+      }
+    });
+  });
+});
 function closeAddLeadModal() {
   document.getElementById("add-lead-modal").classList.add("hidden");
 }
@@ -4909,6 +5184,73 @@ async function saveNewLead() {
   const saveBtn = document.getElementById("al-save-btn");
   const v = (id) => (document.getElementById(id).value || "").trim();
   const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = "inline"; };
+
+  // v2.27 — PM mode: validate company + state, compute pm__ doc ID, write
+  // PM-shaped payload. Landlord mode falls through to the existing flow.
+  const isPM = document.getElementById("add-lead-modal").classList.contains("al-mode-pm");
+  if (isPM) {
+    const company = v("al-pm-company");
+    const stateRaw = v("al-pm-state");
+    const city = v("al-pm-city");
+    if (!company) return showErr("Company name is required for a Property Manager.");
+    if (!stateRaw) return showErr("State (2-letter) is required for a Property Manager.");
+    errEl.style.display = "none";
+    saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+    const stateNorm = importUpperState(stateRaw);
+    const doc_id = await _pmComputeDocId(company, stateNorm);
+    const exists = state.leads.has(doc_id);
+    if (exists) {
+      const ok = confirm("A Property Manager with this name in this state already exists. Click OK to update it (existing outreach state preserved), or Cancel to abort.");
+      if (!ok) { saveBtn.disabled = false; saveBtn.textContent = "Save lead"; return; }
+    }
+    const user = window.propagenticAuth.user;
+    const unitsRaw = v("al-pm-units");
+    const first = importNameTitlecase(v("al-first"));
+    const last = importNameTitlecase(v("al-last"));
+    const payload = {
+      crm_entity_type: "property_manager",
+      third_party_pm: true,
+      owner_type: "Property Management",
+      owner_name: company,
+      company_name: company,
+      first_name: first, last_name: last,
+      decision_maker: importCleanStr(v("al-pm-decision-maker")),
+      title: importCleanStr(v("al-pm-title")),
+      units_raw: unitsRaw || null,
+      units_count: _pmParseUnits(unitsRaw),
+      software: importCleanStr(v("al-pm-software")),
+      website: importCleanStr(v("al-pm-website")),
+      appfolio_portal: importCleanStr(v("al-pm-portal")),
+      linkedin_url: importCleanStr(v("al-pm-linkedin")),
+      hook: importCleanStr(v("al-pm-hook")),
+      property_city: city || null,
+      property_state: stateNorm,
+      mailing_city: city || null,
+      mailing_state: stateNorm,
+      phone: importCleanPhone(v("al-phone")),
+      email: importCleanStr(v("al-email")),
+      dnc: document.getElementById("al-dnc").checked,
+      market_state: stateNorm,
+      market: `${(city || "unknown").toLowerCase().replace(/\s+/g, "_")}_${stateNorm.toLowerCase()}`,
+      source_file: "manual_entry",
+      source_row: null,
+      imported_at: firebase.firestore.FieldValue.serverTimestamp(),
+      imported_by: user ? user.email : null,
+    };
+    for (const k of Object.keys(payload)) if (payload[k] == null) delete payload[k];
+    try {
+      await firebase.firestore().collection("leads").doc(doc_id).set(payload, { merge: true });
+      closeAddLeadModal();
+      showToast(exists ? "Property Manager updated" : "Property Manager added");
+      setTimeout(() => openDrawer(doc_id), 200);
+    } catch (e) {
+      console.error(e);
+      showErr("Save failed: " + (e.message || String(e)));
+    } finally {
+      saveBtn.disabled = false; saveBtn.textContent = "Save lead";
+    }
+    return;
+  }
 
   const addr = v("al-prop-addr");
   const propStateRaw = v("al-prop-state");
