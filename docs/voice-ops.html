@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Ops | Propagentic</title>
+<style>
+  :root { --navy:#1A2329; --panel:#212b33; --panel2:#2a353e; --line:#37434d; --orange:#FC5E13;
+          --ink:#e8eaec; --ink2:#9fb0bc; --ink3:#64747f; --green:#34d399; --red:#f87171; --amber:#fbbf24; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--navy); color:var(--ink); font:13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:12px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .logo { color:var(--orange); font-weight:800; font-size:15px; }
+  .crumb { color:var(--ink3); font-size:12px; }
+  #conn { margin-left:auto; font-size:11px; color:var(--ink3); }
+  #conn.live { color:var(--green); }
+  .wrap { display:grid; grid-template-columns:1fr 330px; gap:14px; padding:14px 20px; max-width:1400px; margin:0 auto; }
+  @media (max-width: 980px) { .wrap { grid-template-columns:1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+  .panel h3 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink3); padding:12px 14px 8px; }
+  .call-head { display:flex; gap:16px; padding:10px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap; font-size:12px; color:var(--ink2); }
+  .call-head b { color:var(--ink); }
+  #transcript { padding:12px 14px; height:480px; overflow-y:auto; }
+  .turn { display:flex; gap:10px; margin-bottom:10px; }
+  .turn .who { flex:0 0 52px; text-align:right; font-size:10px; text-transform:uppercase; color:var(--ink3); padding-top:3px; }
+  .turn.assistant .who { color:var(--orange); }
+  .bubble { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:7px 11px; max-width:640px; white-space:pre-wrap; }
+  .turn.assistant .bubble { border-left:2px solid var(--orange); }
+  .event { text-align:center; margin:8px 0; font-size:11px; color:var(--orange); }
+  .knobs { padding:6px 14px 14px; border-bottom:1px solid var(--line); }
+  .knob { margin-bottom:10px; }
+  .knob label { display:flex; justify-content:space-between; font-size:11px; color:var(--ink2); margin-bottom:3px; }
+  input[type=range] { width:100%; accent-color:var(--orange); }
+  textarea { width:100%; background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:7px 9px; font:12px inherit; min-height:52px; resize:vertical; }
+  .btn { background:var(--orange); color:#fff; border:none; border-radius:6px; padding:7px 13px; font-weight:700; font-size:12px; cursor:pointer; }
+  .btn.ghost { background:transparent; border:1px solid var(--line); color:var(--ink2); }
+  .btn:disabled { opacity:.4; cursor:default; }
+  #whisperLog { padding:0 14px 12px; font-size:11px; color:var(--ink2); }
+  #whisperLog div { padding:4px 0; border-bottom:1px dashed var(--line); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { text-align:left; color:var(--ink3); font-size:10px; text-transform:uppercase; padding:7px 12px; border-bottom:1px solid var(--line); }
+  td { padding:8px 12px; border-bottom:1px solid var(--panel2); color:var(--ink2); font-variant-numeric:tabular-nums; }
+  .pill { font-size:10px; padding:2px 8px; border-radius:99px; font-weight:700; }
+  .pill.b { background:#14532d55; color:var(--green); } .pill.n { background:#7f1d1d55; color:var(--red); }
+  .library { grid-column:1 / -1; }
+  .tscroll { overflow-x:auto; }
+  #toast { position:fixed; bottom:18px; right:18px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:12px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">Prop<span style="color:var(--ink)">agentic</span></span>
+  <span class="crumb">Voice Ops · live control plane · caller +1 510 617 1768</span>
+  <span id="conn">connecting…</span>
+</header>
+<div id="cfgStrip" style="display:flex; gap:8px; align-items:center; padding:10px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap;">
+  <input type="text" id="cfgBackend" placeholder="backend tunnel URL (https://….trycloudflare.com)" style="flex:2; min-width:260px; background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:7px 9px; font:12px inherit;">
+  <input type="password" id="cfgToken" placeholder="ops token" style="flex:1; min-width:140px; background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:7px 9px; font:12px inherit;">
+  <button class="btn" id="cfgSave">Connect</button>
+  <span style="font-size:10px; color:var(--ink3);">Stored in this browser only. Get the current tunnel URL and token from Ben.</span>
+</div>
+<div class="wrap">
+  <div class="panel">
+    <div class="call-head" id="callHead">No active call. Place one with POST /call; this pane goes live the moment it connects.</div>
+    <div id="transcript"></div>
+  </div>
+  <div class="panel">
+    <h3>Place a call</h3>
+    <div class="knobs">
+      <div class="knob"><label>Number</label><input type="text" id="dialTo" placeholder="+1 410 350 4484" style="width:100%; background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:7px 9px; font:12px inherit;"></div>
+      <div class="knob"><label>Persona</label><select id="dialPersona" style="width:100%; background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:12px inherit;"></select></div>
+      <div class="knob"><label>Language</label><select id="dialLang" style="width:100%; background:var(--navy); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:12px inherit;">
+        <option value="">persona default</option><option value="en-US">en-US</option><option value="multi">multi (code-switch)</option><option value="es">es</option>
+      </select></div>
+      <div id="customFields" style="display:none;">
+        <div class="knob"><label>Custom system prompt</label><textarea id="dialPrompt" placeholder="You are..."></textarea></div>
+        <div class="knob"><label>Custom opening line</label><textarea id="dialOpening" style="min-height:36px;"></textarea></div>
+      </div>
+      <button class="btn" id="dialBtn">Dial</button>
+      <span style="font-size:10px; color:var(--ink3); display:block; margin-top:6px;">Allowlisted numbers only (OPS_DIAL_ALLOWLIST in ~/.hermes/.env). One call at a time.</span>
+    </div>
+    <h3>Operator whisper · applies on the agent's next turn</h3>
+    <div class="knobs">
+      <textarea id="whisperText" placeholder="e.g. Mention the $325 cap before you close."></textarea>
+      <div style="margin-top:7px; display:flex; gap:8px;">
+        <button class="btn" id="sendWhisper" disabled>Inject</button>
+        <button class="btn ghost" id="clearWhispers" disabled>Clear all</button>
+      </div>
+    </div>
+    <h3>Voice · next utterance</h3>
+    <div class="knobs">
+      <div class="knob"><label>Stability <span id="stabVal">0.35</span></label><input type="range" id="stab" min="20" max="80" value="35"></div>
+      <div class="knob"><label>Speed <span id="speedVal">0.97</span></label><input type="range" id="speed" min="70" max="120" value="97"></div>
+      <button class="btn" id="applyVoice" disabled>Apply voice</button>
+    </div>
+    <h3>Active whispers</h3>
+    <div id="whisperLog"><div style="border:none; color:var(--ink3)">none</div></div>
+  </div>
+  <div class="panel library">
+    <h3>Call library · <span id="libCount"></span> · <label style="text-transform:none; letter-spacing:0; cursor:pointer;"><input type="checkbox" id="hideNoise" checked> hide calls nobody answered</label> · click a row to view its transcript</h3>
+    <div class="tscroll" style="max-height:340px; overflow-y:auto;"><table id="recent"><tr><th>When</th><th>To</th><th>Outcome</th><th>Slot</th><th>Turns</th><th>Avg latency</th><th>Whispers</th><th>Barge</th></tr></table></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+(function () {
+  var Q = new URLSearchParams(location.search);
+  if (Q.get('b')) localStorage.setItem('voiceops_backend', Q.get('b'));
+  if (Q.get('t')) localStorage.setItem('voiceops_token', Q.get('t'));
+  var B = (localStorage.getItem('voiceops_backend') || '').replace(/\/+$/, '');
+  var T = localStorage.getItem('voiceops_token') || '';
+  var activeSid = null;
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg, bad) {
+    var el = $('toast'); el.textContent = msg; el.style.display = 'block';
+    el.style.borderColor = bad ? '#f87171' : '#37434d';
+    setTimeout(function () { el.style.display = 'none'; }, 2600);
+  }
+  function post(path, body) {
+    return fetch(B + path + '?t=' + encodeURIComponent(T), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {})
+    }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+  }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  function addTurn(role, text) {
+    var el = document.createElement('div');
+    el.className = 'turn ' + (role === 'assistant' ? 'assistant' : 'user');
+    el.innerHTML = '<div class="who">' + (role === 'assistant' ? 'Agent' : 'Callee') + '</div><div class="bubble">' + esc(text) + '</div>';
+    $('transcript').appendChild(el);
+    $('transcript').scrollTop = 1e9;
+  }
+  function addEvent(text) {
+    var el = document.createElement('div');
+    el.className = 'event'; el.textContent = '— ' + text + ' —';
+    $('transcript').appendChild(el);
+    $('transcript').scrollTop = 1e9;
+  }
+  function setActive(sid, toPhone) {
+    activeSid = sid;
+    $('callHead').innerHTML = sid
+      ? 'Live call <b>' + esc(sid.slice(0, 10)) + '…</b> &nbsp; to <b>' + esc(toPhone || '?') + '</b> <button class="btn ghost" id="hangupBtn" style="margin-left:auto">Hang up</button>'
+      : 'No active call.';
+    if (sid) {
+      $('hangupBtn').onclick = function () {
+        post('/call/' + sid + '/hangup', {})
+          .then(function () { toast('Hung up'); setActive(null); })
+          .catch(function (e) { toast(e.message, true); });
+      };
+    }
+    ['sendWhisper', 'clearWhispers', 'applyVoice'].forEach(function (id) { $(id).disabled = !sid; });
+  }
+  function renderWhispers(list) {
+    var el = $('whisperLog');
+    el.innerHTML = (list && list.length)
+      ? list.map(function (w) { return '<div>' + esc(w.note) + ' <span style="color:var(--ink3)">' + new Date(w.ts).toLocaleTimeString() + '</span></div>'; }).join('')
+      : '<div style="border:none; color:var(--ink3)">none</div>';
+  }
+  function refresh() {
+    fetch(B + '/api/ops/state?t=' + encodeURIComponent(T)).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.active && d.active.length) {
+        var a = d.active[0];
+        if (a.callSid !== activeSid) {
+          setActive(a.callSid, a.toPhone);
+          $('transcript').innerHTML = '';
+          (a.transcript || []).forEach(function (t) { addTurn(t.role, t.text); });
+        }
+        renderWhispers(a.whispers);
+      } else if (activeSid) {
+        setActive(null);
+      }
+    }).catch(function () {});
+    loadLibrary();
+  }
+
+  var libraryCache = [];
+  function loadLibrary() {
+    fetch(B + '/api/ops/calls?limit=300&t=' + encodeURIComponent(T)).then(function (r) { return r.json(); }).then(function (d) {
+      libraryCache = d.calls || [];
+      renderLibrary();
+    }).catch(function () {});
+  }
+  function renderLibrary() {
+    var hide = $('hideNoise').checked;
+    var list = libraryCache.filter(function (c) { return !hide || (c.userTurns || 0) > 0; });
+    $('libCount').textContent = list.length + ' of ' + libraryCache.length + ' calls';
+    var rows = '<tr><th>When</th><th>To</th><th>Outcome</th><th>Slot</th><th>Turns</th><th>Avg latency</th><th>Whispers</th><th>Barge</th></tr>';
+    list.forEach(function (c) {
+      var booked = c.outcome && c.outcome.booked;
+      rows += '<tr data-sid="' + esc(c.callSid) + '" style="cursor:pointer">'
+        + '<td>' + new Date(c.timestamp).toLocaleString() + '</td><td>' + esc(c.toPhone) + '</td>'
+        + '<td><span class="pill ' + (booked ? 'b' : 'n') + '">' + (booked ? 'BOOKED' : 'NO') + '</span></td>'
+        + '<td>' + esc((c.outcome && c.outcome.time) || '') + '</td><td>' + (c.turns || 0) + '</td>'
+        + '<td>' + (c.avgLatencyMs ? c.avgLatencyMs + 'ms' : '') + '</td><td>' + c.whispers + '</td><td>' + c.bargeCount + '</td></tr>';
+    });
+    $('recent').innerHTML = rows;
+    Array.prototype.forEach.call($('recent').querySelectorAll('tr[data-sid]'), function (tr) {
+      tr.onclick = function () { viewCall(tr.getAttribute('data-sid')); };
+    });
+  }
+  function viewCall(sid) {
+    if (activeSid) { toast('live call in progress; history view disabled', true); return; }
+    fetch(B + '/api/ops/call/' + sid + '?t=' + encodeURIComponent(T)).then(function (r) { return r.json(); }).then(function (d) {
+      $('callHead').innerHTML = 'History <b>' + esc(sid.slice(0, 12)) + '…</b> · ' + new Date(d.timestamp).toLocaleString()
+        + ' · to <b>' + esc(d.toPhone || '?') + '</b>'
+        + ((d.outcome && d.outcome.booked) ? ' · <span class="pill b">BOOKED ' + esc(d.outcome.time || '') + '</span>' : ' · <span class="pill n">NOT BOOKED</span>');
+      $('transcript').innerHTML = '';
+      (d.transcript || []).forEach(function (t) { addTurn(t.role, t.text); });
+      (d.whispers || []).forEach(function (w) { addEvent('whisper was: ' + w.note); });
+      renderWhispers(d.whispers || []);
+    }).catch(function (e) { toast('load failed: ' + e.message, true); });
+  }
+
+  document.getElementById('cfgBackend').value = B;
+  document.getElementById('cfgToken').value = T;
+  document.getElementById('cfgSave').onclick = function () {
+    localStorage.setItem('voiceops_backend', document.getElementById('cfgBackend').value.trim());
+    localStorage.setItem('voiceops_token', document.getElementById('cfgToken').value.trim());
+    location.reload();
+  };
+  if (!B || !T) {
+    document.getElementById('conn').textContent = 'not configured';
+    document.getElementById('callHead').textContent = 'Enter the backend tunnel URL and ops token above, then Connect.';
+    return;
+  }
+
+  var es = new EventSource(B + '/events');
+  es.onopen = function () { $('conn').textContent = 'live'; $('conn').className = 'live'; };
+  es.onerror = function () { $('conn').textContent = 'reconnecting…'; $('conn').className = ''; };
+  es.addEventListener('call-started', function (e) {
+    var d = JSON.parse(e.data); setActive(d.callSid, d.toPhone); $('transcript').innerHTML = ''; addEvent('call started ' + (d.toPhone || ''));
+  });
+  es.addEventListener('call-active', function (e) {
+    var d = JSON.parse(e.data); setActive(d.callSid, d.toPhone);
+    $('transcript').innerHTML = ''; (d.transcript || []).forEach(function (t) { addTurn(t.role, t.text); });
+  });
+  es.addEventListener('transcript-update', function (e) {
+    var d = JSON.parse(e.data); if (d.callSid === activeSid) addTurn(d.role, d.text);
+  });
+  es.addEventListener('ops-whisper', function (e) {
+    var d = JSON.parse(e.data); if (d.callSid === activeSid) addEvent('whisper injected: ' + d.note); refresh();
+  });
+  es.addEventListener('ops-config', function (e) {
+    var d = JSON.parse(e.data); if (d.callSid === activeSid) addEvent('config: ' + d.change);
+  });
+  es.addEventListener('call-ended', function (e) {
+    var d = JSON.parse(e.data); if (d.callSid === activeSid) { addEvent('call ended'); setActive(null); }
+    refresh();
+  });
+
+  $('sendWhisper').onclick = function () {
+    var note = $('whisperText').value.trim(); if (!note || !activeSid) return;
+    post('/call/' + activeSid + '/whisper', { note: note })
+      .then(function () { $('whisperText').value = ''; toast('Whisper armed for next turn'); })
+      .catch(function (e) { toast('whisper failed: ' + e.message, true); });
+  };
+  $('clearWhispers').onclick = function () {
+    post('/call/' + activeSid + '/config', { clearWhispers: true })
+      .then(function () { renderWhispers([]); toast('Whispers cleared'); })
+      .catch(function (e) { toast(e.message, true); });
+  };
+  $('stab').oninput = function () { $('stabVal').textContent = (this.value / 100).toFixed(2); };
+  $('speed').oninput = function () { $('speedVal').textContent = (this.value / 100).toFixed(2); };
+  $('applyVoice').onclick = function () {
+    post('/call/' + activeSid + '/config', { voiceSettings: { stability: $('stab').value / 100, speed: $('speed').value / 100 } })
+      .then(function (j) { toast('Voice applied: ' + j.applied.join(', ')); })
+      .catch(function (e) { toast(e.message, true); });
+  };
+
+  fetch(B + '/api/ops/personas?t=' + encodeURIComponent(T)).then(function (r) { return r.json(); }).then(function (d) {
+    var sel = $('dialPersona');
+    sel.innerHTML = (d.personas || []).map(function (p) {
+      return '<option value="' + esc(p.file) + '">' + esc(p.name) + '</option>';
+    }).join('') + '<option value="custom">custom…</option>';
+    var cc = (d.personas || []).find(function (p) { return p.name === 'college-corners'; });
+    if (cc) sel.value = cc.file;
+  }).catch(function () {});
+  $('dialPersona').onchange = function () {
+    $('customFields').style.display = this.value === 'custom' ? 'block' : 'none';
+  };
+  $('dialBtn').onclick = function () {
+    var body = {
+      to: $('dialTo').value,
+      persona: $('dialPersona').value,
+      sttLanguage: $('dialLang').value || undefined,
+      voiceSettings: { stability: $('stab').value / 100, speed: $('speed').value / 100 }
+    };
+    if ($('dialPersona').value === 'custom') {
+      body.systemPrompt = $('dialPrompt').value;
+      body.openingLine = $('dialOpening').value;
+    }
+    $('dialBtn').disabled = true;
+    post('/api/ops/dial', body)
+      .then(function (j) { toast('Dialing ' + j.to + ' …'); if (j.callSid) setActive(j.callSid, j.to); })
+      .catch(function (e) { toast('dial failed: ' + e.message, true); })
+      .finally(function () { $('dialBtn').disabled = false; });
+  };
+  $('hideNoise').onchange = renderLibrary;
+  refresh();
+  setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>

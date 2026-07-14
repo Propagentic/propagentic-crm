@@ -921,6 +921,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         <button class="tab" data-tab="daily">Call Log <span class="badge" id="tab-count-daily">0</span></button>
         <button class="tab" data-tab="stats">Stats</button>
         <button class="tab" data-tab="import">Import</button>
+        <button class="tab" data-tab="voiceOps">Voice Ops</button>
       </div>
       <div class="tab-content">
         <div class="tab-pane active" data-tab="map">
@@ -1122,6 +1123,14 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
             </div>
 
           </div>
+        </div>
+        <div class="tab-pane" data-tab="voiceOps">
+          <!-- Live voice-agent ops console. Lazy-loaded on first activation so the
+               SSE stream to the phone-agent backend only opens when the tab is viewed.
+               voice-ops.html carries its own backend URL + token (Connect strip),
+               shared via same-origin localStorage. -->
+          <iframe id="voiceOps-frame" data-src="voice-ops.html" title="Voice Ops"
+                  style="flex:1; width:100%; border:0; min-height:0;"></iframe>
         </div>
         <div id="loading-overlay" class="loading-overlay">Loading leads…</div>
       </div>
@@ -3803,6 +3812,10 @@ function attachTabHandlers() {
       // v2.24 — body class drives which sidebar filters are dimmed on Investors.
       document.body.classList.toggle("tab-investors", target === "investors");
       if (target === "map" && map) setTimeout(() => map.invalidateSize(), 50);
+      if (target === "voiceOps") {
+        const f = document.getElementById("voiceOps-frame");
+        if (f && !f.src && f.dataset.src) f.src = f.dataset.src;  // load on first view only
+      }
     });
   });
 }
