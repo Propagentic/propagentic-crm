@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call Center | Propagentic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ─── Design tokens — matched to the demo presentation deck ─────────────── */
+:root {
+  --bg: #F4F4F6;            /* warm light canvas */
+  --card: #FFFFFF;
+  --side: #F8F8F9;
+  --line: #E7E8EA;
+  --line-soft: #EFF0F2;
+  --ink: #191A1F;           /* near-black headlines */
+  --ink-2: #4B5563;         /* body */
+  --ink-3: #9AA1AB;         /* muted */
+  --orange: #E87A2E;        /* deck accent */
+  --orange-deep: #C95E17;
+  --orange-tint: #FDEFE3;
+  --orange-line: #F4C9A4;
+  /* soft status tints (from the deck's work-order table) */
+  --red-tint: #FBE9E7;   --red-ink: #C2410C;   --red-deep: #B91C1C;
+  --green-tint: #E4F4EA; --green-ink: #257A4C;
+  --blue-tint: #E8EEFB;  --blue-ink: #3757C4;
+  --amber-tint: #FBF3DC; --amber-ink: #A16A0F;
+  --gray-tint: #EEEFF1;  --gray-ink: #6B7280;
+  --shadow: 0 1px 2px rgba(20,22,26,0.05), 0 8px 24px rgba(20,22,26,0.06);
+  --shadow-lg: 0 4px 12px rgba(20,22,26,0.08), 0 20px 44px rgba(20,22,26,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+  background: var(--bg); color: var(--ink-2); font-size: 13.5px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--ink); }
+
+/* ─── Auth gate / re-auth reminder ─────────────────────────────────────── */
+.auth-gate { position: fixed; inset: 0; z-index: 3000; background: rgba(244,244,246,0.92); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; }
+.auth-gate.hidden { display: none; }
+.auth-gate__box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 38px 42px; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg); }
+.auth-gate__brand { font-size: 19px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; margin-bottom: 8px; }
+.auth-gate__brand span { color: var(--orange); }
+.auth-gate__sub { color: var(--ink-2); font-size: 13px; margin-bottom: 22px; }
+.auth-gate__btn { display: inline-flex; align-items: center; gap: 10px; background: var(--ink); color: #fff; border: none; border-radius: 9px; padding: 10px 20px; font-size: 13.5px; font-weight: 600; }
+.auth-gate__btn:hover { background: #000; }
+.auth-gate__btn:disabled { opacity: 0.6; }
+.auth-gate__error { margin-top: 14px; color: var(--red-deep); font-size: 12px; }
+.auth-gate__error.hidden { display: none; }
+
+/* ─── App shell ────────────────────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; height: 100vh; }
+.top {
+  display: flex; align-items: center; gap: 14px; padding: 0 22px; height: 58px;
+  background: var(--card); border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+.logo { display: flex; align-items: center; gap: 9px; }
+.logo .mark { height: 22px; width: auto; display: block; }
+.logo .word { font-size: 16.5px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.top .divider { width: 1px; height: 22px; background: var(--line); }
+.top .crumb { font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+.top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.conn { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--ink-3); }
+.conn .dot { width: 8px; height: 8px; border-radius: 50%; background: #C6CBD2; }
+.conn.live .dot { background: #22A75D; box-shadow: 0 0 0 3px rgba(34,167,93,0.16); }
+.conn.live { color: #22A75D; }
+.gear { background: transparent; border: 1px solid var(--line); color: var(--ink-3); border-radius: 8px; padding: 5px 10px; font-size: 13px; }
+.gear:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.shell { display: flex; flex: 1; min-height: 0; }
+
+/* Sidebar — replica of the product's landlord dashboard nav (decorative tabs) */
+.side {
+  width: 240px; flex-shrink: 0; background: var(--side); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.side-user { padding: 16px 16px 13px; border-bottom: 1px solid var(--line); }
+.side-user .nm { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.side-user .rl { font-size: 11.5px; color: var(--ink-3); text-transform: capitalize; margin-top: 1px; }
+.side nav { padding: 14px 12px; display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  position: relative; display: flex; align-items: center; padding: 8px 12px; border: none; background: none;
+  font-size: 13.5px; font-weight: 500; color: var(--ink-2); text-align: left; width: 100%;
+  border-radius: 8px; transition: all 0.15s;
+}
+.nav-item:hover { color: var(--orange-deep); background: rgba(0,0,0,0.04); }
+.nav-item:hover .nico { color: var(--orange); }
+.nav-item.active { color: var(--orange-deep); font-weight: 600; background: var(--orange-tint); }
+.nav-item.active::before { content: ""; position: absolute; left: -12px; top: 0; bottom: 0; width: 4px; background: var(--orange); border-radius: 0 4px 4px 0; }
+.nav-item.active .nico { color: var(--orange); }
+.nico { width: 19px; height: 19px; margin-right: 11px; flex-shrink: 0; color: #A6ACB5; transition: color 0.15s; }
+.nav-sep { border: none; border-top: 1px solid var(--line); margin: 12px 4px; }
+.nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); padding: 12px 12px 5px; }
+.side-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.nav-item.danger { color: var(--red-deep); }
+.nav-item.danger .nico { color: var(--red-deep); opacity: 0.75; }
+.nav-item.danger:hover { color: var(--red-deep); background: var(--red-tint); }
+.nav-item.danger:hover .nico { color: var(--red-deep); }
+
+/* Live call / Call history switcher — lives in the content area, since this
+   tool is embedded inside the product's Maintenance tab */
+.view-tabs { display: flex; gap: 8px; align-items: center; max-width: 1220px; margin: 0 auto; padding: 22px 30px 0; }
+.vtab {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
+  border-radius: 100px; padding: 7px 18px; font-size: 13px; font-weight: 600; transition: all 0.15s;
+}
+.vtab:hover { color: var(--ink); border-color: var(--ink-3); }
+.vtab.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+.vtab .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22A75D; animation: pulse 1.4s ease-in-out infinite; display: none; }
+.vtab .live-dot.on { display: inline-block; }
+
+.content { flex: 1; overflow-y: auto; min-width: 0; }
+.view { display: none; padding: 26px 30px 60px; max-width: 1220px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* ─── Headline pattern (deck typography) ───────────────────────────────── */
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--orange); margin-bottom: 6px; }
+.headline { font-size: 26px; font-weight: 800; color: var(--ink); letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 6px; }
+.headline em { font-style: normal; color: var(--orange); }
+.sub { font-size: 13.5px; color: var(--ink-2); max-width: 620px; margin-bottom: 24px; }
+
+/* ─── Cards ────────────────────────────────────────────────────────────── */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.card-pad { padding: 16px 18px; }
+.card h3 { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 12px; }
+
+/* ─── Live view layout ─────────────────────────────────────────────────── */
+.workspace { display: grid; grid-template-columns: 1fr 336px; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
+.main-col { min-width: 0; }
+
+/* Standby */
+#idle { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 70px 28px; min-height: 520px; }
+.radar { position: relative; width: 92px; height: 92px; margin-bottom: 26px; }
+.radar .core { position: absolute; inset: 33px; border-radius: 50%; background: var(--orange); }
+.radar .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--orange); opacity: 0; animation: radar 2.8s ease-out infinite; }
+.radar .ring:nth-child(2) { animation-delay: 1.4s; }
+@keyframes radar { 0% { transform: scale(0.35); opacity: 0.55; } 100% { transform: scale(1.15); opacity: 0; } }
+#idle h2 { font-size: 19px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; margin-bottom: 8px; }
+#idle p { color: var(--ink-2); font-size: 13.5px; max-width: 430px; }
+.offline-hint { margin-top: 20px; font-size: 12.5px; color: var(--amber-ink); background: var(--amber-tint); border: 1px solid #EFD9A8; border-radius: 10px; padding: 9px 16px; display: none; }
+.offline-hint.on { display: block; }
+.offline-hint button { background: transparent; border: 1px solid #DFC17E; color: var(--amber-ink); border-radius: 7px; padding: 3px 11px; font-size: 11.5px; font-weight: 600; margin-left: 8px; }
+
+/* Live stage */
+#stage { display: none; animation: fadein 0.35s ease; }
+#stage.on { display: block; }
+@keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Stepper */
+.stepper { display: flex; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.step { display: flex; align-items: center; gap: 8px; }
+.step .sdot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--ink-3); transition: all 0.25s; }
+.step .slabel { font-size: 12px; font-weight: 600; color: var(--ink-3); white-space: nowrap; transition: color 0.25s; }
+.step.done .sdot { border-color: #22A75D; background: var(--green-tint); color: var(--green-ink); }
+.step.done .slabel { color: var(--ink-2); }
+.step.now .sdot { border-color: var(--orange); background: var(--orange-tint); color: var(--orange-deep); animation: stepPulse 1.6s ease-in-out infinite; }
+.step.now .slabel { color: var(--ink); }
+@keyframes stepPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,122,46,0.35); } 50% { box-shadow: 0 0 0 7px rgba(232,122,46,0); } }
+.step-line { flex: 1; min-width: 26px; height: 2px; background: var(--line); margin: 0 12px; border-radius: 2px; }
+.step-line.done { background: #22A75D; }
+
+/* Result strip */
+.result-strip { display: none; align-items: flex-start; gap: 13px; background: var(--green-tint); border: 1px solid #BFE3CC; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; animation: fadein 0.35s ease; }
+.result-strip.on { display: flex; }
+.result-strip.neutral { background: var(--card); border-color: var(--line); }
+.result-strip .ric { font-size: 18px; line-height: 1.2; }
+.result-strip .rtitle { font-weight: 700; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
+.result-strip .rsub { color: var(--ink-2); font-size: 13px; }
+.result-strip .rnote { color: var(--ink-3); font-size: 11.5px; margin-top: 4px; }
+
+/* Transcript panel */
+.tpanel { display: flex; flex-direction: column; min-height: 480px; overflow: hidden; }
+.tpanel-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+.live-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--green-tint); color: var(--green-ink); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; padding: 4px 12px; border-radius: 100px; }
+.live-pill .pulse { width: 7px; height: 7px; border-radius: 50%; background: #22A75D; animation: pulse 1.4s ease-in-out infinite; }
+.live-pill.ended { background: var(--gray-tint); color: var(--gray-ink); }
+.live-pill.ended .pulse { animation: none; background: var(--ink-3); }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.75); } }
+.tpanel-head .who { font-weight: 700; font-size: 14.5px; color: var(--ink); }
+.timer { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px 11px; }
+.hangup { background: transparent; border: 1px solid #EDBDB0; color: var(--red-deep); border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+.hangup:hover { background: var(--red-tint); }
+
+.balance { display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-bottom: 1px solid var(--line-soft); font-size: 10.5px; font-weight: 600; color: var(--ink-3); }
+.balance .bar { flex: 1; height: 5px; border-radius: 3px; background: var(--line-soft); overflow: hidden; display: flex; }
+.balance .bar .ai { height: 100%; background: var(--orange); transition: width 0.4s; border-radius: 3px; }
+.balance b { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+.transcript { flex: 1; overflow-y: auto; padding: 18px; scroll-behavior: smooth; max-height: 54vh; background: #FCFCFD; }
+.turn { display: flex; gap: 12px; margin-bottom: 13px; animation: turnIn 0.25s ease; }
+@keyframes turnIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.turn .who { flex: 0 0 82px; text-align: right; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); padding-top: 7px; }
+.turn.assistant .who { color: var(--orange-deep); }
+.turn .bubble { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 13px; max-width: 640px; white-space: pre-wrap; font-size: 13.5px; color: var(--ink-2); box-shadow: 0 1px 2px rgba(20,22,26,0.04); }
+.turn.assistant .bubble { border-left: 3px solid var(--orange); color: var(--ink); }
+.bubble .hl { background: var(--orange-tint); color: var(--orange-deep); border-radius: 4px; padding: 0 4px; font-weight: 600; }
+.bubble .hl.t { background: var(--green-tint); color: var(--green-ink); }
+
+.speaking { display: flex; gap: 12px; margin-bottom: 6px; }
+.speaking .who { flex: 0 0 82px; text-align: right; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); padding-top: 9px; }
+.speaking.assistant .who { color: var(--orange-deep); }
+.speaking .dots { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 15px; display: inline-flex; gap: 5px; align-items: center; }
+.speaking .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); animation: blink 1.2s infinite; }
+.speaking .dots i:nth-child(2) { animation-delay: 0.2s; }
+.speaking .dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+/* ─── Right rail ───────────────────────────────────────────────────────── */
+.rail { display: flex; flex-direction: column; gap: 16px; }
+#call-cards { display: none; flex-direction: column; gap: 16px; }
+#call-cards.on { display: flex; }
+
+.field { margin-bottom: 11px; }
+.field label { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 5px; }
+.field input, .field select, .field textarea {
+  width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 11px; font-size: 13px; outline: none; transition: border-color 0.12s, box-shadow 0.12s;
+}
+.field textarea { min-height: 64px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(232,122,46,0.12); }
+.btn-primary {
+  width: 100%; background: var(--orange); color: #fff; border: none; border-radius: 9px;
+  padding: 10px 0; font-weight: 700; font-size: 13.5px; transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--orange-deep); }
+.btn-primary:disabled { opacity: 0.45; cursor: default; }
+.note { font-size: 11px; color: var(--ink-3); margin-top: 8px; line-height: 1.5; }
+
+/* Times-available week grid (Sun–Sat × 7am–9pm) */
+.cal-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: var(--card); border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 11px; font-size: 13px; color: var(--ink); text-align: left; transition: border-color 0.12s;
+}
+.cal-toggle:hover { border-color: var(--ink-3); }
+.cal-toggle .chev { color: var(--ink-3); font-size: 10px; transition: transform 0.15s; }
+.cal-toggle.open .chev { transform: rotate(180deg); }
+.cal-toggle .sum { color: var(--ink-3); font-weight: 400; }
+.cal-toggle .sum.set { color: var(--green-ink); font-weight: 600; }
+.cal-wrap { display: none; margin-top: 9px; user-select: none; -webkit-user-select: none; }
+.cal-wrap.open { display: block; }
+.cal-head { display: grid; grid-template-columns: 28px repeat(7, 1fr); gap: 3px; margin-bottom: 4px; }
+.cal-head span { text-align: center; font-size: 9.5px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; }
+.cal-grid { display: grid; grid-template-columns: 28px repeat(7, 1fr); gap: 3px; }
+.cal-hour { font-size: 9px; color: var(--ink-3); text-align: right; padding-right: 5px; line-height: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cal-cell { height: 16px; background: var(--line-soft); border-radius: 4px; cursor: pointer; transition: background 0.08s; }
+.cal-cell:hover { background: #DDDEE2; }
+.cal-cell.sel { background: #2FB56B; }
+.cal-cell.sel:hover { background: #289C5D; }
+.cal-foot { display: flex; align-items: center; margin-top: 8px; font-size: 11px; color: var(--ink-3); }
+.cal-clear { margin-left: auto; background: none; border: none; color: var(--orange-deep); font-size: 11px; font-weight: 700; padding: 0; }
+.cal-clear:hover { text-decoration: underline; }
+
+/* Guide-the-assistant (whisper) card */
+.guide textarea { min-height: 56px; }
+.btn-secondary {
+  width: 100%; background: var(--card); color: var(--orange-deep); border: 1.5px solid var(--orange-line);
+  border-radius: 9px; padding: 8px 0; font-weight: 700; font-size: 13px; transition: all 0.15s;
+}
+.btn-secondary:hover { background: var(--orange-tint); }
+.btn-secondary:disabled { opacity: 0.45; cursor: default; }
+.guide-log { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.guide-note { display: flex; gap: 8px; align-items: flex-start; background: var(--orange-tint); border: 1px solid var(--orange-line); border-radius: 9px; padding: 7px 11px; font-size: 12px; color: var(--orange-deep); animation: chipIn 0.3s ease; }
+.guide-note .gi { font-weight: 700; }
+.guide-empty { font-size: 12px; color: var(--ink-3); font-style: italic; margin-top: 8px; }
+
+/* Brief */
+.brief-row { display: flex; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+.brief-row .k { flex: 0 0 88px; color: var(--ink-3); font-size: 11.5px; font-weight: 600; padding-top: 1px; }
+.brief-row .v { color: var(--ink); font-weight: 600; min-width: 0; }
+.brief-row .v.soft { color: var(--ink-2); font-weight: 500; }
+.brief-row .v .pending { color: var(--ink-3); font-weight: 400; font-style: italic; }
+
+/* Milestones */
+.mile { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
+.mile .mdot { width: 19px; height: 19px; border-radius: 50%; border: 2px solid var(--line); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; transition: all 0.3s; }
+.mile .mtext { color: var(--ink-3); font-size: 13px; font-weight: 500; transition: color 0.3s; }
+.mile.hit .mdot { border-color: #22A75D; background: var(--green-tint); color: var(--green-ink); }
+.mile.hit .mtext { color: var(--ink); }
+.mile.hit .mtext::after { content: " ✓"; color: var(--green-ink); font-weight: 700; }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 100px; padding: 5px 13px; font-size: 12.5px; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(20,22,26,0.04); animation: chipIn 0.3s ease; }
+@keyframes chipIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+.chip .ic { font-size: 11px; font-weight: 700; }
+.chip.money { border-color: var(--orange-line); } .chip.money .ic { color: var(--orange-deep); }
+.chip.time { border-color: #BFE3CC; } .chip.time .ic { color: var(--green-ink); }
+.chip.person .ic { color: var(--ink-3); }
+.chips .none { color: var(--ink-3); font-size: 12.5px; font-style: italic; }
+
+/* ─── History view ─────────────────────────────────────────────────────── */
+.hist-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.hist-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+.hist-stats { display: flex; gap: 16px; font-size: 12.5px; color: var(--ink-3); margin-left: auto; }
+.hist-stats b { color: var(--ink); font-weight: 700; }
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.search { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 7px 12px; font-size: 13px; width: 230px; outline: none; }
+.search:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(232,122,46,0.12); }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pills button { background: var(--card); border: 1px solid var(--line); color: var(--ink-2); border-radius: 100px; padding: 5px 14px; font-size: 12px; font-weight: 600; transition: all 0.12s; }
+.pills button:hover { color: var(--ink); border-color: var(--ink-3); }
+.pills button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.table-card { overflow: hidden; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left; padding: 11px 16px; font-weight: 700; color: var(--ink-3);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0;
+}
+tbody tr { border-bottom: 1px solid var(--line-soft); cursor: pointer; transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #FBF6F1; }
+td { padding: 12px 16px; color: var(--ink-2); vertical-align: top; }
+td.when { white-space: nowrap; color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+td.vendor { font-weight: 700; color: var(--ink); white-space: nowrap; }
+td.next { color: var(--ink-2); max-width: 330px; font-size: 12.5px; }
+td .fee { font-weight: 600; color: var(--ink); }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 100px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.badge.scheduled    { background: var(--green-tint); color: var(--green-ink); }
+.badge.callback     { background: var(--amber-tint); color: var(--amber-ink); }
+.badge.voicemail    { background: var(--blue-tint);  color: var(--blue-ink); }
+.badge.notscheduled { background: var(--gray-tint);  color: var(--gray-ink); }
+.badge.noanswer     { background: transparent; border: 1px solid var(--line); color: var(--ink-3); }
+.badge.attention    { background: var(--red-tint);   color: var(--red-deep); }
+.badge.live         { background: var(--green-tint); color: var(--green-ink); }
+
+.empty-state { padding: 54px 20px; text-align: center; }
+.empty-state h4 { color: var(--ink); font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+.empty-state p { color: var(--ink-3); font-size: 13px; max-width: 420px; margin: 0 auto; }
+
+/* ─── Detail drawer ────────────────────────────────────────────────────── */
+.backdrop { position: fixed; inset: 0; background: rgba(25,26,31,0.32); z-index: 1500; opacity: 0; pointer-events: none; transition: opacity 0.18s; }
+.backdrop.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: -560px; width: 540px; max-width: 94vw; height: 100vh;
+  background: var(--card); border-left: 1px solid var(--line); z-index: 1600;
+  display: flex; flex-direction: column; transition: right 0.22s ease; box-shadow: var(--shadow-lg);
+}
+.drawer.open { right: 0; }
+.drawer-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--line-soft); }
+.drawer-head .row1 { display: flex; align-items: center; gap: 11px; }
+.drawer-head .vendor { font-size: 16px; font-weight: 800; color: var(--ink); letter-spacing: -0.01em; }
+.drawer-head .close { margin-left: auto; background: transparent; border: none; color: var(--ink-3); font-size: 17px; line-height: 1; padding: 4px 6px; }
+.drawer-head .close:hover { color: var(--ink); }
+.drawer-head .meta { color: var(--ink-3); font-size: 12px; margin-top: 5px; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 18px 22px; background: #FCFCFD; }
+.outcome-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(20,22,26,0.04); }
+.outcome-card .oc-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 10px; }
+.oc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.oc-item .k { font-size: 11px; font-weight: 600; color: var(--ink-3); }
+.oc-item .v { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 1px; }
+.oc-item .v.dim { color: var(--ink-3); font-weight: 400; }
+.oc-note { grid-column: 1 / -1; display: flex; gap: 9px; align-items: flex-start; background: var(--amber-tint); border: 1px solid #EFD9A8; color: var(--amber-ink); border-radius: 9px; padding: 9px 12px; font-size: 12.5px; margin-top: 3px; }
+.transcript-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); margin-bottom: 12px; }
+
+/* ─── Settings modal ───────────────────────────────────────────────────── */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(25,26,31,0.35); z-index: 2000; display: none; align-items: center; justify-content: center; }
+.modal-backdrop.open { display: flex; }
+.modal { background: var(--card); border: 1px solid var(--line); border-radius: 16px; width: 440px; max-width: 92vw; padding: 22px 24px; box-shadow: var(--shadow-lg); }
+.modal h3 { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.modal .hint { color: var(--ink-3); font-size: 12px; margin-bottom: 14px; }
+.modal label { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin: 13px 0 5px; }
+.modal input { width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font-size: 13px; outline: none; }
+.modal input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(232,122,46,0.12); }
+.modal .actions { display: flex; gap: 9px; margin-top: 20px; justify-content: flex-end; }
+.modal .actions .save { background: var(--orange); color: #fff; border: none; border-radius: 9px; padding: 8px 18px; font-weight: 700; }
+.modal .actions .cancel { background: transparent; border: 1px solid var(--line); color: var(--ink-2); border-radius: 9px; padding: 8px 15px; font-weight: 600; }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: #fff; padding: 11px 20px; border-radius: 10px; z-index: 2500;
+  font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg); opacity: 0; transition: opacity 0.2s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+@media (max-width: 760px) {
+  .side { display: none; }
+  .turn .who, .speaking .who { flex-basis: 54px; }
+  td.next { display: none; }
+}
+</style>
+
+<!-- Firebase (compat globals) — same project + session as the CRM shell -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<!-- Firestore backbone contract + client (see voice-call.schema.json + BEN-HANDOFF.md) -->
+<script src="call-data.js"></script>
+</head>
+<body>
+
+<!-- Auth gate — doubles as the session-expired / re-auth reminder -->
+<div id="auth-gate" class="auth-gate">
+  <div class="auth-gate__box">
+    <div class="auth-gate__brand">Prop<span>agentic</span> Call Center</div>
+    <div class="auth-gate__sub" id="auth-gate-msg">Sign in with your <b>@propagenticai.com</b> Google account to continue.</div>
+    <button id="auth-gate-btn" class="auth-gate__btn" onclick="signInWithGoogle()">
+      <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.836.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="auth-gate-error" class="auth-gate__error hidden"></div>
+  </div>
+</div>
+
+<div class="app">
+  <header class="top">
+    <span class="logo">
+      <svg class="mark" viewBox="0 0 942.17 609.54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M314.54 0c12.72-.1 34.34 6.79 45.16 18.02 67.53 60.97 144.76 116.01 211.32 177.5 13.79 13.84 35.81 29.22 29.69 51.53-3.95 13.9-17.6 27.84-30.1 29.95-11.91 2.93-18.52-6.3-26.96-12.42-55.91-46.52-166-147.08-214.61-173.95-16.85-9.05-20.23-9.47-31.29 1.86-67.37 60.45-146.3 114.19-210.44 176.2-10.15 9.65-14.05 23.02-14.68 36.75-4.43 63.48 4.64 134.83 1.59 199.03-5.47 48.7 93.28 26.49 120.69 28.75 28.31-.04 56.14-1.89 84.66-1.2 17.53-.17 34.33-5.63 47.06-17.86 84.55-73.44 185.98-136.64 268.82-210.86 44.36-34.97 30.25-65.07 47.18-110.36 29.1-70.05 122.86-91.47 190.15-68.91 65.54 23.39-28.17 56.72-63.1 80.41-12.41 7.56-25.12 20.46-24.89 35.43 1.45 27.83 21.87 53.07 39.68 75.25 39.49 39.28 89.3-22.68 132-45.39 43.32-19.97 20.31 50.95 13.2 70.11-20.89 54.18-73.97 94.9-132.95 94.11a124 124 0 0 1-26.83-3.26c-35.1-7.64-58.57-36.09-90.61-31.21-12.72 1.8-26.54 9.97-37.47 17.22-81.31 53.5-154.93 134.96-240.85 183.56-5.77 2.89-12.41 7.7-17.26 7.77-22.75.11-202.61.87-282.49 1.22-43.04.81-69.99 2.36-92.26-31.9-4.93-9.09-5.78-19.7-5.3-29.87 4.94-93.9-10.68-195.3.39-287.83 10.02-29.01 100.1-112.09 180.97-176.56 25.41-20.26 49.92-38.68 70.74-52.99C283.34 12.22 297.93 1.17 313.51.01h1.02Z" fill="#fc5e13"/></svg>
+      <span class="word">Propagentic</span>
+    </span>
+    <span class="divider"></span>
+    <span class="crumb">AI Call Center</span>
+    <div class="right">
+      <span class="conn" id="conn"><span class="dot"></span><span id="conn-text">connecting…</span></span>
+      <button class="gear" id="gear" title="Connection settings">⚙︎</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="side">
+      <div class="side-user">
+        <div class="nm">WPM Real Estate Management</div>
+        <div class="rl">Landlord</div>
+      </div>
+      <nav>
+        <div class="nav-section">Daily</div>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z"/></svg>
+          Repairs
+        </button>
+        <button class="nav-item active" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12.75L11.25 15 15 9.75M21 12c0-1.268-.63-2.39-1.593-3.068a3.745 3.745 0 00-1.043-3.296 3.745 3.745 0 00-3.296-1.043A3.745 3.745 0 0012 3c-1.268 0-2.39.63-3.068 1.593a3.746 3.746 0 00-3.296 1.043 3.745 3.745 0 00-1.043 3.296A3.745 3.745 0 003 12c0 1.268.63 2.39 1.593 3.068a3.746 3.746 0 001.043 3.296 3.746 3.746 0 003.296 1.043A3.745 3.745 0 0012 21c1.268 0 2.39-.63 3.068-1.593a3.746 3.746 0 003.296-1.043 3.746 3.746 0 001.043-3.296A3.745 3.745 0 0021 12z"/></svg>
+          Maintenance
+        </button>
+
+        <div class="nav-section">Property &amp; People</div>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg>
+          Properties
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46"/></svg>
+          Listings
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+          Tenants
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+          Contractors
+        </button>
+
+        <div class="nav-section">Money</div>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Rent Tracking
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+          Invoices
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286z"/></svg>
+          Spend Controls
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+          Reports
+        </button>
+
+        <div class="nav-section">Tools</div>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>
+          AI Assistant
+        </button>
+      </nav>
+      <div class="side-bottom">
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+          Tutorial
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg>
+          Team
+        </button>
+        <button class="nav-item" type="button">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </button>
+        <button class="nav-item danger" type="button" id="nav-logout">
+          <svg class="nico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <main class="content">
+
+      <!-- Live call / Call history switcher (this tool lives inside Maintenance) -->
+      <div class="view-tabs">
+        <button class="vtab active" data-view="live" type="button">Live call <span class="live-dot" id="nav-live-dot"></span></button>
+        <button class="vtab" data-view="history" type="button">Call history</button>
+      </div>
+
+      <!-- ═══ LIVE VIEW ═══ -->
+      <section class="view active" id="view-live">
+        <div class="eyebrow">Live from the maintenance line</div>
+        <h1 class="headline">Every vendor call, <em>tracked as it happens.</em></h1>
+        <p class="sub">Assign a call on the right — the conversation, what the assistant accomplishes, and every detail it captures appear here in real time.</p>
+
+        <div class="workspace">
+          <div class="main-col">
+            <!-- Standby -->
+            <div id="idle" class="card">
+              <div class="radar"><div class="ring"></div><div class="ring"></div><div class="core"></div></div>
+              <h2 id="idle-title">Standing by</h2>
+              <p id="idle-sub">Assign a call on the right, and the conversation appears here the moment the line connects — live, word by word.</p>
+              <div class="offline-hint" id="offline-hint">
+                Not connected to the calling service.
+                <button onclick="openSettings()">Connection settings</button>
+              </div>
+            </div>
+
+            <!-- Live stage -->
+            <div id="stage">
+              <div class="stepper" id="stepper">
+                <div class="step" data-s="0"><div class="sdot">1</div><div class="slabel">Call assigned</div></div>
+                <div class="step-line" data-l="0"></div>
+                <div class="step" data-s="1"><div class="sdot">2</div><div class="slabel">Contractor answered</div></div>
+                <div class="step-line" data-l="1"></div>
+                <div class="step" data-s="2"><div class="sdot">3</div><div class="slabel">In conversation</div></div>
+                <div class="step-line" data-l="2"></div>
+                <div class="step" data-s="3"><div class="sdot">4</div><div class="slabel">Wrapped up</div></div>
+              </div>
+
+              <div class="result-strip" id="result-strip">
+                <div class="ric" id="r-ic">✓</div>
+                <div>
+                  <div class="rtitle" id="r-title"></div>
+                  <div class="rsub" id="r-sub"></div>
+                  <div class="rnote">This stage resets when the next call is assigned. The full record is saved to Call history.</div>
+                </div>
+              </div>
+
+              <div class="card tpanel">
+                <div class="tpanel-head">
+                  <span class="live-pill" id="live-pill"><span class="pulse"></span><span id="pill-text">LIVE</span></span>
+                  <span class="who" id="live-who"></span>
+                  <span class="timer" id="timer">0:00</span>
+                  <button class="hangup" id="hangup-btn" style="display:none">End call</button>
+                </div>
+                <div class="balance">
+                  <span>AI <b id="bal-ai">0%</b></span>
+                  <div class="bar"><div class="ai" id="bal-bar" style="width:0%"></div></div>
+                  <span><b id="bal-vendor">0%</b> Contractor</span>
+                </div>
+                <div class="transcript" id="transcript"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rail">
+            <!-- Assign a call -->
+            <div class="card card-pad">
+              <h3>Assign a call</h3>
+              <div class="field">
+                <label for="a-to">Contractor number</label>
+                <input id="a-to" type="tel" placeholder="+1 410 555 0142" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="a-address">Address</label>
+                <select id="a-address"></select>
+              </div>
+              <div class="field">
+                <label for="a-issue">Maintenance issue</label>
+                <select id="a-issue"></select>
+              </div>
+              <div class="field">
+                <label>Times available</label>
+                <button type="button" class="cal-toggle" id="cal-toggle">
+                  <span class="sum" id="cal-sum">Select times that work for the tenant…</span>
+                  <span class="chev">▼</span>
+                </button>
+                <div class="cal-wrap" id="cal-wrap">
+                  <div class="cal-head" id="cal-head"></div>
+                  <div class="cal-grid" id="cal-grid"></div>
+                  <div class="cal-foot">
+                    <span>Click or drag to mark the hours that work.</span>
+                    <button type="button" class="cal-clear" id="cal-clear">Clear</button>
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label for="a-lang">Language</label>
+                <select id="a-lang">
+                  <option value="">English (default)</option>
+                  <option value="multi">English + Spanish (auto)</option>
+                  <option value="es">Spanish (es)</option>
+                </select>
+              </div>
+              <button class="btn-primary" id="a-dial">Assign call</button>
+              <div class="note" id="a-note">Dials from the office line. One call at a time — it appears live on the left the moment it connects.</div>
+            </div>
+
+            <!-- Guide the assistant (live steering) -->
+            <div class="card card-pad guide">
+              <h3>Guide the assistant</h3>
+              <div class="field" style="margin-bottom:8px">
+                <textarea id="g-note" placeholder="e.g. Mention the $325 cap before you close." disabled></textarea>
+              </div>
+              <button class="btn-secondary" id="g-send" disabled>Send guidance</button>
+              <div class="note">Applied on the assistant's very next reply — the contractor never hears it.</div>
+              <div class="guide-log" id="guide-log"><div class="guide-empty">No guidance sent on this call.</div></div>
+            </div>
+
+            <div id="call-cards">
+              <div class="card card-pad">
+                <h3>Call brief</h3>
+                <div class="brief-row"><div class="k">Calling</div><div class="v" id="b-phone">—</div></div>
+                <div class="brief-row"><div class="k">Property</div><div class="v soft" id="b-prop">—</div></div>
+                <div class="brief-row"><div class="k">On behalf of</div><div class="v soft" id="b-behalf">Propagentic — maintenance line</div></div>
+                <div class="brief-row"><div class="k">Regarding</div><div class="v soft" id="b-issue"><span class="pending">listening…</span></div></div>
+                <div class="brief-row"><div class="k">Trade</div><div class="v soft" id="b-trade"><span class="pending">detecting…</span></div></div>
+                <div class="brief-row"><div class="k">Started</div><div class="v soft" id="b-start">—</div></div>
+              </div>
+
+              <div class="card card-pad">
+                <h3>Call progress</h3>
+                <div id="milestones"></div>
+              </div>
+
+              <div class="card card-pad">
+                <h3>Captured on this call</h3>
+                <div class="chips" id="chips"><span class="none">Details appear the moment they’re said.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ HISTORY VIEW ═══ -->
+      <section class="view" id="view-history">
+        <div class="eyebrow">Documented, every time</div>
+        <h1 class="headline">What was said, and what it needs, <em>in one view.</em></h1>
+        <p class="sub">Every outbound call is captured the same way — the conversation, the outcome, and the next step. Nothing to re-key, nothing to chase.</p>
+
+        <div class="hist-head">
+          <span class="hist-title">Outbound calls</span>
+          <div class="hist-stats" id="hist-stats"></div>
+        </div>
+
+        <div class="toolbar">
+          <input class="search" id="search" type="text" placeholder="Search number, fee, appointment…">
+          <div class="pills" id="filter-pills">
+            <button data-f="all" class="active">All</button>
+            <button data-f="scheduled">Scheduled</button>
+            <button data-f="callback">Callbacks</button>
+            <button data-f="voicemail">Voicemail</button>
+            <button data-f="noanswer">No answer</button>
+          </div>
+        </div>
+
+        <div class="card table-card">
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>When</th><th>Call to</th><th>Result</th><th>Appointment</th><th>Quoted fee</th><th>Next step</th></tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="hist-empty" style="display:none">
+            <h4>No calls yet</h4>
+            <p>Once calls are placed, every conversation and outcome is documented here automatically.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Detail drawer -->
+<div class="backdrop" id="drawer-backdrop" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="row1">
+      <span class="vendor" id="d-vendor"></span>
+      <span id="d-badge"></span>
+      <button class="close" onclick="closeDrawer()" title="Close">✕</button>
+    </div>
+    <div class="meta" id="d-meta"></div>
+  </div>
+  <div class="drawer-body">
+    <div class="outcome-card" id="d-outcome"></div>
+    <div class="transcript-title">Conversation</div>
+    <div id="d-transcript"></div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="settings-backdrop">
+  <div class="modal">
+    <h3>Connection settings</h3>
+    <div class="hint">Where this page reads calls from. Stored in this browser only.</div>
+    <label>Data source</label>
+    <select id="cfg-source" style="width:100%; background:var(--card); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:13px; outline:none;">
+      <option value="api">Calling service API — direct (tunnel URL + token below)</option>
+      <option value="firestore">Firestore backbone — agent bridge (no URL/token needed)</option>
+    </select>
+    <label>Calling service URL</label>
+    <input id="cfg-backend" type="text" placeholder="https://….trycloudflare.com  (or leave blank on localhost)">
+    <label>Access token</label>
+    <input id="cfg-token" type="password" placeholder="ops token (blank if the local proxy injects it)">
+    <div class="actions">
+      <button class="cancel" onclick="closeSettings()">Cancel</button>
+      <button class="save" onclick="saveSettings()">Save &amp; connect</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ─── Auth (same project + rules as the CRM; session shared same-origin) ─
+  var firebaseConfig = {
+    apiKey: "AIzaSyDhEGGhW8EiBlHHoClukfEXnYExx68_b38",
+    authDomain: "propagentic-crm.firebaseapp.com",
+    projectId: "propagentic-crm",
+    storageBucket: "propagentic-crm.firebasestorage.app",
+    messagingSenderId: "309385337334",
+    appId: "1:309385337334:web:f4ed1db5304b33e6aa0fd7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var ALLOWED_DOMAIN = "propagenticai.com";
+  var hadSession = false;
+
+  function isAllowed(u) {
+    return !!(u && u.email && u.emailVerified && u.email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN));
+  }
+  function showGate(msg, expired) {
+    document.getElementById("auth-gate").classList.remove("hidden");
+    document.getElementById("auth-gate-msg").innerHTML = expired
+      ? "Your session has expired. <b>Sign back in</b> to keep viewing calls."
+      : "Sign in with your <b>@" + ALLOWED_DOMAIN + "</b> Google account to continue.";
+    var e = document.getElementById("auth-gate-error");
+    if (msg) { e.textContent = msg; e.classList.remove("hidden"); } else { e.classList.add("hidden"); }
+  }
+  function hideGate() { document.getElementById("auth-gate").classList.add("hidden"); }
+
+  firebase.auth().onAuthStateChanged(function (user) {
+    if (isAllowed(user)) {
+      hadSession = true;
+      hideGate();
+      boot();
+    } else if (user) {
+      firebase.auth().signOut().finally(function () {
+        showGate("Access restricted to @" + ALLOWED_DOMAIN + " accounts. " + (user.email || "This account") + " is not authorized.");
+      });
+    } else {
+      showGate(null, hadSession);
+    }
+  });
+  setInterval(function () {
+    var u = firebase.auth().currentUser;
+    if (!u) return;
+    u.getIdToken(false).catch(function () { showGate("Your Firebase session could not be refreshed.", true); });
+  }, 5 * 60 * 1000);
+  window.signInWithGoogle = function () {
+    var btn = document.getElementById("auth-gate-btn");
+    btn.disabled = true;
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ hd: ALLOWED_DOMAIN });
+    firebase.auth().signInWithPopup(provider).catch(function (err) {
+      showGate("Sign-in failed: " + (err.message || err.code || "unknown error"), hadSession);
+    }).finally(function () { btn.disabled = false; });
+  };
+
+  // ─── Backend wiring (shares localStorage keys with voice-ops.html) ─────
+  var Q = new URLSearchParams(location.search);
+  if (Q.get("b")) localStorage.setItem("voiceops_backend", Q.get("b"));
+  if (Q.get("t")) localStorage.setItem("voiceops_token", Q.get("t"));
+  if (Q.get("src")) localStorage.setItem("voiceops_source", Q.get("src"));
+  // Data source: 'api' = the voice server's ops API directly (tunnel + token);
+  // 'firestore' = the voiceCalls backbone the agent bridge writes into.
+  var SOURCE = localStorage.getItem("voiceops_source") || "api";
+  var isLocal = /^(localhost|127\.)/.test(location.hostname);
+  function backend() {
+    var b = (localStorage.getItem("voiceops_backend") || "").replace(/\/+$/, "");
+    if (!b && isLocal) return "/voice-api";
+    return b;
+  }
+  function token() { return localStorage.getItem("voiceops_token") || ""; }
+  function withToken(path) {
+    var sep = path.indexOf("?") >= 0 ? "&" : "?";
+    var t = token();
+    return backend() + path + (t ? sep + "t=" + encodeURIComponent(t) : "");
+  }
+  function api(path) {
+    return fetch(withToken(path)).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+    });
+  }
+  function apiPost(path, body) {
+    return fetch(withToken(path), {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {})
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+    });
+  }
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  function toast(msg) {
+    var el = $("toast"); el.textContent = msg; el.classList.add("show");
+    setTimeout(function () { el.classList.remove("show"); }, 2600);
+  }
+  function fmtPhone(p) {
+    if (!p) return "Unknown number";
+    var d = String(p).replace(/\D/g, "");
+    if (d.length === 11 && d[0] === "1") d = d.slice(1);
+    if (d.length === 10) return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
+    return p;
+  }
+  function fmtWhen(ts) {
+    var dte = new Date(ts);
+    if (isNaN(dte)) return "—";
+    var now = new Date();
+    var t = dte.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (dte.toDateString() === now.toDateString()) return "Today " + t;
+    var y = new Date(now); y.setDate(now.getDate() - 1);
+    if (dte.toDateString() === y.toDateString()) return "Yesterday " + t;
+    return dte.toLocaleDateString([], { month: "short", day: "numeric" }) + " " + t;
+  }
+
+  // ─── Navigation ─────────────────────────────────────────────────────────
+  // The left sidebar is a visual replica of the product's landlord nav and
+  // deliberately leads nowhere (Maintenance shown active — this tool embeds
+  // there). Only the in-content Live call / Call history tabs are functional.
+  var navButtons = document.querySelectorAll(".vtab[data-view]");
+  navButtons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      navButtons.forEach(function (x) { x.classList.toggle("active", x === b); });
+      document.querySelectorAll(".view").forEach(function (v) {
+        v.classList.toggle("active", v.id === "view-" + b.dataset.view);
+      });
+      if (b.dataset.view === "history") loadHistory();
+    });
+  });
+  document.getElementById("nav-logout").addEventListener("click", function () {
+    firebase.auth().signOut();
+  });
+
+  // ─── Result classification (PM-facing labels) ──────────────────────────
+  var BADGES = {
+    scheduled:    { cls: "scheduled",    icon: "✓", label: "Scheduled" },
+    callback:     { cls: "callback",     icon: "☎", label: "Callback requested" },
+    voicemail:    { cls: "voicemail",    icon: "✉", label: "Voicemail left" },
+    notscheduled: { cls: "notscheduled", icon: "—", label: "Not scheduled" },
+    noanswer:     { cls: "noanswer",     icon: "·", label: "No answer" },
+    attention:    { cls: "attention",    icon: "!", label: "Needs attention" }
+  };
+  function classify(c) {
+    var o = c.outcome || {};
+    if (o.flagged) return "attention";
+    if (o.voicemail) return "voicemail";
+    if (!((c.userTurns || 0) > 0)) return "noanswer";
+    if (o.booked && o.time) return "scheduled";
+    if (o.wants_human) return "callback";
+    return "notscheduled";
+  }
+  function badgeHtml(kind) {
+    var b = BADGES[kind];
+    return '<span class="badge ' + b.cls + '"><span aria-hidden="true">' + b.icon + '</span>' + b.label + "</span>";
+  }
+
+  // ─── Live-conversation intelligence (client-side) ──────────────────────
+  var MILESTONES = [
+    { id: "answered",  label: "Contractor answered",         test: function (r, t) { return r === "user"; } },
+    { id: "intro",     label: "Assistant introduced itself", test: function (r, t) { return r === "assistant" && (/\b(this is|it'?s)\b[^.]{0,40}\bfrom\b/i.test(t) || /\bcalling from\b/i.test(t)); } },
+    { id: "issue",     label: "Issue explained",             test: function (r, t) { return r === "assistant" && /\b(leak|leaking|a\/?c|air condition|cool|heat|furnace|breaker|circuit|outlet|drain|clog|back(ed|ing)? up|water heater|roof|flashing|dishwasher|appliance|disposal|repair|not (working|cooling|draining)|issue|problem)\b/i.test(t); } },
+    { id: "sched",     label: "Scheduling discussed",        test: function (r, t) { return /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|this week|next week|morning|afternoon|evening)\b/i.test(t); } },
+    { id: "fee",       label: "Pricing discussed",           test: function (r, t) { return /\$\s?\d|\b(fee|charge|rate|per hour|an hour|service call|trip charge|invoice|quote)\b/i.test(t); } },
+    { id: "nextstep",  label: "Next step agreed",            test: function (r, t) { return /\b(i'?ll text|text you|send (you|over)|call (you|me) back|see you|talk (tomorrow|then|soon)|we'?re set|locked in|confirm)\b/i.test(t) || /\bgoodbye\b/i.test(t); } }
+  ];
+  var TRADES = [
+    { re: /\b(a\/?c|air condition|cooling|heat pump|furnace|hvac)\b/i,             label: "HVAC" },
+    { re: /\b(plumb|drain|clog|leak under|sink|toilet|water heater|pipe|disposal)\b/i, label: "Plumbing" },
+    { re: /\b(breaker|circuit|electrical|electrician|outlet|panel|wiring)\b/i,     label: "Electrical" },
+    { re: /\b(roof|flashing|shingle|gutter)\b/i,                                   label: "Roofing" },
+    { re: /\b(dishwasher|washer|dryer|fridge|refrigerator|oven|appliance)\b/i,     label: "Appliance" },
+    { re: /\b(drywall|door|paint|carpentry|handyman|fence)\b/i,                    label: "General repair" }
+  ];
+  var RE_MONEY = /\$\s?\d[\d,]*(?:\.\d{2})?(?:\s?(?:an hour|\/hr|per hour))?|\b\d+\s?dollars\b/gi;
+  var RE_TIME = /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|this week|next week)\b(?:\s+(?:morning|afternoon|evening|night))?(?:\s+(?:at|around|between)\s+[\w:]+(?:\s+and\s+[\w:]+)?)?|\bbetween\s+\w+\s+and\s+\w+\b|\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/gi;
+  var RE_FEE_CONTEXT = /\b(?:fee|charge|rate|service call|trip|runs|per hour|an hour|first hour)\b/i;
+  var RE_SPOKEN_NUM = /\b(?:(?:one\s+)?hundred(?:\s+and)?\s+)?(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s](?:one|two|three|four|five|six|seven|eight|nine))?\b/i;
+
+  // ─── Live state ─────────────────────────────────────────────────────────
+  var live = null;
+  var timerIv = null;
+  var chipsSeen = null;
+  var es = null;
+  var sseLive = false;
+  var booted = false;
+
+  function resetStage(sid, toPhone) {
+    live = { sid: sid, toPhone: toPhone, turns: [], startedAt: Date.now(), ended: false };
+    chipsSeen = { money: {}, time: {}, person: {} };
+    $("idle").style.display = "none";
+    $("stage").classList.add("on");
+    $("call-cards").classList.add("on");
+    $("nav-live-dot").classList.add("on");
+    setDialEnabled(false);
+    setGuideEnabled(true);
+    $("guide-log").innerHTML = '<div class="guide-empty">No guidance sent on this call.</div>';
+    $("hangup-btn").style.display = "";
+    $("transcript").innerHTML = "";
+    $("chips").innerHTML = '<span class="none">Details appear the moment they’re said.</span>';
+    $("live-who").textContent = "Calling " + fmtPhone(toPhone);
+    $("b-phone").textContent = fmtPhone(toPhone);
+    // A call assigned from this page carries its structured brief; calls started
+    // elsewhere fall back to building the brief live from the conversation.
+    if (pendingBrief) {
+      $("b-prop").textContent = pendingBrief.address;
+      $("b-issue").textContent = pendingBrief.issue;
+      $("b-issue").className = "v soft";
+      $("b-trade").textContent = pendingBrief.trade;
+      pendingBrief = null;
+    } else {
+      $("b-prop").textContent = "—";
+      $("b-issue").innerHTML = '<span class="pending">listening…</span>';
+      $("b-trade").innerHTML = '<span class="pending">detecting…</span>';
+    }
+    $("b-start").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    $("result-strip").className = "result-strip";
+    $("live-pill").classList.remove("ended");
+    $("pill-text").textContent = "LIVE";
+    var mh = "";
+    MILESTONES.forEach(function (m) {
+      mh += '<div class="mile" id="mile-' + m.id + '"><div class="mdot">✓</div><div class="mtext">' + m.label + "</div></div>";
+    });
+    $("milestones").innerHTML = mh;
+    setStep(0);
+    updateBalance();
+    showSpeaking("assistant");
+    if (timerIv) clearInterval(timerIv);
+    timerIv = setInterval(tickTimer, 1000);
+    tickTimer();
+  }
+
+  function tickTimer() {
+    if (!live || live.ended) return;
+    var s = Math.floor((Date.now() - live.startedAt) / 1000);
+    $("timer").textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  function setStep(n) {
+    document.querySelectorAll(".step").forEach(function (el) {
+      var i = parseInt(el.dataset.s, 10);
+      el.className = "step" + (i < n ? " done" : i === n ? (n === 3 ? " done" : " now") : "");
+    });
+    document.querySelectorAll(".step-line").forEach(function (el) {
+      el.className = "step-line" + (parseInt(el.dataset.l, 10) < n ? " done" : "");
+    });
+  }
+
+  function highlight(text) {
+    var out = esc(text);
+    out = out.replace(RE_MONEY, function (m) { return '<span class="hl">' + m + "</span>"; });
+    out = out.replace(RE_TIME, function (m) { return '<span class="hl t">' + m + "</span>"; });
+    return out;
+  }
+
+  function showSpeaking(role) {
+    removeSpeaking();
+    if (!live || live.ended) return;
+    var el = document.createElement("div");
+    el.className = "speaking " + (role === "assistant" ? "assistant" : "user");
+    el.id = "speaking-ind";
+    el.innerHTML = '<div class="who">' + (role === "assistant" ? "AI assistant" : "Contractor") + '</div><div class="dots"><i></i><i></i><i></i></div>';
+    $("transcript").appendChild(el);
+    $("transcript").scrollTop = 1e9;
+  }
+  function removeSpeaking() {
+    var el = $("speaking-ind");
+    if (el) el.remove();
+  }
+
+  function updateBalance() {
+    var ai = 0, vendor = 0;
+    (live ? live.turns : []).forEach(function (t) {
+      var w = (t.text || "").split(/\s+/).filter(Boolean).length;
+      if (t.role === "assistant") ai += w; else vendor += w;
+    });
+    var total = ai + vendor;
+    var pctAi = total ? Math.round((ai / total) * 100) : 0;
+    $("bal-ai").textContent = pctAi + "%";
+    $("bal-vendor").textContent = (total ? 100 - pctAi : 0) + "%";
+    $("bal-bar").style.width = pctAi + "%";
+  }
+
+  function addChip(kind, text) {
+    var key = text.toLowerCase().replace(/\s+/g, " ").trim();
+    if (!key || chipsSeen[kind][key]) return;
+    chipsSeen[kind][key] = true;
+    var none = $("chips").querySelector(".none");
+    if (none) none.remove();
+    var ic = kind === "money" ? "$" : kind === "time" ? "◷" : "◉";
+    var el = document.createElement("span");
+    el.className = "chip " + kind;
+    el.innerHTML = '<span class="ic">' + ic + "</span>" + esc(text);
+    $("chips").appendChild(el);
+  }
+
+  function processTurn(role, text) {
+    if (!live) return;
+    live.turns.push({ role: role, text: text });
+
+    removeSpeaking();
+    var el = document.createElement("div");
+    el.className = "turn " + (role === "assistant" ? "assistant" : "user");
+    el.innerHTML = '<div class="who">' + (role === "assistant" ? "AI assistant" : "Contractor") + '</div><div class="bubble">' + highlight(text) + "</div>";
+    $("transcript").appendChild(el);
+    if (!live.ended) showSpeaking(role === "assistant" ? "user" : "assistant");
+    $("transcript").scrollTop = 1e9;
+
+    var userTurns = live.turns.filter(function (t) { return t.role === "user"; }).length;
+    if (!live.ended) setStep(userTurns >= 2 ? 2 : userTurns >= 1 ? 1 : 0);
+
+    MILESTONES.forEach(function (m) {
+      var el2 = $("mile-" + m.id);
+      if (el2 && !el2.classList.contains("hit") && m.test(role, text)) el2.classList.add("hit");
+    });
+
+    if (role === "assistant" && $("b-issue").querySelector(".pending") && text.length > 40) {
+      var issue = text.split(/(?<=[.!?])\s+/).find(function (s) {
+        return /\b(got|there'?s|need|issue|problem|repair|leak|cool|breaker|drain|roof|disposal)\b/i.test(s);
+      }) || text;
+      $("b-issue").textContent = issue.length > 110 ? issue.slice(0, 107) + "…" : issue;
+      $("b-issue").className = "v soft";
+    }
+    if ($("b-trade").querySelector(".pending")) {
+      for (var i = 0; i < TRADES.length; i++) {
+        if (TRADES[i].re.test(text)) { $("b-trade").textContent = TRADES[i].label; break; }
+      }
+    }
+
+    var m;
+    RE_MONEY.lastIndex = 0;
+    while ((m = RE_MONEY.exec(text))) addChip("money", m[0].trim());
+    RE_TIME.lastIndex = 0;
+    while ((m = RE_TIME.exec(text))) { if (m[0].trim().length > 4) addChip("time", m[0].trim()); }
+    if (RE_FEE_CONTEXT.test(text)) {
+      var sp = text.match(RE_SPOKEN_NUM);
+      if (sp) addChip("money", sp[0].trim());
+    }
+    if (role === "user") {
+      var nm = text.match(/\bthis is (\w+)\b/i);
+      if (nm && nm[1].length > 1) addChip("person", "Spoke with " + nm[1][0].toUpperCase() + nm[1].slice(1));
+    }
+
+    updateBalance();
+  }
+
+  function endCall() {
+    if (!live || live.ended) return;
+    live.ended = true;
+    removeSpeaking();
+    if (timerIv) clearInterval(timerIv);
+    setStep(3);
+    $("live-pill").classList.add("ended");
+    $("pill-text").textContent = "CALL COMPLETE";
+    $("hangup-btn").style.display = "none";
+    $("nav-live-dot").classList.remove("on");
+    setDialEnabled(true);
+    setGuideEnabled(false);
+
+    if (SOURCE === "firestore") return;   // the doc watcher renders the strip when outcome lands
+    var sid = live.sid;
+    setTimeout(function () {
+      if (!live || live.sid !== sid) return;
+      api("/api/ops/call/" + encodeURIComponent(sid)).then(function (d) {
+        if (!live || live.sid !== sid) return;
+        renderResultStrip(d.outcome || {});
+      }).catch(function () {});
+    }, 4500);
+  }
+
+  function renderResultStrip(o) {
+    var strip = $("result-strip");
+    if (o.booked && o.time) {
+      strip.className = "result-strip on";
+      $("r-ic").textContent = "✓";
+      $("r-title").textContent = "Appointment set — " + o.time;
+      $("r-sub").textContent = [o.fee ? "Quoted: " + o.fee : null, o.name ? "Spoke with " + o.name : null, o.next_step].filter(Boolean).join(" · ");
+    } else if (o.voicemail) {
+      strip.className = "result-strip on neutral";
+      $("r-ic").textContent = "✉";
+      $("r-title").textContent = "Voicemail left";
+      $("r-sub").textContent = o.next_step || "The assistant left a message and will retry.";
+    } else if (o.wants_human) {
+      strip.className = "result-strip on neutral";
+      $("r-ic").textContent = "☎";
+      $("r-title").textContent = "Callback requested";
+      $("r-sub").textContent = (o.human_request ? o.human_request + ". " : "") + (o.next_step || "");
+    } else {
+      strip.className = "result-strip on neutral";
+      $("r-ic").textContent = "—";
+      $("r-title").textContent = "Call complete — no appointment yet";
+      $("r-sub").textContent = o.next_step || "";
+    }
+  }
+
+  // ─── Assign a call ──────────────────────────────────────────────────────
+  // Properties + issues mirror the demo deck's Entrata work-order table so the
+  // page and the presentation cross-reference exactly.
+  var ADDRESSES = [
+    "Cronridge Apts · Unit 204",
+    "Vivo Living Baltimore · Unit 1107",
+    "The Redwood · Unit 1503",
+    "Owings Mills · Unit 0312",
+    "Essex Townhomes · Unit 14B",
+    "Verona at Middle River · Unit 208"
+  ];
+  var ISSUES = [
+    { label: "Water pooling under kitchen sink",          trade: "Plumbing" },
+    { label: "Running toilet, master bath",               trade: "Plumbing" },
+    { label: "No heat, thermostat unresponsive",          trade: "HVAC" },
+    { label: "AC not cooling, upstairs unit",             trade: "HVAC" },
+    { label: "Bedroom outlet dead, breaker reset failed", trade: "Electrical" },
+    { label: "Garbage disposal jammed and humming",       trade: "Appliance" },
+    { label: "Refrigerator not cooling",                  trade: "Appliance" },
+    { label: "Roof leak, ceiling stain spreading",        trade: "Roofing" }
+  ];
+  $("a-address").innerHTML = ADDRESSES.map(function (a) { return "<option>" + esc(a) + "</option>"; }).join("");
+  $("a-issue").innerHTML = ISSUES.map(function (i, n) { return '<option value="' + n + '">' + esc(i.label) + "</option>"; }).join("");
+
+  // Times-available week grid: click to toggle, drag to paint.
+  var CAL_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var CAL_HOURS = [];
+  for (var h = 7; h <= 20; h++) CAL_HOURS.push(h);   // boxes cover 7am–9pm
+  var calSel = {};          // "d-h" -> true
+  var calPaint = null;      // while dragging: the value being painted
+  function fmtHour(h) {
+    var hh = ((h + 11) % 12) + 1;
+    return hh + (h < 12 ? " AM" : " PM");
+  }
+  function fmtHourShort(h) {
+    var hh = ((h + 11) % 12) + 1;
+    return hh + (h < 12 ? "a" : "p");
+  }
+  (function buildCal() {
+    $("cal-head").innerHTML = "<span></span>" + CAL_DAYS.map(function (d) { return "<span>" + d[0] + "</span>"; }).join("");
+    var g = "";
+    CAL_HOURS.forEach(function (h) {
+      g += '<div class="cal-hour">' + fmtHourShort(h) + "</div>";
+      for (var d = 0; d < 7; d++) g += '<div class="cal-cell" data-k="' + d + "-" + h + '"></div>';
+    });
+    $("cal-grid").innerHTML = g;
+    Array.prototype.forEach.call($("cal-grid").querySelectorAll(".cal-cell"), function (cell) {
+      cell.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        calPaint = !calSel[cell.dataset.k];
+        setCalCell(cell, calPaint);
+      });
+      cell.addEventListener("mouseenter", function () {
+        if (calPaint !== null) setCalCell(cell, calPaint);
+      });
+    });
+    document.addEventListener("mouseup", function () { calPaint = null; });
+  })();
+  function setCalCell(cell, on) {
+    if (on) calSel[cell.dataset.k] = true; else delete calSel[cell.dataset.k];
+    cell.classList.toggle("sel", !!on);
+    updateCalSummary();
+  }
+  function calRanges() {
+    // per-day contiguous hour ranges, e.g. { Mon: [[9,12],[14,16]] } (end exclusive)
+    var out = [];
+    for (var d = 0; d < 7; d++) {
+      var hours = CAL_HOURS.filter(function (h) { return calSel[d + "-" + h]; });
+      if (!hours.length) continue;
+      var ranges = [];
+      var start = hours[0], prev = hours[0];
+      for (var i = 1; i <= hours.length; i++) {
+        if (i < hours.length && hours[i] === prev + 1) { prev = hours[i]; continue; }
+        ranges.push([start, prev + 1]);
+        if (i < hours.length) { start = hours[i]; prev = hours[i]; }
+      }
+      out.push({ day: CAL_DAYS[d], ranges: ranges });
+    }
+    return out;
+  }
+  function calTimesText() {
+    var days = calRanges();
+    if (!days.length) return "";
+    return days.map(function (d) {
+      return d.day + " " + d.ranges.map(function (r) { return fmtHour(r[0]) + "–" + fmtHour(r[1]); }).join(", ");
+    }).join("; ");
+  }
+  function updateCalSummary() {
+    var n = Object.keys(calSel).length;
+    var sum = $("cal-sum");
+    if (!n) { sum.textContent = "Select times that work for the tenant…"; sum.className = "sum"; return; }
+    var days = calRanges().length;
+    sum.textContent = n + (n === 1 ? " hour" : " hours") + " across " + days + (days === 1 ? " day" : " days");
+    sum.className = "sum set";
+  }
+  $("cal-toggle").onclick = function () {
+    this.classList.toggle("open");
+    $("cal-wrap").classList.toggle("open");
+  };
+  $("cal-clear").onclick = function () {
+    calSel = {};
+    Array.prototype.forEach.call($("cal-grid").querySelectorAll(".cal-cell.sel"), function (c) { c.classList.remove("sel"); });
+    updateCalSummary();
+  };
+
+  // Compose the call instructions from the structured brief. This template is a
+  // stand-in — Ben swaps in the production agent; the UI just supplies the brief.
+  function composeInstructions(addr, issue, timesText, lang) {
+    var avail = timesText
+      ? "The tenant is available " + timesText + " (their local time). Offer these windows and lock a specific one."
+      : "The tenant's schedule is flexible; the office coordinates access with the tenant.";
+    var p = "You are Alex, the automated maintenance coordinator calling on behalf of the property management office. "
+      + "You are calling a contractor to book a repair visit for a tenant-reported issue. "
+      + "Introduce yourself as Alex from the property office immediately after they answer. "
+      + "If asked whether you are an AI or a robot, answer honestly in one light sentence — you are the office's automated assistant, and a human from the office can call back if they prefer — then return to scheduling. Never claim to be human and never invent personal details.\n\n"
+      + "The job:\n"
+      + "- Property: " + addr + "\n"
+      + "- Issue: " + issue + "\n"
+      + "- Availability: " + avail + "\n\n"
+      + "Your goals in order: confirm they handle this kind of work; book a specific visit inside the tenant's availability, sooner is better; and get their typical service or trip fee — state first that the office pays by invoice, net five days, no card. "
+      + "If they cannot commit a time on this call, get their earliest availability and hold it pending tenant confirmation. Never end the call without a concrete next step agreed out loud.\n\n"
+      + "How you talk: busy but friendly coordinator; one thought per turn; one or two short sentences; natural spoken language. Never start two turns in a row with the same word. "
+      + "When a time is locked, restate it in one short line and say exactly: \"Alright, thank you so much, goodbye.\" "
+      + "If you reach voicemail, leave a two-sentence message with the property and issue, ask for a call or text back at this number, then say goodbye.";
+    if (lang === "es") p = "Habla SOLO en español durante toda la llamada, con trato de usted, salvo que la persona cambie al inglés.\n\n" + p;
+    return p;
+  }
+
+  var pendingBrief = null;   // applied to the Call brief card when the call starts
+
+  function setDialEnabled(on) {
+    $("a-dial").disabled = !on;
+    $("a-note").textContent = on
+      ? "Dials from the office line. One call at a time — it appears live on the left the moment it connects."
+      : "A call is in progress. You can assign the next one when it wraps up.";
+  }
+  $("a-dial").onclick = function () {
+    if (SOURCE !== "firestore" && !backend()) { openSettings(); return; }
+    var to = $("a-to").value.trim();
+    if (!to) { toast("Enter the contractor's phone number first"); $("a-to").focus(); return; }
+    var addr = $("a-address").value;
+    var issue = ISSUES[parseInt($("a-issue").value, 10)] || ISSUES[0];
+    var lang = $("a-lang").value;
+    var instructions = composeInstructions(addr, issue.label, calTimesText(), lang);
+    var btn = $("a-dial");
+    btn.disabled = true;
+
+    if (SOURCE === "firestore") {
+      // Backbone mode: write a call request; the agent bridge claims it and
+      // drives the doc through the lifecycle (see BEN-HANDOFF.md).
+      var availability = calRanges().map(function (d) { return { day: d.day, ranges: d.ranges }; });
+      VoiceCallData.requestCall({
+        toPhone: to,
+        brief: { address: addr, issue: issue.label, trade: issue.trade, availability: availability, availabilityText: calTimesText(), language: lang },
+        instructions: instructions
+      }).then(function (id) {
+        toast("Call requested — the agent picks it up in a moment");
+        pendingBrief = { address: addr, issue: issue.label, trade: issue.trade };
+        if (!live || live.sid !== id) resetStage(id, to);
+      }).catch(function (e) {
+        btn.disabled = false;
+        toast("Could not request: " + e.message);
+      });
+      return;
+    }
+
+    pendingBrief = { address: addr, issue: issue.label, trade: issue.trade };
+    apiPost("/api/ops/dial", {
+      to: to, persona: "custom", systemPrompt: instructions, sttLanguage: lang || undefined
+    }).then(function (j) {
+      toast("Dialing " + (j.to || to) + "…");
+      if (j.callSid && (!live || live.sid !== j.callSid)) resetStage(j.callSid, j.to || to);
+    }).catch(function (e) {
+      btn.disabled = false;
+      pendingBrief = null;
+      toast("Could not assign: " + e.message);
+    });
+  };
+  $("hangup-btn").onclick = function () {
+    if (!live || live.ended) return;
+    if (SOURCE === "firestore") {
+      VoiceCallData.requestHangup(live.sid).then(function () { toast("Hang-up requested"); })
+        .catch(function (e) { toast("Hang up failed: " + e.message); });
+      return;
+    }
+    apiPost("/call/" + encodeURIComponent(live.sid) + "/hangup", {}).then(function () {
+      toast("Call ended");
+    }).catch(function (e) { toast("Hang up failed: " + e.message); });
+  };
+
+  // ─── Guide the assistant (live whisper) ─────────────────────────────────
+  function setGuideEnabled(on) {
+    $("g-note").disabled = !on;
+    $("g-send").disabled = !on;
+    if (!on) $("g-note").value = "";
+  }
+  $("g-send").onclick = function () {
+    if (!live || live.ended) return;
+    var note = $("g-note").value.trim();
+    if (!note) { $("g-note").focus(); return; }
+    var btn = $("g-send");
+    btn.disabled = true;
+    var send = SOURCE === "firestore"
+      ? VoiceCallData.sendGuidance(live.sid, note)
+      : apiPost("/call/" + encodeURIComponent(live.sid) + "/whisper", { note: note });
+    send.then(function () {
+      $("g-note").value = "";
+      var log = $("guide-log");
+      var empty = log.querySelector(".guide-empty");
+      if (empty) empty.remove();
+      var el = document.createElement("div");
+      el.className = "guide-note";
+      el.innerHTML = '<span class="gi">→</span><span>' + esc(note) + "</span>";
+      log.appendChild(el);
+      toast("Guidance armed for the assistant's next reply");
+    }).catch(function (e) {
+      toast("Could not send: " + e.message);
+    }).finally(function () { btn.disabled = !live || live.ended; });
+  };
+
+  // ─── History view ───────────────────────────────────────────────────────
+  var calls = [];
+  var filter = "all";
+  var search = "";
+
+  function matchesSearch(c) {
+    if (!search) return true;
+    var o = c.outcome || {};
+    return [c.toPhone, o.time, o.fee, o.next_step, o.name].join(" ").toLowerCase().indexOf(search) >= 0;
+  }
+  function renderHistory() {
+    var list = calls.filter(function (c) {
+      if (filter !== "all" && classify(c) !== filter) return false;
+      return matchesSearch(c);
+    });
+    var scheduled = 0, reached = 0;
+    calls.forEach(function (c) {
+      if (classify(c) === "scheduled") scheduled++;
+      if ((c.userTurns || 0) > 0 && !(c.outcome || {}).voicemail) reached++;
+    });
+    $("hist-stats").innerHTML = "<span><b>" + calls.length + "</b> calls</span><span><b>" + reached + "</b> reached</span><span><b>" + scheduled + "</b> scheduled</span>";
+
+    $("hist-empty").style.display = list.length ? "none" : "";
+    if (!list.length && calls.length) {
+      $("hist-empty").querySelector("h4").textContent = "No calls match";
+      $("hist-empty").querySelector("p").textContent = "Try clearing the search or choosing a different filter.";
+    }
+    var html = "";
+    list.forEach(function (c) {
+      var o = c.outcome || {};
+      html += '<tr data-sid="' + esc(c.callSid) + '">'
+        + '<td class="when">' + esc(fmtWhen(c.timestamp)) + "</td>"
+        + '<td class="vendor">' + esc(fmtPhone(c.toPhone)) + "</td>"
+        + "<td>" + badgeHtml(classify(c)) + "</td>"
+        + "<td>" + esc(o.time || "—") + "</td>"
+        + '<td>' + (o.fee ? '<span class="fee">' + esc(o.fee) + "</span>" : "—") + "</td>"
+        + '<td class="next">' + esc(o.next_step || "") + "</td>"
+        + "</tr>";
+    });
+    $("rows").innerHTML = html;
+    Array.prototype.forEach.call($("rows").querySelectorAll("tr[data-sid]"), function (tr) {
+      tr.onclick = function () { openDrawer(tr.getAttribute("data-sid")); };
+    });
+  }
+  function loadHistory() {
+    if (SOURCE === "firestore") { renderHistory(); return; }   // the watcher keeps `calls` fresh
+    if (!backend()) { renderHistory(); return; }
+    api("/api/ops/calls?limit=300").then(function (d) {
+      calls = d.calls || [];
+      renderHistory();
+    }).catch(function () { renderHistory(); });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#filter-pills button"), function (b) {
+    b.onclick = function () {
+      filter = b.dataset.f;
+      Array.prototype.forEach.call(document.querySelectorAll("#filter-pills button"), function (x) {
+        x.classList.toggle("active", x === b);
+      });
+      renderHistory();
+    };
+  });
+  $("search").addEventListener("input", function () {
+    search = this.value.trim().toLowerCase();
+    renderHistory();
+  });
+
+  // ─── Detail drawer ──────────────────────────────────────────────────────
+  function turnHtml(t) {
+    var isAgent = t.role !== "user";
+    return '<div class="turn ' + (isAgent ? "assistant" : "user") + '">'
+      + '<div class="who">' + (isAgent ? "AI assistant" : "Contractor") + "</div>"
+      + '<div class="bubble">' + highlight(t.text || "") + "</div></div>";
+  }
+  window.openDrawer = function (sid) {
+    if (SOURCE === "firestore") {
+      var cached = fsRows[sid];
+      if (cached) renderDrawer(cached); else toast("Call record not loaded yet");
+      return;
+    }
+    api("/api/ops/call/" + encodeURIComponent(sid)).then(renderDrawer)
+      .catch(function (e) { toast("Could not load call: " + e.message); });
+  };
+  function renderDrawer(d) {
+    {
+      var o = d.outcome || {};
+      $("d-vendor").textContent = fmtPhone(d.toPhone);
+      $("d-badge").innerHTML = badgeHtml(classify(d));
+      $("d-meta").textContent = new Date(d.timestamp).toLocaleString() + " · " + ((d.transcript || []).length) + " exchanges";
+      var oc = '<div class="oc-title">Call result</div><div class="oc-grid">';
+      oc += '<div class="oc-item"><div class="k">Appointment</div><div class="v' + (o.time ? "" : " dim") + '">' + esc(o.time || "None set") + "</div></div>";
+      oc += '<div class="oc-item"><div class="k">Quoted fee</div><div class="v' + (o.fee ? "" : " dim") + '">' + esc(o.fee || "Not discussed") + "</div></div>";
+      oc += '<div class="oc-item"><div class="k">Spoke with</div><div class="v' + (o.name ? "" : " dim") + '">' + esc(o.name || "Unknown") + "</div></div>";
+      oc += '<div class="oc-item"><div class="k">Best callback</div><div class="v' + (o.callback_number ? "" : " dim") + '">' + esc(o.callback_number || fmtPhone(d.toPhone)) + "</div></div>";
+      if (o.next_step) oc += '<div class="oc-item" style="grid-column:1/-1"><div class="k">Next step</div><div class="v">' + esc(o.next_step) + "</div></div>";
+      if (o.wants_human) oc += '<div class="oc-note"><span aria-hidden="true">☎</span><span>The contractor asked to speak with a person' + (o.human_request ? ": " + esc(o.human_request) : ".") + "</span></div>";
+      if (o.flagged) oc += '<div class="oc-note"><span aria-hidden="true">!</span><span>This call was flagged for review' + (o.flagReason ? ": “" + esc(o.flagReason) + "”" : ".") + "</span></div>";
+      oc += "</div>";
+      $("d-outcome").innerHTML = oc;
+      $("d-transcript").innerHTML = (d.transcript || []).map(turnHtml).join("") || '<div class="empty-state" style="padding:24px"><p>No conversation was recorded on this call.</p></div>';
+      $("drawer-backdrop").classList.add("open");
+      $("drawer").classList.add("open");
+    }
+  }
+  window.closeDrawer = function () {
+    $("drawer-backdrop").classList.remove("open");
+    $("drawer").classList.remove("open");
+  };
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closeDrawer(); closeSettings(); } });
+
+  // ─── Connection status ──────────────────────────────────────────────────
+  function setConnected(ok) {
+    var c = $("conn");
+    c.className = "conn" + (ok ? " live" : "");
+    $("conn-text").textContent = ok ? (sseLive ? "live" : "connected") : "offline";
+    $("offline-hint").className = "offline-hint" + (ok ? "" : " on");
+    if (SOURCE !== "firestore" && !backend()) {
+      $("idle-title").textContent = "Connect the calling service";
+      $("idle-sub").textContent = "This page needs the address of your calling service before it can show calls. An administrator sets this once per browser.";
+      $("offline-hint").className = "offline-hint on";
+    }
+  }
+
+  // ─── SSE + polling ──────────────────────────────────────────────────────
+  function connectSse() {
+    if (!backend() || es) return;
+    try { es = new EventSource(backend() + "/events"); } catch (_) { return; }
+    es.onopen = function () { sseLive = true; setConnected(true); };
+    es.onerror = function () { sseLive = false; };
+    es.addEventListener("call-started", function (e) {
+      var d = JSON.parse(e.data);
+      resetStage(d.callSid, d.toPhone);
+    });
+    es.addEventListener("call-active", function (e) {
+      var d = JSON.parse(e.data);
+      if (!live || live.sid !== d.callSid) {
+        resetStage(d.callSid, d.toPhone);
+        (d.transcript || []).forEach(function (t) { processTurn(t.role, t.text); });
+      }
+    });
+    es.addEventListener("transcript-update", function (e) {
+      var d = JSON.parse(e.data);
+      if (live && d.callSid === live.sid && !live.ended) processTurn(d.role, d.text);
+    });
+    es.addEventListener("call-ended", function (e) {
+      var d = JSON.parse(e.data);
+      if (live && d.callSid === live.sid) endCall();
+      setTimeout(loadHistory, 6000);   // outcome extraction lands a few seconds after hang-up
+    });
+  }
+  function pollState() {
+    if (!backend()) return;
+    api("/api/ops/state").then(function (d) {
+      setConnected(true);
+      var a = d.active && d.active[0];
+      if (a && (!live || live.sid !== a.callSid)) {
+        resetStage(a.callSid, a.toPhone);
+        (a.transcript || []).forEach(function (t) { processTurn(t.role, t.text); });
+      } else if (a && live && live.sid === a.callSid && !sseLive
+                 && (a.transcript || []).length > live.turns.length) {
+        a.transcript.slice(live.turns.length).forEach(function (t) { processTurn(t.role, t.text); });
+      } else if (!a && live && !live.ended) {
+        endCall();
+      }
+    }).catch(function () { setConnected(false); });
+  }
+
+  // ─── Settings ───────────────────────────────────────────────────────────
+  window.openSettings = function () {
+    $("cfg-backend").value = localStorage.getItem("voiceops_backend") || "";
+    $("cfg-token").value = localStorage.getItem("voiceops_token") || "";
+    $("cfg-source").value = SOURCE;
+    $("settings-backdrop").classList.add("open");
+  };
+  window.closeSettings = function () { $("settings-backdrop").classList.remove("open"); };
+  window.saveSettings = function () {
+    localStorage.setItem("voiceops_backend", $("cfg-backend").value.trim());
+    localStorage.setItem("voiceops_token", $("cfg-token").value.trim());
+    localStorage.setItem("voiceops_source", $("cfg-source").value);
+    closeSettings();
+    location.reload();
+  };
+  $("gear").onclick = openSettings;
+  $("settings-backdrop").addEventListener("click", function (e) { if (e.target === this) closeSettings(); });
+
+  // ─── Firestore backbone mode ────────────────────────────────────────────
+  // The page renders purely from voiceCalls documents; the agent bridge does
+  // all the writing (see BEN-HANDOFF.md). Realtime comes from onSnapshot —
+  // no tunnel, no token, no SSE.
+  var fsRows = {};   // callId -> legacy row (with transcript), for history + drawer
+  function bootFirestore() {
+    if (!window.VoiceCallData || !firebase.firestore) { setConnected(false); return; }
+    VoiceCallData.watchLatest(function (docs, err) {
+      if (!docs) { setConnected(false); return; }
+      sseLive = true;             // onSnapshot IS the live stream
+      setConnected(true);
+      var active = null;
+      for (var i = 0; i < docs.length; i++) {
+        if (VoiceCallData.isOpen(docs[i].status)) { active = docs[i]; break; }
+      }
+      if (active) {
+        if (!live || live.sid !== active.id) {
+          pendingBrief = active.brief
+            ? { address: active.brief.address, issue: active.brief.issue, trade: active.brief.trade }
+            : null;
+          resetStage(active.id, active.toPhone);
+        }
+        var turns = active.transcript || [];
+        if (!live.ended && turns.length > live.turns.length) {
+          turns.slice(live.turns.length).forEach(function (t) { processTurn(t.role, t.text); });
+        }
+      } else if (live) {
+        var fin = null;
+        for (var j = 0; j < docs.length; j++) if (docs[j].id === live.sid) { fin = docs[j]; break; }
+        if (!live.ended) {
+          endCall();
+          if (fin && fin.outcome) renderResultStrip(VoiceCallData.toLegacyRow(fin).outcome);
+        } else if (fin && fin.outcome) {
+          // buckets often land a few seconds after the terminal status — update the strip when they do
+          renderResultStrip(VoiceCallData.toLegacyRow(fin).outcome);
+        }
+      }
+    });
+    VoiceCallData.watchHistory(function (docs) {
+      if (!docs) return;
+      fsRows = {};
+      calls = docs.filter(function (d) { return !VoiceCallData.isOpen(d.status); }).map(function (d) {
+        var row = VoiceCallData.toLegacyRow(d);
+        fsRows[row.callSid] = row;
+        return row;
+      });
+      renderHistory();
+    });
+  }
+
+  // ─── Boot (after auth) ──────────────────────────────────────────────────
+  function boot() {
+    if (booted) return;
+    booted = true;
+    setConnected(false);
+    setGuideEnabled(false);
+    if (SOURCE === "firestore") { bootFirestore(); return; }
+    if (!backend()) return;
+    api("/health").then(function () { setConnected(true); }).catch(function () { setConnected(false); });
+    loadHistory();
+    connectSse();
+    pollState();
+    setInterval(pollState, 8000);
+  }
+})();
+</script>
+</body>
+</html>

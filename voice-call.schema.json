@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "propagentic/voice-call.schema.json",
+  "title": "voiceCalls document",
+  "description": "Contract for one outbound AI vendor call. Lives in the propagentic-crm Firestore project, collection 'voiceCalls'. The demo UI (docs/call-center.html + docs/call-data.js) creates 'requested' docs and renders everything else in real time; the agent bridge owns all other writes. Field-ownership and lifecycle notes are in BEN-HANDOFF.md.",
+  "type": "object",
+  "required": ["status", "createdAt", "toPhone"],
+  "properties": {
+    "status": {
+      "description": "Lifecycle. UI writes only 'requested'; the agent bridge owns every transition after that.",
+      "enum": ["requested", "dialing", "in_progress", "completed", "voicemail", "no_answer", "failed"]
+    },
+    "createdAt": { "description": "Firestore serverTimestamp — drives all ordering." },
+    "createdAtIso": { "type": "string", "description": "ISO-8601 mirror of createdAt for display." },
+    "requestedBy": { "type": ["string", "null"], "description": "Email of the signed-in operator who assigned the call." },
+    "toPhone": { "type": "string", "description": "Number to dial, E.164 preferred." },
+
+    "brief": {
+      "type": ["object", "null"],
+      "description": "The structured call brief collected by the UI sidebar.",
+      "properties": {
+        "address": { "type": "string" },
+        "issue": { "type": "string" },
+        "trade": { "type": "string", "description": "HVAC | Plumbing | Electrical | Roofing | Appliance | General repair" },
+        "availability": {
+          "type": "array",
+          "description": "Tenant availability painted on the UI week grid.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "day": { "enum": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] },
+              "ranges": {
+                "type": "array",
+                "items": { "type": "array", "prefixItems": [{ "type": "integer" }, { "type": "integer" }], "description": "[startHour, endHourExclusive] in 24h local time" }
+              }
+            }
+          }
+        },
+        "availabilityText": { "type": "string", "description": "Human-readable summary, e.g. 'Mon 9 AM–1 PM; Wed 2 PM–4 PM'" },
+        "language": { "type": "string", "description": "'' (English) | 'multi' | 'es'" }
+      }
+    },
+    "instructions": {
+      "type": ["string", "null"],
+      "description": "Prompt composed by the UI from the brief. The production agent MAY substitute its own prompt built from `brief` — the brief is the source of truth, this is a convenience."
+    },
+
+    "guidance": {
+      "type": "array",
+      "description": "Live operator steering (UI appends via arrayUnion). The agent folds unconsumed notes into its next reply and SHOULD mark them consumed.",
+      "items": {
+        "type": "object",
+        "required": ["note", "ts"],
+        "properties": {
+          "note": { "type": "string" },
+          "ts": { "type": "string" },
+          "consumed": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "hangupRequested": { "type": "boolean", "description": "UI sets true; the agent ends the call when it sees it." },
+
+    "agent": {
+      "type": ["object", "null"],
+      "description": "Set by the bridge when it claims the request.",
+      "properties": {
+        "name": { "type": "string", "description": "e.g. 'hermes-voice-agent'" },
+        "callSid": { "type": ["string", "null"], "description": "Telephony provider call id (Twilio CallSid)" },
+        "version": { "type": ["string", "null"] }
+      }
+    },
+
+    "transcript": {
+      "type": "array",
+      "description": "Append-only via arrayUnion, one element per finished spoken turn. Matches the voice-agent server's in-memory transcript shape exactly.",
+      "items": {
+        "type": "object",
+        "required": ["role", "text", "ts"],
+        "properties": {
+          "role": { "enum": ["assistant", "user"], "description": "'assistant' = the AI caller; 'user' = the contractor who answered" },
+          "text": { "type": "string" },
+          "ts": { "type": "string", "description": "ISO-8601" }
+        }
+      }
+    },
+
+    "startedAt": { "type": ["string", "null"], "description": "ISO-8601, when the line connected." },
+    "endedAt": { "type": ["string", "null"], "description": "ISO-8601, when the call ended." },
+    "error": { "type": ["string", "null"], "description": "Human-readable failure reason when status = 'failed'." },
+
+    "outcome": {
+      "type": ["object", "null"],
+      "description": "THE BUCKETS — the unstructured call turned into structured data. Written by the agent bridge after the call ends: first the deterministic 'fast' pass (regexes, see fastBuckets in docs/call-data.js), then the LLM pass (prompt in BEN-HANDOFF.md) which fills the judgment fields and wins on conflict.",
+      "properties": {
+        "result": {
+          "enum": ["scheduled", "callback_requested", "voicemail", "no_answer", "not_scheduled", "needs_attention"],
+          "description": "The one-glance rollup the UI badges are driven by."
+        },
+        "appointment": {
+          "type": "object",
+          "properties": {
+            "scheduled": { "type": "boolean", "description": "True only for a CONFIRMED visit — not times merely discussed." },
+            "day": { "type": ["string", "null"], "description": "e.g. 'Thursday' or 'Tomorrow'" },
+            "window": { "type": ["string", "null"], "description": "e.g. '2-4 PM'" },
+            "tentative": { "type": "boolean", "description": "Held pending confirmation (by either side)." }
+          }
+        },
+        "pricing": {
+          "type": "object",
+          "properties": {
+            "serviceFee": { "type": ["string", "null"], "description": "Trip/service-call fee as quoted, e.g. '$95'" },
+            "hourlyRate": { "type": ["string", "null"], "description": "e.g. '$85/hr after first hour'" },
+            "quotes": { "type": "array", "items": { "type": "string" }, "description": "Any other price statements, verbatim-ish." },
+            "termsAccepted": { "type": ["boolean", "null"], "description": "Did they accept invoice / net-5 / no-card terms?" }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "spokeWith": { "type": ["string", "null"] },
+            "company": { "type": ["string", "null"] },
+            "callbackNumber": { "type": ["string", "null"] },
+            "preferredContact": { "enum": ["call", "text", null] }
+          }
+        },
+        "vendor": {
+          "type": "object",
+          "properties": {
+            "handlesTrade": { "type": ["boolean", "null"], "description": "Do they do this kind of work?" },
+            "servesArea": { "type": ["boolean", "null"], "description": "Do they cover the property's area?" },
+            "referral": { "type": ["string", "null"], "description": "Alternative vendor they suggested, if any." }
+          }
+        },
+        "nextStep": { "type": ["string", "null"], "description": "One sentence: the concrete next step agreed on the call." },
+        "followUps": {
+          "type": "array",
+          "description": "Actions the office owes after this call.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "enum": ["text_confirmation", "text_photos", "callback", "owner_review", "retry_call", "other"] },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "flags": {
+          "type": "object",
+          "properties": {
+            "wantsHuman": { "type": "boolean", "description": "Asked for a person / the owner / management." },
+            "sensitiveRequest": { "type": "boolean", "description": "Asked for card / SSN / payment details." },
+            "reviewNeeded": { "type": "boolean", "description": "Anything a human should look at." }
+          }
+        },
+        "humanRequest": { "type": ["string", "null"], "description": "If wantsHuman: one short sentence of what they wanted a human for." },
+        "flagReason": { "type": ["string", "null"] },
+        "summary": { "type": ["string", "null"], "description": "Two sentences max, written for a property manager." },
+        "meta": {
+          "type": "object",
+          "properties": {
+            "extractedBy": { "enum": ["fast", "llm", "fast+llm"] },
+            "model": { "type": ["string", "null"] },
+            "extractedAt": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
