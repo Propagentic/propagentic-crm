@@ -286,6 +286,8 @@ input, select, textarea { font: inherit; color: var(--ink); }
 .mile.hit .mdot { border-color: #22A75D; background: var(--green-tint); color: var(--green-ink); }
 .mile.hit .mtext { color: var(--ink); }
 .mile.hit .mtext::after { content: " ✓"; color: var(--green-ink); font-weight: 700; }
+.mile.just-hit { animation: mileHit 1.2s ease; border-radius: 8px; }
+@keyframes mileHit { 0% { background: var(--green-tint); box-shadow: 0 0 0 0 rgba(34,167,93,0.4); } 55% { background: var(--green-tint); box-shadow: 0 0 0 9px rgba(34,167,93,0); } 100% { background: transparent; box-shadow: 0 0 0 0 rgba(34,167,93,0); } }
 
 /* Chips */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -900,13 +902,27 @@ td .fee { font-weight: 600; color: var(--ink); }
   }
 
   // ─── Live-conversation intelligence (client-side) ──────────────────────
+  // Each test fires on the resolution of a call goal, not a mere mention — a fee
+  // amount alone isn't "price resolved" until the assistant accepts or escalates it.
+  var RE_TRADE_CONFIRM = /\b(yeah,? we (do|can|handle)|yes,? we (do|can|handle)|we (do|handle|cover|service) (that|this|it)|i can (handle|help|do) (that|this)|no problem(,)? we|we'?re able to|absolutely,? we|sure,? we can)\b/i;
+  var RE_TIME_LOCK_PHRASE = /\balright,?\s+thank you so much,?\s+goodbye\b/i;
+  var RE_TIME_AGREE = /\b(lock(ed)? (that|it) in|sounds good|works for (me|us)|see you (then|thursday|friday|saturday|sunday|monday|tuesday|wednesday)|i'?ll (be there|see you)|put you down for|book(ed)? for|set for)\b/i;
+  var RE_TIME_MENTION = /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|this week|next week)\b(?:\s+(?:morning|afternoon|evening|night))?(?:\s+(?:at|around|between)\s+[\w:]+(?:\s+and\s+[\w:]+)?)?|\bbetween\s+\w+\s+and\s+\w+\b|\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b/i;
+  var RE_MONEY_MENTION = /\$\s?\d[\d,]*(?:\.\d{2})?(?:\s?(?:an hour|\/hr|per hour))?|\b\d+\s?dollars\b/i;
+  var RE_PRICE_RESOLVE = /\b(that works|sounds good|we can (do|agree to) that|(it'?s a )?deal|approved|office (needs to|will) approve|need(s)? (the )?office'?s? approval|above (my|our) (cap|limit)|i'?ll (follow up|check with the office)|that'?s (fine|good|approved))\b/i;
+  var RE_ENTRY = /\b(key|lock ?box|gate code|door code|entry code|call (the tenant|ahead)|tenant('?ll| will) be (home|there)|leave (a key|it) (with|at)|meet (the )?tenant|access(ing)? the (unit|property|house)|let (myself|us) in|someone (needs to|will) let (me|us) in|front desk|concierge|garage code)\b/i;
   var MILESTONES = [
-    { id: "answered",  label: "Contractor answered",         test: function (r, t) { return r === "user"; } },
-    { id: "intro",     label: "Assistant introduced itself", test: function (r, t) { return r === "assistant" && (/\b(this is|it'?s)\b[^.]{0,40}\bfrom\b/i.test(t) || /\bcalling from\b/i.test(t)); } },
-    { id: "issue",     label: "Issue explained",             test: function (r, t) { return r === "assistant" && /\b(leak|leaking|a\/?c|air condition|cool|heat|furnace|breaker|circuit|outlet|drain|clog|back(ed|ing)? up|water heater|roof|flashing|dishwasher|appliance|disposal|repair|not (working|cooling|draining)|issue|problem)\b/i.test(t); } },
-    { id: "sched",     label: "Scheduling discussed",        test: function (r, t) { return /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|this week|next week|morning|afternoon|evening)\b/i.test(t); } },
-    { id: "fee",       label: "Pricing discussed",           test: function (r, t) { return /\$\s?\d|\b(fee|charge|rate|per hour|an hour|service call|trip charge|invoice|quote)\b/i.test(t); } },
-    { id: "nextstep",  label: "Next step agreed",            test: function (r, t) { return /\b(i'?ll text|text you|send (you|over)|call (you|me) back|see you|talk (tomorrow|then|soon)|we'?re set|locked in|confirm)\b/i.test(t) || /\bgoodbye\b/i.test(t); } }
+    { id: "trade", label: "Confirmed they handle the job",
+      test: function (r, t) { return r === "user" && RE_TRADE_CONFIRM.test(t); } },
+    { id: "sched", label: "Visit time locked in",
+      test: function (r, t) { return RE_TIME_LOCK_PHRASE.test(t) || (RE_TIME_MENTION.test(t) && RE_TIME_AGREE.test(t)); } },
+    { id: "price", label: "Price agreed or flagged to office",
+      test: function (r, t, turns) {
+        if (r !== "assistant" || !RE_PRICE_RESOLVE.test(t)) return false;
+        return (turns || []).some(function (u) { return u.role === "user" && (RE_MONEY_MENTION.test(u.text) || RE_FEE_CONTEXT.test(u.text)); });
+      } },
+    { id: "entry", label: "Entry / access confirmed",
+      test: function (r, t) { return RE_ENTRY.test(t); } }
   ];
   var TRADES = [
     { re: /\b(a\/?c|air condition|cooling|heat pump|furnace|hvac)\b/i,             label: "HVAC" },
@@ -1057,7 +1073,10 @@ td .fee { font-weight: 600; color: var(--ink); }
 
     MILESTONES.forEach(function (m) {
       var el2 = $("mile-" + m.id);
-      if (el2 && !el2.classList.contains("hit") && m.test(role, text)) el2.classList.add("hit");
+      if (el2 && !el2.classList.contains("hit") && m.test(role, text, live.turns)) {
+        el2.classList.add("hit", "just-hit");
+        setTimeout(function () { el2.classList.remove("just-hit"); }, 1200);
+      }
     });
 
     if (role === "assistant" && $("b-issue").querySelector(".pending") && text.length > 40) {
@@ -1261,7 +1280,8 @@ td .fee { font-weight: 600; color: var(--ink); }
       + "- Property: " + addr + "\n"
       + "- Issue: " + issue + "\n"
       + "- Availability: " + avail + "\n\n"
-      + "Your goals in order: confirm they handle this kind of work; book a specific visit inside the tenant's availability, sooner is better; and get their typical service or trip fee — state first that the office pays by invoice, net five days, no card. " + priceLine + " "
+      + "Your goals in order: confirm they handle this kind of work; book a specific visit inside the tenant's availability, sooner is better; get their typical service or trip fee — state first that the office pays by invoice, net five days, no card. " + priceLine + " "
+      + "Finally, find out how they'll get into the property for the visit — a key left with the tenant, a lockbox or gate code, meeting the tenant there, or calling ahead to be let in — and get the specific detail, not just that access will be worked out. "
       + "If they cannot commit a time on this call, get their earliest availability and hold it pending tenant confirmation. Never end the call without a concrete next step agreed out loud.\n\n"
       + "How you talk: busy but friendly coordinator; one thought per turn; one or two short sentences; natural spoken language. Never start two turns in a row with the same word. "
       + "When a time is locked, restate it in one short line and say exactly: \"Alright, thank you so much, goodbye.\" "
