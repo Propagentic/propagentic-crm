@@ -4,6 +4,11 @@
 <meta charset="utf-8" />
 <title>Propagentic CRM</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>
+  // Restore the filters-sidebar collapsed preference before first paint, so
+  // there's no flash of the sidebar on reload.
+  if (localStorage.getItem("crm_filters_collapsed") === "1") document.documentElement.classList.add("filters-collapsed");
+</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -103,6 +108,10 @@ body.tab-voiceops .body { grid-template-columns: 1fr; }
 body.tab-voiceops .filters { display: none; }
 body.tab-voiceops .stats { display: none; }
 body.tab-voiceops #export-leads-btn { display: none; }
+
+/* Manual collapse — a standing preference (persisted), independent of tab. */
+html.filters-collapsed .body { grid-template-columns: 1fr; }
+html.filters-collapsed .filters { display: none; }
 
 /* --- Filters sidebar --- */
 .filters { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
@@ -801,6 +810,7 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
 
 <div class="app">
   <header class="top">
+    <button class="btn" id="filters-toggle-btn" onclick="toggleFiltersSidebar()" title="Show/hide filters">☰</button>
     <h1>Propagentic CRM <span class="tag">v2.9</span></h1>
     <div class="stats">
       <span><b id="stat-total">…</b>leads</span>
@@ -3789,6 +3799,11 @@ function attachFilterHandlers() {
       renderAll();
     });
   });
+}
+
+function toggleFiltersSidebar() {
+  const collapsed = document.documentElement.classList.toggle("filters-collapsed");
+  localStorage.setItem("crm_filters_collapsed", collapsed ? "1" : "0");
 }
 
 function resetFilters() {
