@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Call Center | Propagentic</title>
+<script>
+  // Framed inside the real CRM (Voice Ops tab) — drop the decorative dashboard
+  // replica (fake sidebar nav, logo header) so it doesn't nest inside the real one.
+  if (window.self !== window.top) document.documentElement.classList.add("embedded");
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -74,6 +79,12 @@ input, select, textarea { font: inherit; color: var(--ink); }
 .gear:hover { color: var(--ink); border-color: var(--ink-3); }
 
 .shell { display: flex; flex: 1; min-height: 0; }
+
+/* Embedded in the real CRM's Voice Ops tab — hide the decorative dashboard
+   replica (fake sidebar nav + logo header) so it isn't a dashboard-in-a-dashboard.
+   The connection status + settings gear stay, since they're functional controls. */
+.embedded .side { display: none; }
+.embedded .top .logo, .embedded .top .divider, .embedded .top .crumb { display: none; }
 
 /* Sidebar — replica of the product's landlord dashboard nav (decorative tabs) */
 .side {
