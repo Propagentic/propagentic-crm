@@ -1126,10 +1126,14 @@ table.leads-table td.name { font-weight: 500; color: var(--text); }
         </div>
         <div class="tab-pane" data-tab="voiceOps">
           <!-- Live voice-agent ops console. Lazy-loaded on first activation so the
-               SSE stream to the phone-agent backend only opens when the tab is viewed.
-               voice-ops.html carries its own backend URL + token (Connect strip),
-               shared via same-origin localStorage. -->
-          <iframe id="voiceOps-frame" data-src="voice-ops.html" title="Voice Ops"
+               SSE/Firestore stream only opens when the tab is viewed.
+               call-center.html carries its own data-source toggle (Direct API vs
+               Firestore backbone, ⚙ settings) and shares the same Firebase project
+               as this page, so the auth-gate resolves from the existing session —
+               no second login. Superseded voice-ops.html (kept in the repo,
+               unreferenced) — call brief, live milestone checklist, chips, price
+               cap, and call history all live here now. -->
+          <iframe id="voiceOps-frame" data-src="call-center.html" title="Voice Ops"
                   style="flex:1; width:100%; border:0; min-height:0;"></iframe>
         </div>
         <div id="loading-overlay" class="loading-overlay">Loading leads…</div>
