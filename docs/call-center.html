@@ -1298,6 +1298,7 @@ td .fee { font-weight: 600; color: var(--ink); }
       + "When a time is locked, restate it in one short line and say exactly: \"Alright, thank you so much, goodbye.\" "
       + "If you reach voicemail, leave a two-sentence message with the property and issue, ask for a call or text back at this number, then say goodbye.";
     if (lang === "es") p = "Habla SOLO en español durante toda la llamada, con trato de usted, salvo que la persona cambie al inglés.\n\n" + p;
+    else if (lang === "multi") p = "This call may be in English or Spanish. Open in English. Whichever language the contractor actually answers in, switch to match them for the rest of the call — if they answer in Spanish, continue entirely in Spanish (use \"usted\"); if they switch back to English, follow them back. Never mix both languages in the same turn.\n\n" + p;
     return p;
   }
 
