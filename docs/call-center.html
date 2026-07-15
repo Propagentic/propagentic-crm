@@ -593,23 +593,34 @@ td .fee { font-weight: 600; color: var(--ink); }
             <div class="card card-pad">
               <h3>Assign a call</h3>
               <div class="field">
-                <label for="a-to">Contractor number</label>
+                <div class="pills" id="a-mode">
+                  <button type="button" class="active" data-mode="contractor">Contractor call</button>
+                  <button type="button" data-mode="tenant">Tenant call</button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="a-to" id="a-to-label">Contractor number</label>
                 <input id="a-to" type="tel" placeholder="+1 410 555 0142" autocomplete="off">
               </div>
               <div class="field">
                 <label for="a-address">Address</label>
                 <select id="a-address"></select>
               </div>
-              <div class="field">
+              <div class="field" id="a-issue-field">
                 <label for="a-issue">Maintenance issue</label>
                 <select id="a-issue"></select>
               </div>
-              <div class="field">
+              <div class="field" id="a-ref-field" style="display:none">
+                <label for="a-ref-call">Reference a contractor call</label>
+                <select id="a-ref-call"></select>
+                <div class="note">Pulls the trade, issue, and scheduled time from that call into this one.</div>
+              </div>
+              <div class="field" id="a-pricecap-field">
                 <label for="a-pricecap">Price cap (optional)</label>
                 <input id="a-pricecap" type="number" inputmode="numeric" placeholder="e.g. 325" min="0" step="1">
                 <div class="note">The assistant will not agree to a fee above this without flagging it back to you. Change it live mid-call from "Guide the assistant" below if it needs to move.</div>
               </div>
-              <div class="field">
+              <div class="field" id="a-times-field">
                 <label>Times available</label>
                 <button type="button" class="cal-toggle" id="cal-toggle">
                   <span class="sum" id="cal-sum">Select times that work for the tenant…</span>
@@ -1302,6 +1313,82 @@ td .fee { font-weight: 600; color: var(--ink); }
     return p;
   }
 
+  // Tenant-facing call: not booking anything, just confirming a visit that was
+  // already scheduled with a contractor on a prior call.
+  function composeTenantInstructions(addr, issue, trade, apptTime, lang) {
+    var apptLine = apptTime
+      ? "A " + (trade || "maintenance") + " visit is scheduled for " + apptTime + " regarding: " + (issue || "a maintenance issue") + "."
+      : "A " + (trade || "maintenance") + " visit has been booked regarding: " + (issue || "a maintenance issue") + " — the exact time isn't loaded on this call, so ask the tenant if they already heard a time and note whatever they say.";
+    var p = "You are Alex, the automated coordinator calling on behalf of the property management office. "
+      + "You are calling the TENANT, not the contractor — this call is just to let them know a repair visit is scheduled. "
+      + "Introduce yourself as Alex from the property office immediately after they answer. "
+      + "If asked whether you are an AI or a robot, answer honestly in one light sentence — you are the office's automated assistant, and a human from the office can call back if they prefer — then continue. Never claim to be human and never invent personal details.\n\n"
+      + "The situation:\n"
+      + "- Property: " + addr + "\n"
+      + "- " + apptLine + "\n\n"
+      + "Your goals in order: let them know the visit is scheduled and confirm that time still works for them; remind them someone needs to be available, or arrangements made for entry, at that time; answer quick questions about the repair, but you don't have details beyond what's above — if asked something you can't answer, say the office will follow up. "
+      + "If the time doesn't work for them, get their preferred alternative and say the office will coordinate a new time with the contractor — do not attempt to reschedule with the contractor yourself on this call. Never end the call without confirming whether the time works or noting the requested change.\n\n"
+      + "How you talk: warm, brief, courteous coordinator; one thought per turn; one or two short sentences; natural spoken language. Never start two turns in a row with the same word. "
+      + "When wrapped up, say exactly: \"Alright, thank you so much, goodbye.\" "
+      + "If you reach voicemail, leave a two-sentence message with the property and appointment info, ask for a call or text back at this number, then say goodbye.";
+    if (lang === "es") p = "Habla SOLO en español durante toda la llamada, con trato de usted, salvo que la persona cambie al inglés.\n\n" + p;
+    else if (lang === "multi") p = "This call may be in English or Spanish. Open in English. Whichever language the tenant actually speaks, switch to match them for the rest of the call — if they answer in Spanish, continue entirely in Spanish (use \"usted\"); if they switch back to English, follow them back. Never mix both languages in the same turn.\n\n" + p;
+    return p;
+  }
+
+  // Recent contractor-call briefs, remembered client-side (localStorage) so a
+  // tenant call can reference one later. Only needed in Direct API mode — the
+  // Firestore backbone already persists `brief` on the call document itself.
+  var recentBriefs = [];
+  try { recentBriefs = JSON.parse(localStorage.getItem("cc_recentBriefs") || "[]"); } catch (_) { recentBriefs = []; }
+  function rememberBrief(sid, toPhone, addr, issue, trade, callType) {
+    if (!sid) return;
+    recentBriefs = recentBriefs.filter(function (b) { return b.sid !== sid; });
+    recentBriefs.unshift({ sid: sid, toPhone: toPhone, address: addr, issue: issue, trade: trade, callType: callType, at: Date.now() });
+    recentBriefs = recentBriefs.slice(0, 20);
+    localStorage.setItem("cc_recentBriefs", JSON.stringify(recentBriefs));
+  }
+  function briefFor(c) {
+    if (c.brief) return c.brief;
+    var r = recentBriefs.filter(function (b) { return b.sid === c.callSid; })[0];
+    return r ? { address: r.address, issue: r.issue, trade: r.trade, callType: r.callType } : null;
+  }
+
+  var callMode = "contractor";
+  var refCallOptions = [];
+  function populateReferenceCalls() {
+    // Exclude calls we know were tenant-facing (brief.callType === "tenant") —
+    // only exclude on a positive match, since older calls predating this
+    // feature have no callType at all and should still show up.
+    var opts = calls.filter(function (c) {
+      if (classify(c) !== "scheduled") return false;
+      var b = briefFor(c);
+      return !(b && b.callType === "tenant");
+    }).slice(0, 25).map(function (c) {
+      var b = briefFor(c) || {};
+      var o = c.outcome || {};
+      var label = [b.trade, b.address, o.time, fmtPhone(c.toPhone)].filter(Boolean).join(" · ");
+      return { sid: c.callSid, toPhone: c.toPhone, time: o.time, address: b.address, issue: b.issue, trade: b.trade, label: label || fmtPhone(c.toPhone) };
+    });
+    refCallOptions = opts;
+    $("a-ref-call").innerHTML = opts.length
+      ? opts.map(function (o, n) { return '<option value="' + n + '">' + esc(o.label) + "</option>"; }).join("")
+      : '<option value="">No scheduled contractor calls yet</option>';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#a-mode button"), function (b) {
+    b.onclick = function () {
+      callMode = b.dataset.mode;
+      Array.prototype.forEach.call(document.querySelectorAll("#a-mode button"), function (x) { x.classList.toggle("active", x === b); });
+      var isTenant = callMode === "tenant";
+      $("a-to-label").textContent = isTenant ? "Tenant number" : "Contractor number";
+      $("a-issue-field").style.display = isTenant ? "none" : "";
+      $("a-pricecap-field").style.display = isTenant ? "none" : "";
+      $("a-times-field").style.display = isTenant ? "none" : "";
+      $("a-ref-field").style.display = isTenant ? "" : "none";
+      if (isTenant) populateReferenceCalls();
+    };
+  });
+
   var pendingBrief = null;   // applied to the Call brief card when the call starts
 
   function setDialEnabled(on) {
@@ -1312,28 +1399,43 @@ td .fee { font-weight: 600; color: var(--ink); }
   }
   $("a-dial").onclick = function () {
     if (SOURCE !== "firestore" && !backend()) { openSettings(); return; }
+    var modeAtDial = callMode;   // snapshot — the toggle could change before the async response lands
     var to = $("a-to").value.trim();
-    if (!to) { toast("Enter the contractor's phone number first"); $("a-to").focus(); return; }
+    if (!to) { toast("Enter the " + (modeAtDial === "tenant" ? "tenant's" : "contractor's") + " phone number first"); $("a-to").focus(); return; }
     var addr = $("a-address").value;
-    var issue = ISSUES[parseInt($("a-issue").value, 10)] || ISSUES[0];
     var lang = $("a-lang").value;
-    var priceCapRaw = $("a-pricecap").value.trim();
-    var priceCap = priceCapRaw ? parseInt(priceCapRaw, 10) : null;
-    var instructions = composeInstructions(addr, issue.label, calTimesText(), lang, priceCap);
+    var briefIssue, briefTrade, priceCap, instructions;
+
+    if (modeAtDial === "tenant") {
+      var refIdx = $("a-ref-call").value;
+      var ref = refIdx !== "" ? refCallOptions[parseInt(refIdx, 10)] : null;
+      briefIssue = ref ? ref.issue : null;
+      briefTrade = ref ? ref.trade : null;
+      priceCap = null;
+      instructions = composeTenantInstructions(addr, briefIssue, briefTrade, ref && ref.time, lang);
+    } else {
+      var issue = ISSUES[parseInt($("a-issue").value, 10)] || ISSUES[0];
+      var priceCapRaw = $("a-pricecap").value.trim();
+      priceCap = priceCapRaw ? parseInt(priceCapRaw, 10) : null;
+      briefIssue = issue.label;
+      briefTrade = issue.trade;
+      instructions = composeInstructions(addr, issue.label, calTimesText(), lang, priceCap);
+    }
     var btn = $("a-dial");
     btn.disabled = true;
 
     if (SOURCE === "firestore") {
       // Backbone mode: write a call request; the agent bridge claims it and
       // drives the doc through the lifecycle (see BEN-HANDOFF.md).
-      var availability = calRanges().map(function (d) { return { day: d.day, ranges: d.ranges }; });
+      var availability = modeAtDial === "tenant" ? [] : calRanges().map(function (d) { return { day: d.day, ranges: d.ranges }; });
       VoiceCallData.requestCall({
         toPhone: to,
-        brief: { address: addr, issue: issue.label, trade: issue.trade, priceCap: priceCap, availability: availability, availabilityText: calTimesText(), language: lang },
+        brief: { address: addr, issue: briefIssue, trade: briefTrade, priceCap: priceCap, availability: availability, availabilityText: modeAtDial === "tenant" ? "" : calTimesText(), language: lang, callType: modeAtDial },
         instructions: instructions
       }).then(function (id) {
         toast("Call requested — the agent picks it up in a moment");
-        pendingBrief = { address: addr, issue: issue.label, trade: issue.trade, priceCap: priceCap };
+        pendingBrief = { address: addr, issue: briefIssue, trade: briefTrade, priceCap: priceCap };
+        rememberBrief(id, to, addr, briefIssue, briefTrade, modeAtDial);
         if (!live || live.sid !== id) resetStage(id, to);
       }).catch(function (e) {
         btn.disabled = false;
@@ -1342,11 +1444,12 @@ td .fee { font-weight: 600; color: var(--ink); }
       return;
     }
 
-    pendingBrief = { address: addr, issue: issue.label, trade: issue.trade, priceCap: priceCap };
+    pendingBrief = { address: addr, issue: briefIssue, trade: briefTrade, priceCap: priceCap };
     apiPost("/api/ops/dial", {
       to: to, persona: "custom", systemPrompt: instructions, sttLanguage: lang || undefined
     }).then(function (j) {
       toast("Dialing " + (j.to || to) + "…");
+      if (j.callSid) rememberBrief(j.callSid, to, addr, briefIssue, briefTrade, modeAtDial);
       if (j.callSid && (!live || live.sid !== j.callSid)) resetStage(j.callSid, j.to || to);
     }).catch(function (e) {
       btn.disabled = false;
@@ -1439,6 +1542,7 @@ td .fee { font-weight: 600; color: var(--ink); }
     Array.prototype.forEach.call($("rows").querySelectorAll("tr[data-sid]"), function (tr) {
       tr.onclick = function () { openDrawer(tr.getAttribute("data-sid")); };
     });
+    if (callMode === "tenant") populateReferenceCalls();
   }
   function loadHistory() {
     if (SOURCE === "firestore") { renderHistory(); return; }   // the watcher keeps `calls` fresh
