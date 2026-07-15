@@ -592,6 +592,11 @@ td .fee { font-weight: 600; color: var(--ink); }
                 <select id="a-issue"></select>
               </div>
               <div class="field">
+                <label for="a-pricecap">Price cap (optional)</label>
+                <input id="a-pricecap" type="number" inputmode="numeric" placeholder="e.g. 325" min="0" step="1">
+                <div class="note">The assistant will not agree to a fee above this without flagging it back to you. Change it live mid-call from "Guide the assistant" below if it needs to move.</div>
+              </div>
+              <div class="field">
                 <label>Times available</label>
                 <button type="button" class="cal-toggle" id="cal-toggle">
                   <span class="sum" id="cal-sum">Select times that work for the tenant…</span>
@@ -637,6 +642,7 @@ td .fee { font-weight: 600; color: var(--ink); }
                 <div class="brief-row"><div class="k">On behalf of</div><div class="v soft" id="b-behalf">Propagentic — maintenance line</div></div>
                 <div class="brief-row"><div class="k">Regarding</div><div class="v soft" id="b-issue"><span class="pending">listening…</span></div></div>
                 <div class="brief-row"><div class="k">Trade</div><div class="v soft" id="b-trade"><span class="pending">detecting…</span></div></div>
+                <div class="brief-row"><div class="k">Price cap</div><div class="v soft" id="b-pricecap">No cap set</div></div>
                 <div class="brief-row"><div class="k">Started</div><div class="v soft" id="b-start">—</div></div>
               </div>
 
@@ -945,11 +951,13 @@ td .fee { font-weight: 600; color: var(--ink); }
       $("b-issue").textContent = pendingBrief.issue;
       $("b-issue").className = "v soft";
       $("b-trade").textContent = pendingBrief.trade;
+      $("b-pricecap").textContent = pendingBrief.priceCap ? ("$" + pendingBrief.priceCap) : "No cap set";
       pendingBrief = null;
     } else {
       $("b-prop").textContent = "—";
       $("b-issue").innerHTML = '<span class="pending">listening…</span>';
       $("b-trade").innerHTML = '<span class="pending">detecting…</span>';
+      $("b-pricecap").textContent = "No cap set";
     }
     $("b-start").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     $("result-strip").className = "result-strip";
@@ -1238,10 +1246,13 @@ td .fee { font-weight: 600; color: var(--ink); }
 
   // Compose the call instructions from the structured brief. This template is a
   // stand-in — Ben swaps in the production agent; the UI just supplies the brief.
-  function composeInstructions(addr, issue, timesText, lang) {
+  function composeInstructions(addr, issue, timesText, lang, priceCap) {
     var avail = timesText
       ? "The tenant is available " + timesText + " (their local time). Offer these windows and lock a specific one."
       : "The tenant's schedule is flexible; the office coordinates access with the tenant.";
+    var priceLine = priceCap
+      ? "The office has approved up to $" + priceCap + " for this visit without a callback. If their quoted fee is at or under that, you can agree to it directly. If it's over, say the office needs to approve anything above $" + priceCap + " and you'll follow up — do not agree to a higher number yourself."
+      : "Get their typical service or trip fee for the record; you don't need approval to accept it.";
     var p = "You are Alex, the automated maintenance coordinator calling on behalf of the property management office. "
       + "You are calling a contractor to book a repair visit for a tenant-reported issue. "
       + "Introduce yourself as Alex from the property office immediately after they answer. "
@@ -1250,7 +1261,7 @@ td .fee { font-weight: 600; color: var(--ink); }
       + "- Property: " + addr + "\n"
       + "- Issue: " + issue + "\n"
       + "- Availability: " + avail + "\n\n"
-      + "Your goals in order: confirm they handle this kind of work; book a specific visit inside the tenant's availability, sooner is better; and get their typical service or trip fee — state first that the office pays by invoice, net five days, no card. "
+      + "Your goals in order: confirm they handle this kind of work; book a specific visit inside the tenant's availability, sooner is better; and get their typical service or trip fee — state first that the office pays by invoice, net five days, no card. " + priceLine + " "
       + "If they cannot commit a time on this call, get their earliest availability and hold it pending tenant confirmation. Never end the call without a concrete next step agreed out loud.\n\n"
       + "How you talk: busy but friendly coordinator; one thought per turn; one or two short sentences; natural spoken language. Never start two turns in a row with the same word. "
       + "When a time is locked, restate it in one short line and say exactly: \"Alright, thank you so much, goodbye.\" "
@@ -1274,7 +1285,9 @@ td .fee { font-weight: 600; color: var(--ink); }
     var addr = $("a-address").value;
     var issue = ISSUES[parseInt($("a-issue").value, 10)] || ISSUES[0];
     var lang = $("a-lang").value;
-    var instructions = composeInstructions(addr, issue.label, calTimesText(), lang);
+    var priceCapRaw = $("a-pricecap").value.trim();
+    var priceCap = priceCapRaw ? parseInt(priceCapRaw, 10) : null;
+    var instructions = composeInstructions(addr, issue.label, calTimesText(), lang, priceCap);
     var btn = $("a-dial");
     btn.disabled = true;
 
@@ -1284,11 +1297,11 @@ td .fee { font-weight: 600; color: var(--ink); }
       var availability = calRanges().map(function (d) { return { day: d.day, ranges: d.ranges }; });
       VoiceCallData.requestCall({
         toPhone: to,
-        brief: { address: addr, issue: issue.label, trade: issue.trade, availability: availability, availabilityText: calTimesText(), language: lang },
+        brief: { address: addr, issue: issue.label, trade: issue.trade, priceCap: priceCap, availability: availability, availabilityText: calTimesText(), language: lang },
         instructions: instructions
       }).then(function (id) {
         toast("Call requested — the agent picks it up in a moment");
-        pendingBrief = { address: addr, issue: issue.label, trade: issue.trade };
+        pendingBrief = { address: addr, issue: issue.label, trade: issue.trade, priceCap: priceCap };
         if (!live || live.sid !== id) resetStage(id, to);
       }).catch(function (e) {
         btn.disabled = false;
@@ -1297,7 +1310,7 @@ td .fee { font-weight: 600; color: var(--ink); }
       return;
     }
 
-    pendingBrief = { address: addr, issue: issue.label, trade: issue.trade };
+    pendingBrief = { address: addr, issue: issue.label, trade: issue.trade, priceCap: priceCap };
     apiPost("/api/ops/dial", {
       to: to, persona: "custom", systemPrompt: instructions, sttLanguage: lang || undefined
     }).then(function (j) {
