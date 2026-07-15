@@ -96,6 +96,14 @@ a:hover { text-decoration: underline; }
 
 .body { display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
 
+/* Voice Ops is a call console, not a lead-filtering view — the lead filters
+   sidebar and lead-count stats/export don't apply, so hide them and let the
+   console take the full width. */
+body.tab-voiceops .body { grid-template-columns: 1fr; }
+body.tab-voiceops .filters { display: none; }
+body.tab-voiceops .stats { display: none; }
+body.tab-voiceops #export-leads-btn { display: none; }
+
 /* --- Filters sidebar --- */
 .filters { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
@@ -3815,6 +3823,7 @@ function attachTabHandlers() {
       document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.dataset.tab === target));
       // v2.24 — body class drives which sidebar filters are dimmed on Investors.
       document.body.classList.toggle("tab-investors", target === "investors");
+      document.body.classList.toggle("tab-voiceops", target === "voiceOps");
       if (target === "map" && map) setTimeout(() => map.invalidateSize(), 50);
       if (target === "voiceOps") {
         const f = document.getElementById("voiceOps-frame");
